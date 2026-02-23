@@ -1,0 +1,54 @@
+/* Sync Semi UI tokens to DaisyUI dynamic okLCH variables */
+body {
+  --semi-color-primary: oklch(var(--p)) !important;
+  --semi-color-primary-hover: oklch(
+    var(--p)
+  ) !important; /* DaisyUI lightens/darkens mostly via opacity or okLch manipulation, but we can just map to 'p' or use 'p' with focus variant if needed, but 'p' is good enough */
+  --semi-color-primary-active: oklch(var(--p)) !important;
+  --semi-color-primary-light-default: oklch(var(--p) / 0.1) !important;
+  --semi-color-primary-light-hover: oklch(var(--p) / 0.2) !important;
+  --semi-color-primary-light-active: oklch(var(--p) / 0.3) !important;
+
+  --semi-color-bg-0: oklch(var(--b1)) !important;
+  --semi-color-bg-1: oklch(var(--b2)) !important;
+  --semi-color-bg-2: oklch(var(--b3)) !important;
+  --semi-color-bg-3: oklch(var(--b3)) !important;
+
+  --semi-color-text-0: oklch(var(--bc)) !important;
+  --semi-color-text-1: oklch(var(--bc) / 0.8) !important;
+  --semi-color-text-2: oklch(var(--bc) / 0.6) !important;
+  --semi-color-text-3: oklch(var(--bc) / 0.4) !important;
+
+  --semi-color-border: oklch(var(--bc) / 0.1) !important;
+  --semi-color-nav-bg: oklch(var(--b1)) !important;
+
+  --semi-color-fill-0: oklch(var(--bc) / 0.05) !important;
+  --semi-color-fill-1: oklch(var(--bc) / 0.1) !important;
+  --semi-color-fill-2: oklch(var(--bc) / 0.15) !important;
+
+  --semi-color-shadow: oklch(var(--bc) / 0.05) !important;
+  --semi-color-overlay-bg: oklch(var(--b1) / 0.8) !important;
+}
+
+/* Ensure we also override the dark mode specifically to force DaisyUI colors just in case Semi UI uses important */
+body[theme-mode="dark"] {
+  --semi-color-bg-0: oklch(var(--b1)) !important;
+  --semi-color-bg-1: oklch(var(--b2)) !important;
+  --semi-color-bg-2: oklch(var(--b3)) !important;
+  --semi-color-bg-3: oklch(var(--b3)) !important;
+
+  --semi-color-text-0: oklch(var(--bc)) !important;
+  --semi-color-text-1: oklch(var(--bc) / 0.8) !important;
+  --semi-color-text-2: oklch(var(--bc) / 0.6) !important;
+  --semi-color-text-3: oklch(var(--bc) / 0.4) !important;
+
+  --semi-color-border: oklch(var(--bc) / 0.1) !important;
+  --semi-color-nav-bg: oklch(var(--b1)) !important;
+
+  --semi-color-fill-0: oklch(var(--bc) / 0.05) !important;
+  --semi-color-fill-1: oklch(var(--bc) / 0.1) !important;
+  --semi-color-fill-2: oklch(var(--bc) / 0.15) !important;
+
+  --semi-color-shadow: oklch(var(--bc) / 0.05) !important;
+  --semi-color-overlay-bg: oklch(var(--b1) / 0.8) !important;
+}

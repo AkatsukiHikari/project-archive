@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>平台基础管理与权限中心 - 智慧档案综合管理平台</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1978e5",
+                        "primary-hover": "#1462bd",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111821",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                        "neutral-50": "#f8fafc",
+                        "neutral-100": "#f1f5f9",
+                        "neutral-200": "#e2e8f0",
+                        "neutral-300": "#cbd5e1",
+                        "neutral-400": "#94a3b8",
+                        "neutral-500": "#64748b",
+                        "neutral-600": "#475569",
+                        "neutral-700": "#334155",
+                        "neutral-800": "#1e293b",
+                        "neutral-900": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                    boxShadow: {
+                        'soft': '0 2px 8px -1px rgba(25, 120, 229, 0.08), 0 1px 4px -1px rgba(0, 0, 0, 0.04)',
+                        'soft-hover': '0 10px 15px -3px rgba(25, 120, 229, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+                        'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155; 
+        }.tree-line {
+            position: relative;
+        }
+        .tree-line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -12px;
+            border-left: 1px dashed #cbd5e1;
+        }
+        .dark .tree-line::before {
+            border-left-color: #475569;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-neutral-800 dark:text-neutral-100 transition-colors duration-200 min-h-screen flex flex-col overflow-hidden">
+<header class="bg-surface-light dark:bg-neutral-900 shadow-sm border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-40 h-16 flex-none">
+<div class="w-full px-4 sm:px-6 lg:px-6 h-full flex items-center justify-between">
+<div class="flex items-center gap-4">
+<a class="flex items-center gap-3 text-neutral-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">arrow_back</span>
+</a>
+<div class="h-8 w-px bg-neutral-200 dark:bg-neutral-700 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center w-9 h-9 rounded bg-primary text-white shadow-soft">
+<span class="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+</div>
+<div>
+<h1 class="text-base font-bold text-neutral-900 dark:text-white leading-tight">平台基础管理</h1>
+<p class="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium tracking-wide uppercase">Infrastructure &amp; Auth Center</p>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex items-center px-3 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-full text-xs text-neutral-600 dark:text-neutral-400">
+<span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
+                    系统运行正常
+                </div>
+<button class="relative p-2 rounded-full text-neutral-500 hover:text-primary hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[22px]">notifications</span>
+<span class="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900"></span>
+</button>
+<div class="flex items-center gap-2 pl-2 cursor-pointer hover:opacity-80 transition-opacity">
+<img alt="Admin profile" class="h-8 w-8 rounded-full object-cover border border-neutral-200 dark:border-neutral-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuvQDRZXW1F3BRydr0qtclIV7BwAXzvXZT_On9--deB57CVcYt8dqUT9xXFhpof_iOwnfyN6-gsyxXF-Pp0FJPG8Rl4UCAnCTnA96e5Y7vKtFH2fCC0sxWGts-6YJsHWpM8Q9-jziDkcj8iAAy90_SkbqZm1LC1MGlXbYrpCnzR_zFAiLo535vObHEk2aiZbYrWEU5fl3gLgukZHjUKddJgZOvemDtf598Fi-0lTH3MR0ljHyX1XV0xYwZApJ528O_NhtItnQVKczB"/>
+<div class="hidden md:block text-left">
+<div class="text-sm font-medium text-neutral-900 dark:text-white">系统管理员</div>
+</div>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<aside class="w-64 bg-surface-light dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col flex-none z-30">
+<div class="p-4">
+<div class="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4 px-2">管理菜单</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-primary bg-primary/10" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+                        组织架构
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">domain</span>
+                        多租户管理
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">group</span>
+                        用户管理
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">verified_user</span>
+                        权限控制 (RBAC)
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">key</span>
+                        SSO设置
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">fingerprint</span>
+                        生物识别
+                    </a>
+</nav>
+</div>
+<div class="mt-auto p-4 border-t border-neutral-200 dark:border-neutral-800">
+<div class="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3">
+<h4 class="text-xs font-semibold text-neutral-900 dark:text-white mb-1">系统版本</h4>
+<p class="text-xs text-neutral-500">v2.0.1 (Build 20231024)</p>
+</div>
+</div>
+</aside>
+<main class="flex-1 overflow-auto bg-background-light dark:bg-background-dark p-6 relative">
+<div class="max-w-[1600px] mx-auto space-y-6">
+<div class="flex items-center justify-between">
+<nav aria-label="Breadcrumb" class="flex">
+<ol class="inline-flex items-center space-x-1 md:space-x-3">
+<li class="inline-flex items-center">
+<a class="inline-flex items-center text-sm font-medium text-neutral-500 hover:text-primary" href="#">
+                                    平台管理
+                                </a>
+</li>
+<li>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-neutral-400 text-lg">chevron_right</span>
+<a class="ml-1 text-sm font-medium text-neutral-900 dark:text-white md:ml-2" href="#">权限控制中心</a>
+</div>
+</li>
+</ol>
+</nav>
+<div class="flex gap-3">
+<button class="inline-flex items-center px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded shadow-sm text-sm font-medium text-neutral-700 dark:text-neutral-200 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+<span class="material-symbols-outlined text-lg mr-2">download</span>
+                            导出报表
+                        </button>
+<button class="inline-flex items-center px-4 py-2 border border-transparent rounded shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-soft">
+<span class="material-symbols-outlined text-lg mr-2">add</span>
+                            新增角色
+                        </button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 h-[calc(100vh-180px)] min-h-[600px]">
+<div class="col-span-12 lg:col-span-3 bg-surface-light dark:bg-neutral-900 rounded-xl shadow-card border border-neutral-200 dark:border-neutral-800 flex flex-col">
+<div class="p-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+<h3 class="font-semibold text-neutral-900 dark:text-white">组织树预览</h3>
+<button class="text-neutral-400 hover:text-primary"><span class="material-symbols-outlined">refresh</span></button>
+</div>
+<div class="p-3 border-b border-neutral-200 dark:border-neutral-800">
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-neutral-400 text-lg">search</span>
+</span>
+<input class="block w-full pl-9 pr-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary" placeholder="搜索部门..." type="text"/>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+<div class="flex items-center gap-2 text-primary font-medium text-sm mb-2">
+<span class="material-symbols-outlined text-lg">corporate_fare</span>
+<span>集团总部</span>
+</div>
+<div class="ml-4 pl-4 border-l border-dashed border-neutral-200 dark:border-neutral-700 space-y-3">
+<div>
+<div class="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 text-sm hover:text-primary cursor-pointer group">
+<span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-lg">expand_more</span>
+<span class="material-symbols-outlined text-yellow-500 text-lg">folder</span>
+<span>行政管理中心</span>
+</div>
+<div class="ml-2 pl-6 mt-2 border-l border-dashed border-neutral-200 dark:border-neutral-700 space-y-2">
+<div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm hover:text-primary cursor-pointer">
+<span class="material-symbols-outlined text-blue-400 text-lg">description</span>
+<span>综合档案室</span>
+</div>
+<div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 text-sm hover:text-primary cursor-pointer">
+<span class="material-symbols-outlined text-neutral-400 text-lg">folder</span>
+<span>人力资源部</span>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 text-sm hover:text-primary cursor-pointer group">
+<span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-lg">chevron_right</span>
+<span class="material-symbols-outlined text-yellow-500 text-lg">folder</span>
+<span>财务管理中心</span>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 text-sm hover:text-primary cursor-pointer group">
+<span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-lg">chevron_right</span>
+<span class="material-symbols-outlined text-yellow-500 text-lg">folder</span>
+<span>研发技术中心</span>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 text-sm hover:text-primary cursor-pointer group">
+<span class="material-symbols-outlined text-neutral-400 group-hover:text-primary text-lg">chevron_right</span>
+<span class="material-symbols-outlined text-yellow-500 text-lg">folder</span>
+<span>市场营销部</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-9 flex flex-col gap-6">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-light dark:bg-neutral-900 rounded-xl p-5 shadow-card border border-neutral-200 dark:border-neutral-800 flex items-center justify-between relative overflow-hidden group">
+<div class="absolute right-0 top-0 h-full w-1 bg-blue-500"></div>
+<div>
+<p class="text-neutral-500 dark:text-neutral-400 text-sm font-medium">当前活跃租户</p>
+<div class="flex items-baseline gap-2 mt-1">
+<h3 class="text-2xl font-bold text-neutral-900 dark:text-white">24</h3>
+<span class="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded flex items-center">
+<span class="material-symbols-outlined text-[12px] mr-0.5">arrow_upward</span> 12%
+                                        </span>
+</div>
+<p class="text-xs text-neutral-400 mt-2">较上月新增 2 个租户</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">domain</span>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-neutral-900 rounded-xl p-5 shadow-card border border-neutral-200 dark:border-neutral-800 flex items-center justify-between relative overflow-hidden group">
+<div class="absolute right-0 top-0 h-full w-1 bg-purple-500"></div>
+<div>
+<p class="text-neutral-500 dark:text-neutral-400 text-sm font-medium">系统角色总数</p>
+<div class="flex items-baseline gap-2 mt-1">
+<h3 class="text-2xl font-bold text-neutral-900 dark:text-white">18</h3>
+</div>
+<p class="text-xs text-neutral-400 mt-2">包含 5 个预置系统角色</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">badge</span>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-neutral-900 rounded-xl p-5 shadow-card border border-neutral-200 dark:border-neutral-800 flex items-center justify-between relative overflow-hidden group">
+<div class="absolute right-0 top-0 h-full w-1 bg-orange-500"></div>
+<div>
+<p class="text-neutral-500 dark:text-neutral-400 text-sm font-medium">授权用户总数</p>
+<div class="flex items-baseline gap-2 mt-1">
+<h3 class="text-2xl font-bold text-neutral-900 dark:text-white">1,892</h3>
+<span class="text-xs text-neutral-400 px-1.5 py-0.5 rounded">
+                                            / 2000 License
+                                        </span>
+</div>
+<div class="w-full bg-neutral-100 dark:bg-neutral-700 h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-orange-500 h-1.5 rounded-full" style="width: 94%"></div>
+</div>
+</div>
+<div class="w-12 h-12 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">group_add</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-neutral-900 rounded-xl shadow-card border border-neutral-200 dark:border-neutral-800 flex flex-col flex-1 min-h-0">
+<div class="p-5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+<h3 class="font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+<span class="w-1 h-5 bg-primary rounded-full"></span>
+                                    角色列表与授权
+                                </h3>
+<div class="flex items-center gap-3">
+<div class="relative">
+<input class="block w-64 pl-9 pr-3 py-1.5 border border-neutral-200 dark:border-neutral-700 rounded text-sm bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary" placeholder="搜索角色名称..." type="text"/>
+<span class="material-symbols-outlined absolute left-2.5 top-1.5 text-neutral-400 text-lg">search</span>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-auto">
+<table class="min-w-full text-left text-sm whitespace-nowrap">
+<thead class="bg-neutral-50 dark:bg-neutral-800/50 text-neutral-900 dark:text-white font-semibold sticky top-0">
+<tr>
+<th class="px-6 py-3 border-b border-neutral-200 dark:border-neutral-700" scope="col">角色名称</th>
+<th class="px-6 py-3 border-b border-neutral-200 dark:border-neutral-700" scope="col">角色编码</th>
+<th class="px-6 py-3 border-b border-neutral-200 dark:border-neutral-700" scope="col">所属租户</th>
+<th class="px-6 py-3 border-b border-neutral-200 dark:border-neutral-700" scope="col">关联用户数</th>
+<th class="px-6 py-3 border-b border-neutral-200 dark:border-neutral-700" scope="col">状态</th>
+<th class="px-6 py-3 border-b border-neutral-200 dark:border-neutral-700 text-right" scope="col">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-neutral-100 dark:divide-neutral-700">
+<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+<td class="px-6 py-3 text-neutral-900 dark:text-white font-medium">超级管理员</td>
+<td class="px-6 py-3 text-neutral-500 font-mono text-xs">ROLE_SUPER_ADMIN</td>
+<td class="px-6 py-3 text-neutral-500">平台级</td>
+<td class="px-6 py-3 text-neutral-500">2</td>
+<td class="px-6 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">启用</span></td>
+<td class="px-6 py-3 text-right">
+<button class="text-neutral-400 cursor-not-allowed" disabled="">编辑</button>
+</td>
+</tr>
+<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+<td class="px-6 py-3 text-neutral-900 dark:text-white font-medium">档案管理员 (总馆)</td>
+<td class="px-6 py-3 text-neutral-500 font-mono text-xs">ROLE_ARCHIVE_MGR_MAIN</td>
+<td class="px-6 py-3 text-neutral-500">集团总部</td>
+<td class="px-6 py-3 text-neutral-500">15</td>
+<td class="px-6 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">启用</span></td>
+<td class="px-6 py-3 text-right">
+<button class="text-primary hover:text-primary-hover mr-3 font-medium">编辑</button>
+<button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-white">更多</button>
+</td>
+</tr>
+<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+<td class="px-6 py-3 text-neutral-900 dark:text-white font-medium">部门兼职档案员</td>
+<td class="px-6 py-3 text-neutral-500 font-mono text-xs">ROLE_DEPT_ARCHIVIST</td>
+<td class="px-6 py-3 text-neutral-500">所有租户</td>
+<td class="px-6 py-3 text-neutral-500">450</td>
+<td class="px-6 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">启用</span></td>
+<td class="px-6 py-3 text-right">
+<button class="text-primary hover:text-primary-hover mr-3 font-medium">编辑</button>
+<button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-white">更多</button>
+</td>
+</tr>
+<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+<td class="px-6 py-3 text-neutral-900 dark:text-white font-medium">普通查阅用户</td>
+<td class="px-6 py-3 text-neutral-500 font-mono text-xs">ROLE_VIEWER_BASIC</td>
+<td class="px-6 py-3 text-neutral-500">所有租户</td>
+<td class="px-6 py-3 text-neutral-500">1200</td>
+<td class="px-6 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">启用</span></td>
+<td class="px-6 py-3 text-right">
+<button class="text-primary hover:text-primary-hover mr-3 font-medium">编辑</button>
+<button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-white">更多</button>
+</td>
+</tr>
+<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+<td class="px-6 py-3 text-neutral-900 dark:text-white font-medium">临时审计员</td>
+<td class="px-6 py-3 text-neutral-500 font-mono text-xs">ROLE_AUDITOR_TEMP</td>
+<td class="px-6 py-3 text-neutral-500">财务管理中心</td>
+<td class="px-6 py-3 text-neutral-500">4</td>
+<td class="px-6 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">维护中</span></td>
+<td class="px-6 py-3 text-right">
+<button class="text-primary hover:text-primary-hover mr-3 font-medium">编辑</button>
+<button class="text-neutral-500 hover:text-neutral-700 dark:hover:text-white">更多</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm text-neutral-500">
+<span>显示 1 到 5 条，共 18 条</span>
+<div class="flex gap-2">
+<button class="px-3 py-1 border border-neutral-200 dark:border-neutral-700 rounded hover:bg-neutral-50 dark:hover:bg-neutral-700 disabled:opacity-50" disabled="">上一页</button>
+<button class="px-3 py-1 border border-neutral-200 dark:border-neutral-700 rounded hover:bg-neutral-50 dark:hover:bg-neutral-700">下一页</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div class="bg-surface-light dark:bg-neutral-900 rounded-xl shadow-modal w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+<div class="px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-800/30">
+<div>
+<h3 class="text-lg font-bold text-neutral-900 dark:text-white">新增角色配置</h3>
+<p class="text-xs text-neutral-500 mt-1">请配置角色基础信息及相关权限范围</p>
+</div>
+<button class="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6">
+<form class="space-y-8">
+<div>
+<h4 class="text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+<span class="w-1 h-4 bg-primary rounded-full"></span> 基础信息
+                                </h4>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">角色名称 <span class="text-red-500">*</span></label>
+<input class="block w-full rounded-md border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm shadow-sm focus:border-primary focus:ring-primary" placeholder="例如：部门档案员" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">角色编码 <span class="text-red-500">*</span></label>
+<input class="block w-full rounded-md border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm shadow-sm focus:border-primary focus:ring-primary font-mono" placeholder="ROLE_..." type="text"/>
+</div>
+<div class="col-span-2">
+<label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">角色描述</label>
+<textarea class="block w-full rounded-md border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm shadow-sm focus:border-primary focus:ring-primary" rows="2"></textarea>
+</div>
+</div>
+</div>
+<div>
+<h4 class="text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+<span class="w-1 h-4 bg-primary rounded-full"></span> 权限配置
+                                </h4>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-80">
+<div class="border border-neutral-200 dark:border-neutral-700 rounded-lg flex flex-col">
+<div class="bg-neutral-50 dark:bg-neutral-800 px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 font-medium text-sm text-neutral-700 dark:text-neutral-200">
+                                            功能菜单权限
+                                        </div>
+<div class="p-4 overflow-y-auto flex-1 space-y-3">
+<div>
+<label class="inline-flex items-center">
+<input checked="" class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">档案管理</span>
+</label>
+<div class="ml-6 mt-1 space-y-1">
+<label class="flex items-center">
+<input checked="" class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm text-neutral-600 dark:text-neutral-400">收集整编</span>
+</label>
+<label class="flex items-center">
+<input class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm text-neutral-600 dark:text-neutral-400">档案鉴定</span>
+</label>
+</div>
+</div>
+<div>
+<label class="inline-flex items-center">
+<input class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">系统管理</span>
+</label>
+<div class="ml-6 mt-1 space-y-1">
+<label class="flex items-center">
+<input class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm text-neutral-600 dark:text-neutral-400">日志审计</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="border border-neutral-200 dark:border-neutral-700 rounded-lg flex flex-col">
+<div class="bg-neutral-50 dark:bg-neutral-800 px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 font-medium text-sm text-neutral-700 dark:text-neutral-200">
+                                            全宗数据权限范围
+                                        </div>
+<div class="p-4 overflow-y-auto flex-1 space-y-4">
+<div>
+<label class="text-sm font-medium text-neutral-700 dark:text-neutral-300 block mb-2">数据可见性</label>
+<select class="block w-full rounded-md border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm shadow-sm focus:border-primary focus:ring-primary">
+<option>仅本人数据</option>
+<option>本部门数据</option>
+<option>本部门及下级部门数据</option>
+<option selected="">特定全宗范围 (自定义)</option>
+<option>全部数据</option>
+</select>
+</div>
+<div class="border-t border-dashed border-neutral-200 dark:border-neutral-700 pt-3">
+<p class="text-xs text-neutral-500 mb-2">勾选具体全宗库:</p>
+<div class="space-y-2 max-h-32 overflow-y-auto">
+<label class="flex items-center bg-neutral-50 dark:bg-neutral-800 p-2 rounded border border-neutral-100 dark:border-neutral-700">
+<input checked="" class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">QZ001 - 文书档案全宗</span>
+</label>
+<label class="flex items-center bg-neutral-50 dark:bg-neutral-800 p-2 rounded border border-neutral-100 dark:border-neutral-700">
+<input class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">QZ002 - 会计档案全宗</span>
+</label>
+<label class="flex items-center bg-neutral-50 dark:bg-neutral-800 p-2 rounded border border-neutral-100 dark:border-neutral-700">
+<input class="rounded border-neutral-300 text-primary focus:ring-primary h-4 w-4" type="checkbox"/>
+<span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">QZ003 - 实物档案全宗</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</form>
+</div>
+<div class="px-6 py-4 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 flex justify-end gap-3">
+<button class="px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                            取消
+                        </button>
+<button class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium shadow-soft transition-colors">
+                            保存配置
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

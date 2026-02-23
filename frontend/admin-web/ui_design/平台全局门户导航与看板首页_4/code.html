@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>智慧档案综合管理平台 V2.0 - 门户首页</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1978e5",
+                        "primary-hover": "#1462bd",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111821",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                        "neutral-50": "#f8fafc",
+                        "neutral-100": "#f1f5f9",
+                        "neutral-200": "#e2e8f0",
+                        "neutral-300": "#cbd5e1",
+                        "neutral-400": "#94a3b8",
+                        "neutral-500": "#64748b",
+                        "neutral-600": "#475569",
+                        "neutral-700": "#334155",
+                        "neutral-800": "#1e293b",
+                        "neutral-900": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                    boxShadow: {
+                        'soft': '0 2px 8px -1px rgba(25, 120, 229, 0.08), 0 1px 4px -1px rgba(0, 0, 0, 0.04)',
+                        'soft-hover': '0 10px 15px -3px rgba(25, 120, 229, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155; 
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-neutral-800 dark:text-neutral-100 transition-colors duration-200 min-h-screen flex flex-col">
+<header class="bg-surface-light dark:bg-neutral-900 shadow-sm border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-50">
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-white shadow-soft">
+<span class="material-symbols-outlined">archive</span>
+</div>
+<div>
+<h1 class="text-lg font-bold text-neutral-900 dark:text-white leading-tight">智慧档案综合管理平台</h1>
+<p class="text-xs text-neutral-500 dark:text-neutral-400 font-medium tracking-wide">V2.0 ENTERPRISE EDITION</p>
+</div>
+</div>
+<div class="flex-1 max-w-2xl mx-8">
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-neutral-400 group-focus-within:text-primary transition-colors">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-2.5 border-none rounded-lg leading-5 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-white dark:focus:bg-neutral-800 transition-all shadow-inner" placeholder="搜索档案、档号或系统功能..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+<kbd class="inline-flex items-center border border-neutral-300 dark:border-neutral-600 rounded px-2 text-xs font-sans font-medium text-neutral-500 dark:text-neutral-400">⌘K</kbd>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex flex-col items-end mr-4 border-r border-neutral-200 dark:border-neutral-700 pr-4">
+<span class="text-sm font-semibold text-neutral-700 dark:text-neutral-200">09:41</span>
+<span class="text-xs text-neutral-500 dark:text-neutral-400">2023年10月24日</span>
+</div>
+<button class="relative p-2 rounded-full text-neutral-500 hover:text-primary hover:bg-primary/10 transition-colors" title="通知">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900"></span>
+</button>
+<button class="p-2 rounded-full text-neutral-500 hover:text-primary hover:bg-primary/10 transition-colors" title="设置">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="flex items-center gap-3 pl-2 cursor-pointer hover:opacity-80 transition-opacity">
+<img alt="系统管理员头像" class="h-9 w-9 rounded-full object-cover border-2 border-white dark:border-neutral-700 shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuvQDRZXW1F3BRydr0qtclIV7BwAXzvXZT_On9--deB57CVcYt8dqUT9xXFhpof_iOwnfyN6-gsyxXF-Pp0FJPG8Rl4UCAnCTnA96e5Y7vKtFH2fCC0sxWGts-6YJsHWpM8Q9-jziDkcj8iAAy90_SkbqZm1LC1MGlXbYrpCnzR_zFAiLo535vObHEk2aiZbYrWEU5fl3gLgukZHjUKddJgZOvemDtf598Fi-0lTH3MR0ljHyX1XV0xYwZApJ528O_NhtItnQVKczB"/>
+<div class="hidden md:block text-left">
+<div class="text-sm font-medium text-neutral-900 dark:text-white">系统管理员</div>
+<div class="text-xs text-neutral-500 dark:text-neutral-400">超级管理员</div>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+<section aria-label="核心应用">
+<h2 class="text-xl font-bold text-neutral-800 dark:text-white mb-6 flex items-center gap-2">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+            核心应用
+        </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+<a class="group relative bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card hover:shadow-soft-hover transition-all duration-300 border border-neutral-200 dark:border-neutral-700 hover:border-primary/30 flex flex-col h-full" href="#">
+<div class="h-14 w-14 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">inventory_2</span>
+</div>
+<h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-2 group-hover:text-primary transition-colors">档案管理</h3>
+<p class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2">全生命周期管理：涵盖收集、整理、归档与存储。</p>
+</a>
+<a class="group relative bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card hover:shadow-soft-hover transition-all duration-300 border border-neutral-200 dark:border-neutral-700 hover:border-primary/30 flex flex-col h-full" href="#">
+<div class="h-14 w-14 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">hub</span>
+</div>
+<h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-2 group-hover:text-indigo-600 transition-colors">数据资源中心</h3>
+<p class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2">全域档案资源汇聚，多源异构数据集成与融合。</p>
+</a>
+<a class="group relative bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card hover:shadow-soft-hover transition-all duration-300 border border-neutral-200 dark:border-neutral-700 hover:border-primary/30 flex flex-col h-full" href="#">
+<div class="h-14 w-14 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">verified_user</span>
+</div>
+<h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-2 group-hover:text-emerald-600 transition-colors">数据保全中心</h3>
+<p class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2">四性检测，长期保存策略，保障数据安全可读。</p>
+</a>
+<a class="group relative bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card hover:shadow-soft-hover transition-all duration-300 border border-neutral-200 dark:border-neutral-700 hover:border-primary/30 flex flex-col h-full" href="#">
+<div class="h-14 w-14 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">admin_panel_settings</span>
+</div>
+<h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-2 group-hover:text-slate-600 transition-colors">平台基础管理</h3>
+<p class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2">IAM身份认证、RBAC权限配置及系统参数设置。</p>
+</a>
+<a class="group relative bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card hover:shadow-soft-hover transition-all duration-300 border border-neutral-200 dark:border-neutral-700 hover:border-primary/30 flex flex-col h-full" href="#">
+<div class="h-14 w-14 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">diversity_3</span>
+</div>
+<h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-2 group-hover:text-orange-600 transition-colors">利用服务中心</h3>
+<p class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2">面向公众的查档服务，检索门户与利用借阅。</p>
+</a>
+<a class="group relative bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card hover:shadow-soft-hover transition-all duration-300 border border-neutral-200 dark:border-neutral-700 hover:border-primary/30 flex flex-col h-full" href="#">
+<div class="h-14 w-14 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">fact_check</span>
+</div>
+<h3 class="text-lg font-semibold text-neutral-900 dark:text-white mb-2 group-hover:text-rose-600 transition-colors">系统审计中心</h3>
+<p class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-2">操作日志记录，安全监控告警与统计报表。</p>
+</a>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+<div class="lg:col-span-8 flex flex-col">
+<h2 class="text-xl font-bold text-neutral-800 dark:text-white mb-6 flex items-center gap-2">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                工作台
+            </h2>
+<div class="bg-surface-light dark:bg-neutral-800 rounded-xl shadow-card border border-neutral-200 dark:border-neutral-700 flex flex-col overflow-hidden h-full min-h-[500px]">
+<div class="border-b border-neutral-200 dark:border-neutral-700 px-6 pt-2">
+<nav aria-label="Tabs" class="-mb-px flex space-x-8">
+<button class="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-base">pending_actions</span>
+                            待我审批
+                            <span class="bg-primary/10 text-primary py-0.5 px-2.5 rounded-full text-xs font-semibold">12</span>
+</button>
+<button class="border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-base">saved_search</span>
+                            待鉴定档案
+                            <span class="bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 py-0.5 px-2.5 rounded-full text-xs font-semibold">5</span>
+</button>
+<button class="border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-base">folder_open</span>
+                            查档申请
+                            <span class="bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 py-0.5 px-2.5 rounded-full text-xs font-semibold">3</span>
+</button>
+<button class="border-transparent text-red-500 hover:text-red-700 hover:border-red-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-base">warning_amber</span>
+                            异常告警
+                            <span class="bg-red-50 text-red-600 py-0.5 px-2.5 rounded-full text-xs font-semibold">2</span>
+</button>
+</nav>
+</div>
+<div class="flex-1 overflow-auto p-0">
+<ul class="divide-y divide-neutral-100 dark:divide-neutral-700">
+<li class="p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors group cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="mt-1">
+<div class="h-2 w-2 rounded-full bg-primary mt-2"></div>
+</div>
+<div>
+<p class="text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-primary transition-colors">
+                                            档案销毁申请 - 项目X文档 (2018-2020)
+                                        </p>
+<div class="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span> 发起人: 张伟</span>
+<span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> 2小时前</span>
+<span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+<span class="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider">紧急</span>
+</div>
+</div>
+</div>
+<button class="text-sm font-medium text-primary hover:text-primary-hover border border-primary/20 hover:border-primary px-4 py-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    审核
+                                </button>
+</div>
+</li>
+<li class="p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors group cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="mt-1">
+<div class="h-2 w-2 rounded-full bg-primary mt-2"></div>
+</div>
+<div>
+<p class="text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-primary transition-colors">
+                                            元数据更正审批 - 财务部批次 #4021
+                                        </p>
+<div class="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span> 发起人: 李娜</span>
+<span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> 5小时前</span>
+</div>
+</div>
+</div>
+<button class="text-sm font-medium text-primary hover:text-primary-hover border border-primary/20 hover:border-primary px-4 py-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    审核
+                                </button>
+</div>
+</li>
+<li class="p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors group cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="mt-1">
+<div class="h-2 w-2 rounded-full bg-neutral-300 mt-2"></div>
+</div>
+<div>
+<p class="text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-primary transition-colors">
+                                            数字化入库校验 - 人事档案 Q3季度
+                                        </p>
+<div class="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span> 发起人: 系统自动</span>
+<span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> 昨天</span>
+</div>
+</div>
+</div>
+<button class="text-sm font-medium text-primary hover:text-primary-hover border border-primary/20 hover:border-primary px-4 py-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    审核
+                                </button>
+</div>
+</li>
+<li class="p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors group cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="mt-1">
+<div class="h-2 w-2 rounded-full bg-neutral-300 mt-2"></div>
+</div>
+<div>
+<p class="text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-primary transition-colors">
+                                            访问控制策略更新请求 - "绝密" 标签
+                                        </p>
+<div class="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span> 发起人: 管理员组</span>
+<span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> 2天前</span>
+</div>
+</div>
+</div>
+<button class="text-sm font-medium text-primary hover:text-primary-hover border border-primary/20 hover:border-primary px-4 py-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    审核
+                                </button>
+</div>
+</li>
+<li class="p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/30 transition-colors group cursor-pointer border-none">
+<div class="flex items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="mt-1">
+<div class="h-2 w-2 rounded-full bg-neutral-300 mt-2"></div>
+</div>
+<div>
+<p class="text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-primary transition-colors">
+                                            新用户注册审批: 市场部负责人
+                                        </p>
+<div class="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span> 发起人: HR系统</span>
+<span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> 3天前</span>
+</div>
+</div>
+</div>
+<button class="text-sm font-medium text-primary hover:text-primary-hover border border-primary/20 hover:border-primary px-4 py-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    审核
+                                </button>
+</div>
+</li>
+</ul>
+</div>
+<div class="p-4 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-center">
+<a class="text-sm font-medium text-primary hover:underline" href="#">查看全部任务</a>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 flex flex-col space-y-6">
+<h2 class="text-xl font-bold text-neutral-800 dark:text-white mb-0 flex items-center gap-2">
+<span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                关键指标
+            </h2>
+<div class="bg-gradient-to-br from-primary to-blue-600 rounded-xl p-6 shadow-soft text-white relative overflow-hidden">
+<div class="absolute right-0 top-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
+<span class="material-symbols-outlined" style="font-size: 150px;">folder_special</span>
+</div>
+<div class="relative z-10">
+<p class="text-blue-100 text-sm font-medium mb-1">馆藏总量</p>
+<h3 class="text-3xl font-bold font-display tracking-tight">1,240,592</h3>
+<div class="flex items-center mt-4 text-xs font-medium text-blue-100">
+<span class="bg-white/20 px-2 py-0.5 rounded mr-2 flex items-center">
+<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> +2.4%
+                        </span>
+<span>较上月</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card border border-neutral-200 dark:border-neutral-700">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-neutral-500 dark:text-neutral-400 text-sm font-medium mb-1">AI 向量化进度</p>
+<h3 class="text-2xl font-bold text-neutral-900 dark:text-white font-display">87.2%</h3>
+</div>
+<div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400 animate-pulse">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
+<span>本地档案库 RAG 索引构建中...</span>
+<span>12,450 / 14,280</span>
+</div>
+<div class="w-full bg-neutral-100 dark:bg-neutral-700 rounded-full h-2 mb-2">
+<div class="bg-indigo-500 h-2 rounded-full relative overflow-hidden" style="width: 87.2%">
+<div class="absolute top-0 left-0 bottom-0 right-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="h-2 w-2 rounded-full bg-green-500"></span>
+<span class="text-xs text-neutral-500 dark:text-neutral-400">引擎状态: 运行正常</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card border border-neutral-200 dark:border-neutral-700">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-neutral-500 dark:text-neutral-400 text-sm font-medium mb-1">今日新增</p>
+<h3 class="text-3xl font-bold text-neutral-900 dark:text-white font-display">+450</h3>
+</div>
+<div class="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-600 dark:text-green-400">
+<span class="material-symbols-outlined">note_add</span>
+</div>
+</div>
+<div class="w-full bg-neutral-100 dark:bg-neutral-700 rounded-full h-1.5 mb-2">
+<div class="bg-green-500 h-1.5 rounded-full" style="width: 65%"></div>
+</div>
+<p class="text-xs text-neutral-500">已完成今日目标的 65%</p>
+</div>
+<div class="bg-surface-light dark:bg-neutral-800 rounded-xl p-6 shadow-card border border-neutral-200 dark:border-neutral-700 flex flex-col justify-between flex-grow">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-neutral-500 dark:text-neutral-400 text-sm font-medium mb-1">四性检测合格率</p>
+<h3 class="text-3xl font-bold text-neutral-900 dark:text-white font-display">98.5%</h3>
+</div>
+<div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+<span class="material-symbols-outlined">rule</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
+<span>可用性</span>
+<span class="font-bold">100%</span>
+</div>
+<div class="w-full bg-neutral-100 dark:bg-neutral-700 rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 100%"></div>
+</div>
+<div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
+<span>完整性</span>
+<span class="font-bold">99.2%</span>
+</div>
+<div class="w-full bg-neutral-100 dark:bg-neutral-700 rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full opacity-80" style="width: 99.2%"></div>
+</div>
+<div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
+<span>安全性</span>
+<span class="font-bold">96.3%</span>
+</div>
+<div class="w-full bg-neutral-100 dark:bg-neutral-700 rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full opacity-60" style="width: 96.3%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="mt-auto border-t border-neutral-200 dark:border-neutral-800 bg-surface-light dark:bg-neutral-900 py-6">
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500 dark:text-neutral-400">
+<p>© 2023 智慧档案管理平台. 保留所有权利.</p>
+<div class="flex gap-6 mt-4 md:mt-0">
+<a class="hover:text-primary transition-colors" href="#">技术支持</a>
+<a class="hover:text-primary transition-colors" href="#">系统手册</a>
+<a class="hover:text-primary transition-colors" href="#">版本 2.0.1</a>
+</div>
+</div>
+</footer>
+
+</body></html>

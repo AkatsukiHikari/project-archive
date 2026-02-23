@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>统一身份认证 — 智慧档案综合管理平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#1978e5', 'primary-hover': '#1462bd' },
+                    fontFamily: { display: ['Inter', 'system-ui', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px) scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 font-display flex items-center justify-center px-4">
+    <!-- 背景光效 -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-500/6 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- 登录卡片 -->
+    <div class="relative w-full max-w-md" style="animation: fadeInUp 0.6s ease-out both">
+        <div class="bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl p-8 space-y-6">
+            <!-- Logo -->
+            <div class="text-center space-y-3">
+                <div
+                    class="mx-auto w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="1.5"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">统一身份认证</h1>
+                    <p class="text-xs text-slate-500 font-medium tracking-widest uppercase mt-1">SSO · Single Sign-On
+                    </p>
+                </div>
+            </div>
+
+            <!-- 错误提示 -->
+            {% if error %}
+            <div
+                class="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400 flex items-center gap-2">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+                </svg>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- 登录表单 -->
+            <form method="POST" action="/oauth/login" class="space-y-5">
+                <!-- 隐藏的 OAuth 参数 -->
+                <input type="hidden" name="client_id" value="{{ client_id }}" />
+                <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}" />
+                <input type="hidden" name="code_challenge" value="{{ code_challenge }}" />
+                <input type="hidden" name="code_challenge_method" value="{{ code_challenge_method }}" />
+                <input type="hidden" name="response_type" value="{{ response_type }}" />
+                <input type="hidden" name="state" value="{{ state }}" />
+
+                <!-- 账号 -->
+                <div>
+                    <label for="username" class="block text-xs font-medium text-slate-400 mb-1.5">账号</label>
+                    <input id="username" name="username" type="text" required autocomplete="username"
+                        placeholder="请输入账号"
+                        class="w-full h-11 px-4 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500/50 focus:border-blue-500/50 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all" />
+                </div>
+
+                <!-- 密码 -->
+                <div>
+                    <label for="password" class="block text-xs font-medium text-slate-400 mb-1.5">密码</label>
+                    <input id="password" name="password" type="password" required autocomplete="current-password"
+                        placeholder="请输入密码"
+                        class="w-full h-11 px-4 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-500/50 focus:border-blue-500/50 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all" />
+                </div>
+
+                <!-- 登录按钮 -->
+                <button type="submit"
+                    class="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold text-sm rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-200 active:scale-[0.98]">
+                    登 录
+                </button>
+            </form>
+
+            <!-- 底部 -->
+            <div class="flex items-center justify-center flex-wrap gap-2 pt-2">
+                <span
+                    class="inline-flex items-center gap-1.5 text-[0.65rem] text-slate-500 border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 rounded-full">
+                    🔒 安全加密传输
+                </span>
+                <span
+                    class="inline-flex items-center gap-1.5 text-[0.65rem] text-slate-500 border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 rounded-full">
+                    🌐 单点登录
+                </span>
+            </div>
+
+            <p class="text-center text-[0.6rem] text-slate-600 mt-2">
+                &copy; 2026 智能档案管理平台 · All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

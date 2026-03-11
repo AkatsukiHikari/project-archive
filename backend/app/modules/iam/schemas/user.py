@@ -34,6 +34,14 @@ class UserBase(BaseModel):
     is_active: bool = True
     tenant_id: Optional[uuid.UUID] = None
     org_id: Optional[uuid.UUID] = None
+    
+    # Profile Extensions
+    avatar: Optional[str] = None
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+    last_login_time: Optional[datetime] = None
 
 class UserCreate(UserBase):
     password: str
@@ -47,6 +55,18 @@ class UserUpdate(BaseModel):
     tenant_id: Optional[uuid.UUID] = None
     org_id: Optional[uuid.UUID] = None
     role_ids: Optional[List[uuid.UUID]] = None
+
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    avatar: Optional[str] = None
+    phone: Optional[str] = None
+    job_title: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+
+class UserPasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
 
 class UserInDBBase(UserBase):
     id: uuid.UUID

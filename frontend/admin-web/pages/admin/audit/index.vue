@@ -130,7 +130,7 @@ async function fetchTenants() {
   tenantsLoading.value = true;
   try {
     const res = await TenantAPI.list();
-    tenants.value = res.data.data || [];
+    tenants.value = (res as any).data || [];
     if (tenants.value.length > 0) {
       currentTenantId.value = tenants.value[0].id;
       handleTenantChange(currentTenantId.value);
@@ -155,8 +155,7 @@ async function fetchAuditLogs() {
       tenant_id: currentTenantId.value,
       limit: 100,
     });
-    // Assuming backend returns an array structure directly inside `res.data` or `res.data.data`
-    auditLogs.value = res.data.data || res.data || [];
+    auditLogs.value = (res as any).data || [];
   } catch (err: any) {
     Toast.error(err.message || "加载审计日志失败");
   } finally {

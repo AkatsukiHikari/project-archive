@@ -2,6 +2,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
+import uuid
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
@@ -76,7 +77,15 @@ async def get_current_user(
             message="无效的认证凭证",
         )
 
-    user = await service.get_user(username=token_data.sub)
+    try:
+        user_uuid = uuid.UUID(token_data.sub)
+    except ValueError:
+        raise AuthenticationException(
+            code=ErrorCode.INVALID_TOKEN,
+            message="无效的认证凭证格式",
+        )
+
+    user = await service.get_user_by_id(user_uuid)
     if not user:
         raise AuthenticationException(
             code=ErrorCode.USER_NOT_FOUND,

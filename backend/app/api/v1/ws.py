@@ -38,15 +38,17 @@ async def _authenticate_ws(token: str, db: AsyncSession):
         return None
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
             return None
-    except jwt.PyJWTError:
+        import uuid
+        user_id = uuid.UUID(user_id_str)
+    except (jwt.PyJWTError, ValueError):
         return None
 
     repo = SQLAlchemyIAMRepository(db)
     service = IAMService(repo)
-    user = await service.get_user(username=username)
+    user = await service.get_user_by_id(user_id)
     if user is None or not user.is_active:
         return None
     return user

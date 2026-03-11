@@ -66,6 +66,11 @@ class AWSS3Adapter(StorageAdapter):
             logger.error(f"AWS S3 上传失败: {e}")
             raise
 
+    def get_public_url(self, filename: str, bucket: str) -> str:
+        """AWS S3: 构造标准路径格式公开 URL（需 bucket 设为 public read）。"""
+        region = settings.AWS_REGION
+        return f"https://{bucket}.s3.{region}.amazonaws.com/{filename}"
+
     def get_presigned_url(self, filename: str, bucket: str, expires_seconds: int = 3600) -> str:
         """
         生成 AWS S3 预签名 URL。

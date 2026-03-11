@@ -172,11 +172,11 @@ async def login_submit(
     oauth_service.validate_client(client_id, redirect_uri)
 
     # 创建 SSO Session
-    session_id = await create_session(user.username)
+    session_id = await create_session(str(user.id))
 
     # 签发授权码
     code = await oauth_service.create_authorization_code(
-        user_id=user.username,
+        user_id=str(user.id),
         client_id=client_id,
         redirect_uri=redirect_uri,
         code_challenge=code_challenge,

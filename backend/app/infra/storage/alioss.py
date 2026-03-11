@@ -75,6 +75,11 @@ class AliOSSAdapter(StorageAdapter):
             logger.error(f"AliOSS 上传失败: {e}")
             raise
 
+    def get_public_url(self, filename: str, bucket: str) -> str:
+        """阿里云 OSS: 构造标准公开访问 URL（需 bucket 设为公读权限）。"""
+        endpoint = (self.endpoint or "").replace("http://", "").replace("https://", "")
+        return f"https://{bucket}.{endpoint}/{filename}"
+
     def get_presigned_url(self, filename: str, bucket: str, expires_seconds: int = 3600) -> str:
         """
         生成 OSS 预签名下载链接。

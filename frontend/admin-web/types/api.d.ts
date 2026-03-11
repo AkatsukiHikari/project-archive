@@ -12,14 +12,34 @@ export interface LoginResult {
   token_type: string;
 }
 
-// 用户信息结构
+// 角色信息（与后端 Role schema 一致）
+export interface RoleInfo {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+}
+
+// 用户信息结构（与后端 User schema 一致）
 export interface UserInfo {
   id: string;
   username: string;
   email: string;
   full_name?: string;
-  roles: string[];
   avatar?: string;
+  phone?: string;
+  job_title?: string;
+  location?: string;
+  bio?: string;
+  is_active: boolean;
+  tenant_id?: string;
+  org_id?: string;
+  last_login_time?: string;
+  create_time?: string;
+  /** 角色对象列表 */
+  roles: RoleInfo[];
+  /** 角色码列表（从 roles 派生，供权限判断使用） */
+  roleCodes: string[];
 }
 
 // 分页查询参数

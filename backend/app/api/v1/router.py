@@ -8,7 +8,7 @@ from app.api.v1 import ws
 # V1 版本路由
 # ---------------------------------------------------------------------------
 
-v1_router = APIRouter(prefix="/v1")
+v1_router = APIRouter(prefix="/v1", redirect_slashes=False)
 
 # IAM 相关路由
 v1_router.include_router(users.router, prefix="/users", tags=["users"])

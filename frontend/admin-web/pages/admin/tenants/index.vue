@@ -6,70 +6,10 @@
       <h2 class="text-lg font-semibold text-[var(--semi-color-text-0)]">
         租户管理
       </h2>
-      <Button
-        theme="solid"
-        type="primary"
-        icon="material-symbols:add"
-        @click="openCreateModal"
+      <Button theme="solid" type="primary" @click="openCreateModal"
         >新增租户</Button
       >
     </div>
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
-    <Table
-      :columns="columns"
-      :data-source="data"
-      :loading="loading"
-      empty-text="暂无内容"
-    />
-
     <Table
       :columns="columns"
       :data-source="data"
@@ -81,9 +21,9 @@
     <Modal
       v-model:visible="modalVisible"
       :title="isEdit ? '编辑租户' : '新增租户'"
+      :confirm-loading="saving"
       @ok="handleSave"
       @cancel="modalVisible = false"
-      :confirm-loading="saving"
     >
       <div class="flex flex-col gap-4 mt-4">
         <div>
@@ -159,20 +99,10 @@ const columns = [
   { title: "联系电话", dataIndex: "contact_phone" },
   {
     title: "状态",
-    dataIndex: "status",
-    render: (text: string) => {
-      const colorMap: Record<string, string> = {
-        active: "green",
-        suspended: "orange",
-        archived: "red",
-      };
-      const labelMap: Record<string, string> = {
-        active: "正常",
-        suspended: "挂起",
-        archived: "归档",
-      };
-      return <Tag color={colorMap[text] as any}>{labelMap[text] || text}</Tag>;
-    },
+    dataIndex: "is_active",
+    render: (val: boolean) => (
+      <Tag color={val ? "green" : ("red" as any)}>{val ? "正常" : "停用"}</Tag>
+    ),
   },
   {
     title: "创建时间",
@@ -182,7 +112,7 @@ const columns = [
   {
     title: "操作",
     dataIndex: "actions",
-    render: (_text: any, record: Tenant) => (
+    render: (_text: unknown, record: Tenant) => (
       <div class="flex gap-2">
         <Button
           theme="borderless"
@@ -208,8 +138,8 @@ const columns = [
 async function fetchTenants() {
   loading.value = true;
   try {
-    const res = await TenantAPI.list();
-    data.value = res.data.data || [];
+    const res = (await TenantAPI.list()) as any;
+    data.value = res.data || [];
   } catch (error: any) {
     Toast.error(error.message || "获取租户列表失败");
   } finally {

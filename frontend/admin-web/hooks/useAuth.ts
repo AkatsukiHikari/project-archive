@@ -106,6 +106,8 @@ export function useAuth() {
         if (res.data.refresh_token) {
           localStorage.setItem("refresh_token", res.data.refresh_token);
         }
+        // 换完 token 后立即拉取用户信息存入 Pinia
+        await userStore.getUserInfo();
         // 清理 PKCE 临时数据
         sessionStorage.removeItem("pkce_code_verifier");
         sessionStorage.removeItem("oauth_redirect_uri");

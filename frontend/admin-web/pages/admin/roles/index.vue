@@ -258,7 +258,7 @@ async function fetchTenants() {
   tenantsLoading.value = true;
   try {
     const res = await TenantAPI.list();
-    tenants.value = res.data.data || [];
+    tenants.value = (res as any).data || [];
     if (tenants.value.length > 0) {
       currentTenantId.value = tenants.value[0].id;
       handleTenantChange(currentTenantId.value);
@@ -283,7 +283,7 @@ async function fetchRoles() {
   if (!currentTenantId.value) return;
   try {
     const res = await RoleAPI.list(currentTenantId.value);
-    roles.value = res.data.data || [];
+    roles.value = (res as any).data || [];
   } catch (err: any) {
     Toast.error(err.message || "加载角色列表失败");
   }
@@ -387,7 +387,7 @@ function transformMenuTree(nodes: MenuTree[]): any[] {
 async function fetchMenuTree() {
   try {
     const res = await MenuAPI.tree();
-    menuTreeData.value = transformMenuTree(res.data.data || []);
+    menuTreeData.value = transformMenuTree((res as any).data || []);
   } catch (err: any) {
     Toast.error("加载权限配置失败");
   }

@@ -25,7 +25,7 @@ from app.common.error_code import ErrorCode
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 async def list_notifications(
     current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[NotificationService, Depends(get_notification_service)],

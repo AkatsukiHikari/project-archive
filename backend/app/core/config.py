@@ -35,12 +35,13 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     AWS_BUCKET_NAME: str = "sams-archive"
 
-    # MINIO / STORAGE / S3
-    MINIO_ENDPOINT: str = "localhost:9000"
+    # MINIO / MinIO 私有对象存储
+    MINIO_ENDPOINT: str = "localhost:9000"      # host:port（不含协议）
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET_NAME: str = "sams-archive"
-    MINIO_SECURE: bool = False
+    MINIO_SECURE: bool = False                  # True = HTTPS
+    # 浏览器可直接访问的 MinIO 公网 URL（与 MINIO_ENDPOINT 一致或 CDN 域名）
+    MINIO_PUBLIC_URL: str = "http://localhost:9000"
 
     # ALIYUN OSS
     OSS_ACCESS_KEY_ID: str | None = None

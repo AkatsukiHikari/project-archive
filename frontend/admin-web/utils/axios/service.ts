@@ -148,6 +148,25 @@ service.interceptors.response.use(
   },
   (error: AxiosError<ApiResponse>) => {
     let message = error.message;
+
+    // Handle HTTP 401 Unauthorized globally
+    if (error.response?.status === 401) {
+      if (!isRefreshToken) {
+        isRefreshToken = true;
+        if (import.meta.client) {
+          const userStore = useUserStore();
+          userStore.resetToken();
+          import("@/hooks/useAuth").then(({ useAuth }) => {
+            const { buildAuthorizeUrl } = useAuth();
+            buildAuthorizeUrl(window.location.pathname).then((url) => {
+              window.location.href = url;
+            });
+          });
+        }
+      }
+      return Promise.reject(new Error("认证失效，请重新登录"));
+    }
+
     if (message === "Network Error") {
       message = "后端接口连接异常";
     } else if (message.includes("timeout")) {

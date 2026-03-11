@@ -197,8 +197,8 @@ onMounted(async () => {
 async function fetchTenants() {
   tenantsLoading.value = true;
   try {
-    const res = await TenantAPI.list();
-    tenants.value = res.data.data || [];
+    const res = (await TenantAPI.list()) as any;
+    tenants.value = res.data || [];
     if (tenants.value.length > 0) {
       currentTenantId.value = tenants.value[0].id;
       handleTenantChange(currentTenantId.value);
@@ -220,8 +220,8 @@ async function fetchUsers() {
   if (!currentTenantId.value) return;
   loading.value = true;
   try {
-    const res = await UserAPI.list(currentTenantId.value);
-    users.value = res.data.data || [];
+    const res = (await UserAPI.list(currentTenantId.value)) as any;
+    users.value = res.data || [];
   } catch (err: any) {
     Toast.error(err.message || "加载用户失败");
   } finally {
@@ -245,7 +245,7 @@ async function fetchFlatOrgs() {
   if (!currentTenantId.value) return;
   try {
     const res = await OrgAPI.tree(currentTenantId.value);
-    orgList.value = flattenOrgs(res.data.data || []);
+    orgList.value = flattenOrgs((res as any).data || []);
   } catch (err: any) {
     // 忽略加载部门的错误
   }

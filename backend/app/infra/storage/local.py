@@ -63,6 +63,10 @@ class LocalAdapter(StorageAdapter):
             
         return str(target_path)
 
+    def get_public_url(self, filename: str, bucket: str) -> str:
+        """本地模式：返回 FastAPI StaticFiles 挂载的静态访问路径。"""
+        return f"/static/{bucket}/{filename}"
+
     def get_presigned_url(self, filename: str, bucket: str, expires_seconds: int = 3600) -> str:
         """
         生成伪预签名链接。

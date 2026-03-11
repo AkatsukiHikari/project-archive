@@ -11,6 +11,7 @@ def create_app() -> FastAPI:
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_PREFIX}/v1/openapi.json",
         lifespan=lifespan,
+        redirect_slashes=False,
     )
 
     # CORS
@@ -43,5 +44,13 @@ def create_app() -> FastAPI:
     # OAuth2 SSO 路由（不在 /api 版本管理下）
     from app.modules.oauth.api.routes import router as oauth_router
     app.include_router(oauth_router, prefix="/oauth", tags=["oauth"])
+
+    # 静态文件服务（仅本地开发 local 模式），生产环境由 Nginx / MinIO / CDN 接管
+    if settings.STORAGE_TYPE.lower() == "local":
+        from fastapi.staticfiles import StaticFiles
+        from pathlib import Path
+        storage_root = Path(settings.STORAGE_LOCAL_ROOT)
+        storage_root.mkdir(parents=True, exist_ok=True)
+        app.mount("/static", StaticFiles(directory=str(storage_root)), name="static")
 
     return app

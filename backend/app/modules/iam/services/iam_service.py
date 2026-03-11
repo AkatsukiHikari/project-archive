@@ -71,6 +71,47 @@ class IAMService:
                     
         return await self.repository.update(user, user_in, roles=roles)
 
+    async def update_user_profile(self, user_id: uuid.UUID, profile_in: schemas.UserProfileUpdate) -> User:
+        """用户自行修改个人资料"""
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+            
+        # Manually set fields to avoid a full UserUpdate
+        update_data = profile_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(user, field, value)
+            
+        await self.repository.db.commit()
+        await self.repository.db.refresh(user)
+        return user
+
+    async def update_user_avatar(self, user_id: uuid.UUID, avatar_url: str) -> User:
+        """更新用户头像 URL"""
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        user.avatar = avatar_url
+        await self.repository.db.commit()
+        await self.repository.db.refresh(user)
+        return user
+
+    async def update_user_password(self, user_id: uuid.UUID, password_in: schemas.UserPasswordUpdate) -> bool:
+        """用户自行修改密码"""
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+            
+        if not verify_password(password_in.old_password, user.hashed_password):
+            raise ValidationException(
+                code=ErrorCode.INVALID_PASSWORD,
+                message="旧密码错误",
+            )
+            
+        user.hashed_password = get_password_hash(password_in.new_password)
+        await self.repository.db.commit()
+        return True
+
     async def delete_user(self, user_id: uuid.UUID) -> bool:
         user = await self.repository.get_by_id(user_id)
         if user:

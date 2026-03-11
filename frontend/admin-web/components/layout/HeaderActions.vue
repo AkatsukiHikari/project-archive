@@ -196,8 +196,11 @@
       >
         <img
           alt="用户头像"
-          class="h-9 w-9 rounded-full object-cover border-2 border-base-100 shadow-sm"
-          src="https://api.dicebear.com/9.x/avataaars/svg?seed=Admin"
+          class="h-9 w-9 rounded-full object-cover border-2 border-[var(--semi-color-border)] shadow-sm bg-[var(--semi-color-fill-0)]"
+          :src="
+            userStore.userInfo?.avatar ||
+            'https://api.dicebear.com/9.x/avataaars/svg?seed=Admin'
+          "
         />
         <div class="hidden md:block text-left">
           <div class="text-sm font-medium text-base-content">
@@ -211,7 +214,9 @@
         class="dropdown-content z-[60] menu p-2 shadow-lg bg-base-100 rounded-xl w-52 mt-3 border border-base-300"
       >
         <li>
-          <a class="text-sm"> <UserIcon class="w-4 h-4" /> 个人中心 </a>
+          <NuxtLink to="/admin/profile" class="text-sm flex items-center gap-2">
+            <UserIcon class="w-4 h-4" /> 个人中心
+          </NuxtLink>
         </li>
         <li>
           <a class="text-sm"> <Cog6ToothIcon class="w-4 h-4" /> 系统设置 </a>

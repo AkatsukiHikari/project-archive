@@ -1,7 +1,8 @@
-from sqlalchemy import String, ForeignKey, Table, Column
+from sqlalchemy import String, ForeignKey, Table, Column, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.common.entity.base import BaseEntity, Base
 from typing import List, Optional
+from datetime import datetime
 
 # Association table for User-Role many-to-many relationship
 user_role_association = Table(
@@ -39,6 +40,14 @@ class User(BaseEntity):
     hashed_password: Mapped[str] = mapped_column(String(255), comment="加密密码")
     full_name: Mapped[Optional[str]] = mapped_column(String(100), comment="姓名")
     is_active: Mapped[bool] = mapped_column(default=True, comment="是否激活")
+    
+    # Profile Fields
+    avatar: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="头像URL")
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, comment="手机号")
+    job_title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="职位")
+    location: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="办公地点")
+    bio: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="个人简介")
+    last_login_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, comment="最后登录时间")
     
     # Multi-tenant and Org fields
     tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("iam_tenant.id", ondelete="CASCADE"), nullable=True, index=True, comment="所属租户ID")

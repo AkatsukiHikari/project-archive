@@ -21,8 +21,8 @@
         </Select>
       </div>
       <div class="flex gap-2">
-        <Button theme="light" icon="material-symbols:download" disabled
-          >导出报表</Button
+        <Button theme="light" disabled
+          ><template #icon><IconDownload /></template>导出报表</Button
         >
       </div>
     </div>
@@ -48,7 +48,6 @@
 
 <script setup lang="tsx">
 import { ref, onMounted } from "vue";
-import { definePageMeta } from "#imports";
 import {
   Button,
   Table,
@@ -57,10 +56,11 @@ import {
   Tag,
   Popover,
 } from "@kousum/semi-ui-vue";
+import { IconDownload } from "@kousum/semi-icons-vue";
 import { TenantAPI, type Tenant } from "@/api/iam";
 import { AuditAPI, type AuditLog } from "@/api/audit";
 
-definePageMeta({ layout: "admin" });
+definePageMeta({ layout: "admin", middleware: "auth" });
 
 const tenants = ref<Tenant[]>([]);
 const currentTenantId = ref<string>("");

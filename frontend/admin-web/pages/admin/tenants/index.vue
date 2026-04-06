@@ -22,72 +22,56 @@
       v-model:visible="modalVisible"
       :title="isEdit ? '编辑租户' : '新增租户'"
       :confirm-loading="saving"
-      @ok="handleSave"
+      @ok="handleModalOk"
       @cancel="modalVisible = false"
     >
-      <div class="flex flex-col gap-4 mt-4">
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >租户名称 <span class="text-red-500">*</span></label
-          >
-          <Input v-model="formData.name" placeholder="请输入租户名称" />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >租户标识 (Code) <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="formData.code"
-            :disabled="isEdit"
-            placeholder="请输入唯一英文字母标识"
-          />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >联系人</label
-          >
-          <Input
-            v-model="formData.contact_person"
-            placeholder="请输入联系人姓名"
-          />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >联系邮箱</label
-          >
-          <Input
-            v-model="formData.contact_email"
-            placeholder="请输入联系邮箱"
-          />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >联系电话</label
-          >
-          <Input
-            v-model="formData.contact_phone"
-            placeholder="请输入联系电话"
-          />
-        </div>
-      </div>
+      <Form
+        class="mt-4"
+        :get-form-api="getFormApi"
+        :init-values="formData"
+        @submit="handleSave"
+      >
+        <Form.Input
+          field="name"
+          label="租户名称"
+          trigger="blur"
+          :rules="[{ required: true, message: '请输入租户名称' }]"
+          placeholder="请输入租户名称"
+        />
+        <Form.Input
+          field="code"
+          label="租户标识 (Code)"
+          trigger="blur"
+          :disabled="isEdit"
+          :rules="[{ required: true, message: '请输入唯一英文字母标识' }]"
+          placeholder="请输入唯一英文字母标识"
+        />
+        <Form.Input
+          field="contact_person"
+          label="联系人"
+          placeholder="请输入联系人姓名"
+        />
+        <Form.Input
+          field="contact_email"
+          label="联系邮箱"
+          placeholder="请输入联系邮箱"
+        />
+        <Form.Input
+          field="contact_phone"
+          label="联系电话"
+          placeholder="请输入联系电话"
+        />
+      </Form>
     </Modal>
   </div>
 </template>
 
 <script setup lang="tsx">
 import { ref, onMounted } from "vue";
-import { definePageMeta } from "#imports";
-import { Button, Table, Modal, Input, Toast, Tag } from "@kousum/semi-ui-vue";
+import { Button, Table, Modal, Toast, Tag, Form } from "@kousum/semi-ui-vue";
 import { TenantAPI, type Tenant } from "@/api/iam";
 
-definePageMeta({
-  layout: "admin",
-});
+definePageMeta({ layout: "admin", middleware: "auth" });
 
 const loading = ref(false);
 const data = ref<Tenant[]>([]);
@@ -100,48 +84,57 @@ const columns = [
   {
     title: "状态",
     dataIndex: "is_active",
-    render: (val: boolean) => (
-      <Tag color={val ? "green" : ("red" as any)}>{val ? "正常" : "停用"}</Tag>
-    ),
+    render: (val: unknown) => {
+      const isActive = val as boolean;
+      return (
+        <Tag color={isActive ? "green" : "red"}>
+          {isActive ? "正常" : "停用"}
+        </Tag>
+      );
+    },
   },
   {
     title: "创建时间",
     dataIndex: "create_time",
-    render: (text: string) => new Date(text).toLocaleString(),
+    render: (text: unknown) => new Date(text as string).toLocaleString(),
   },
   {
     title: "操作",
     dataIndex: "actions",
-    render: (_text: unknown, record: Tenant) => (
-      <div class="flex gap-2">
-        <Button
-          theme="borderless"
-          type="primary"
-          size="small"
-          onClick={() => openEditModal(record)}
-        >
-          编辑
-        </Button>
-        <Button
-          theme="borderless"
-          type="danger"
-          size="small"
-          onClick={() => handleDelete(record.id)}
-        >
-          删除
-        </Button>
-      </div>
-    ),
+    render: (_text: unknown, record: unknown) => {
+      const tenant = record as Tenant;
+      return (
+        <div class="flex gap-2">
+          <Button
+            theme="borderless"
+            type="primary"
+            size="small"
+            onClick={() => openEditModal(tenant)}
+          >
+            编辑
+          </Button>
+          <Button
+            theme="borderless"
+            type="danger"
+            size="small"
+            onClick={() => handleDelete(tenant.id)}
+          >
+            删除
+          </Button>
+        </div>
+      );
+    },
   },
 ];
 
 async function fetchTenants() {
   loading.value = true;
   try {
-    const res = (await TenantAPI.list()) as any;
+    const res = (await TenantAPI.list()) as { data?: Tenant[] };
     data.value = res.data || [];
-  } catch (error: any) {
-    Toast.error(error.message || "获取租户列表失败");
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "获取租户列表失败";
+    Toast.error(msg);
   } finally {
     loading.value = false;
   }
@@ -156,6 +149,8 @@ const modalVisible = ref(false);
 const isEdit = ref(false);
 const saving = ref(false);
 const currentId = ref("");
+const formApi = ref<{ submitForm: () => void } | null>(null);
+
 const formData = ref<{
   name: string;
   code: string;
@@ -169,6 +164,10 @@ const formData = ref<{
   contact_email: "",
   contact_phone: "",
 });
+
+function getFormApi(api: { submitForm: () => void }) {
+  formApi.value = api;
+}
 
 function openCreateModal() {
   isEdit.value = false;
@@ -196,25 +195,27 @@ function openEditModal(record: Tenant) {
   modalVisible.value = true;
 }
 
-async function handleSave() {
-  if (!formData.value.name || !formData.value.code) {
-    Toast.warning("带 * 号为必填项");
-    return;
+function handleModalOk() {
+  if (formApi.value) {
+    formApi.value.submitForm();
   }
+}
 
+async function handleSave(values: Record<string, unknown>) {
   saving.value = true;
   try {
     if (isEdit.value) {
-      await TenantAPI.update(currentId.value, formData.value);
+      await TenantAPI.update(currentId.value, values);
       Toast.success("修改成功");
     } else {
-      await TenantAPI.create(formData.value);
+      await TenantAPI.create(values);
       Toast.success("创建成功");
     }
     modalVisible.value = false;
     fetchTenants();
-  } catch (error: any) {
-    Toast.error(error.message || "保存失败");
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "保存失败";
+    Toast.error(msg);
   } finally {
     saving.value = false;
   }
@@ -229,8 +230,9 @@ function handleDelete(id: string) {
         await TenantAPI.delete(id);
         Toast.success("删除成功");
         fetchTenants();
-      } catch (error: any) {
-        Toast.error(error.message || "删除失败");
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : "删除失败";
+        Toast.error(msg);
       }
     },
   });

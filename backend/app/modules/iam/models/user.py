@@ -40,6 +40,7 @@ class User(BaseEntity):
     hashed_password: Mapped[str] = mapped_column(String(255), comment="加密密码")
     full_name: Mapped[Optional[str]] = mapped_column(String(100), comment="姓名")
     is_active: Mapped[bool] = mapped_column(default=True, comment="是否激活")
+    is_superadmin: Mapped[bool] = mapped_column(default=False, server_default="false", comment="是否超级管理员")
     
     # Profile Fields
     avatar: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, comment="头像URL")

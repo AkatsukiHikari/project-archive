@@ -18,6 +18,21 @@ class StorageAdapter(ABC):
         私有资源（archives / attachments）：存 object key，访问时调 get_presigned_url() 临时授权。
     """
 
+    @classmethod
+    def generate_object_key(cls, prefix: str, filename: str) -> str:
+        """
+        统一生成对象键（Object Key）。
+        格式: {prefix}/{uuid}{ext}
+        
+        Args:
+            prefix: 对象前缀（如 user_id 或 业务标识）
+            filename: 原始文件名（用于提取后缀）
+        """
+        import uuid
+        import os
+        ext = os.path.splitext(filename or ".bin")[1] or ".bin"
+        return f"{prefix}/{uuid.uuid4()}{ext}"
+
     @abstractmethod
     def save(self, file_object: BinaryIO, filename: str, bucket: str, content_type: str = "application/octet-stream") -> str:
         """

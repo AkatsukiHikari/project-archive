@@ -1,117 +1,117 @@
 <template>
-  <div
-    class="bg-base-100 rounded-xl shadow-card border border-base-300 flex flex-col overflow-hidden h-full min-h-[500px]"
+  <Card
+    :shadows="'always'"
+    :header-line="false"
+    :body-style="{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }"
+    class="flex flex-col overflow-hidden h-full min-h-[500px]"
   >
-    <!-- 标签栏 -->
-    <div class="border-b border-base-300 px-6 pt-2">
-      <nav
-        class="-mb-px flex space-x-6 overflow-x-auto"
-        aria-label="工作台标签"
+    <!-- Semi UI Tabs 作为标签栏 -->
+    <Tabs
+      :active-key="activeTabKey"
+      type="line"
+      size="small"
+      class="workbench-tabs flex-1 flex flex-col overflow-hidden"
+      :tab-pane-motion="false"
+      @change="onTabChange"
+    >
+      <TabPane
+        v-for="tab in tabs"
+        :key="tab.key"
+        :item-key="tab.key"
+        :tab="renderTabLabel(tab)"
+        class="flex-1 overflow-hidden"
       >
-        <button
-          v-for="(tab, idx) in tabs"
-          :key="tab.key"
-          class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors shrink-0"
-          :class="
-            activeTab === idx
-              ? 'border-primary text-primary'
-              : tab.danger
-                ? 'border-transparent text-error hover:text-error/80 hover:border-error/30'
-                : 'border-transparent text-base-content/60 hover:text-base-content hover:border-base-300'
-          "
-          @click="activeTab = idx"
-        >
-          <Icon :name="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
-          <span
-            class="py-0.5 px-2.5 rounded-full text-xs font-semibold"
-            :class="
-              activeTab === idx
-                ? 'bg-primary/10 text-primary'
-                : tab.danger
-                  ? 'bg-error/10 text-error'
-                  : 'bg-base-200 text-base-content/60'
-            "
-          >
-            {{ tab.count }}
-          </span>
-        </button>
-      </nav>
-    </div>
-
-    <!-- 任务列表 -->
-    <div class="flex-1 overflow-auto">
-      <ul class="divide-y divide-base-200">
-        <li
-          v-for="(task, idx) in tasks"
-          :key="idx"
-          class="p-4 hover:bg-base-200/50 transition-colors group cursor-pointer"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex items-start gap-4">
-              <div class="mt-1">
-                <div
-                  class="h-2 w-2 rounded-full mt-2"
-                  :class="task.unread ? 'bg-primary' : 'bg-base-300'"
-                />
-              </div>
-              <div>
-                <p
-                  class="text-sm font-semibold text-base-content group-hover:text-primary transition-colors"
-                >
-                  {{ task.title }}
-                </p>
-                <div
-                  class="mt-1 flex items-center gap-3 text-xs text-base-content/60 flex-wrap"
-                >
-                  <span class="flex items-center gap-1">
-                    <Icon name="heroicons:user" class="w-3.5 h-3.5" />
-                    发起人: {{ task.author }}
-                  </span>
-                  <span class="w-1 h-1 rounded-full bg-base-300" />
-                  <span class="flex items-center gap-1">
-                    <Icon name="heroicons:clock" class="w-3.5 h-3.5" />
-                    {{ task.time }}
-                  </span>
-                  <template v-if="task.tag">
-                    <span class="w-1 h-1 rounded-full bg-base-300" />
-                    <span
-                      class="px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider"
-                      :class="task.tagClass"
-                    >
-                      {{ task.tag }}
-                    </span>
-                  </template>
-                </div>
-              </div>
-            </div>
-            <button
-              class="text-sm font-medium text-primary hover:text-primary-focus border border-primary/20 hover:border-primary px-4 py-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 shrink-0"
+        <!-- 任务列表 -->
+        <div class="flex-1 overflow-y-auto" style="max-height: 420px;">
+          <ul>
+            <li
+              v-for="(task, idx) in tasksForTab(tab.key)"
+              :key="idx"
+              class="group cursor-pointer transition-colors duration-150"
+              style="padding: 14px 20px; border-bottom: 1px solid var(--semi-color-border);"
+              @mouseover="hoveredIdx = idx"
+              @mouseleave="hoveredIdx = -1"
+              :style="hoveredIdx === idx ? { background: 'var(--semi-color-fill-0)' } : {}"
             >
-              审核
-            </button>
-          </div>
-        </li>
-      </ul>
-    </div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-start gap-3 min-w-0">
+                  <!-- 未读指示点 -->
+                  <div class="mt-1.5 shrink-0">
+                    <div
+                      class="w-2 h-2 rounded-full"
+                      :style="task.unread
+                        ? { background: 'var(--semi-color-primary)' }
+                        : { background: 'var(--semi-color-fill-2)' }"
+                    />
+                  </div>
+                  <div class="min-w-0">
+                    <p
+                      class="text-[13px] font-medium truncate transition-colors"
+                      :style="{ color: hoveredIdx === idx ? 'var(--semi-color-primary)' : 'var(--semi-color-text-0)' }"
+                    >
+                      {{ task.title }}
+                    </p>
+                    <div class="mt-1 flex items-center flex-wrap gap-x-3 gap-y-0.5">
+                      <span class="text-[11px] flex items-center gap-1" style="color: var(--semi-color-text-2);">
+                        <Icon name="heroicons:user" class="w-3 h-3" />
+                        {{ task.author }}
+                      </span>
+                      <span class="text-[11px] flex items-center gap-1" style="color: var(--semi-color-text-2);">
+                        <Icon name="heroicons:clock" class="w-3 h-3" />
+                        {{ task.time }}
+                      </span>
+                      <Tag
+                        v-if="task.tag"
+                        size="small"
+                        :color="task.tagColor"
+                        shape="circle"
+                        style="height: 18px; font-size: 10px;"
+                      >
+                        {{ task.tag }}
+                      </Tag>
+                    </div>
+                  </div>
+                </div>
+                <!-- 操作按钮 -->
+                <Button
+                  size="small"
+                  type="primary"
+                  theme="light"
+                  class="shrink-0 transition-opacity"
+                  :style="hoveredIdx === idx ? { opacity: 1 } : { opacity: 0 }"
+                >
+                  审核
+                </Button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </TabPane>
+    </Tabs>
 
     <!-- 底部链接 -->
-    <div class="p-4 border-t border-base-300 bg-base-200/50 text-center">
+    <div
+      class="shrink-0 text-center py-3"
+      style="border-top: 1px solid var(--semi-color-border); background: var(--semi-color-fill-0);"
+    >
       <NuxtLink
         to="/tasks"
-        class="text-sm font-medium text-primary hover:underline"
+        class="text-[13px] font-medium"
+        style="color: var(--semi-color-primary); text-decoration: none;"
       >
-        查看全部任务
+        查看全部任务 →
       </NuxtLink>
     </div>
-  </div>
+  </Card>
 </template>
 
 <script setup lang="ts">
+import { ref, h } from "vue";
+import { Card, Tabs, TabPane, Button, Tag } from "@kousum/semi-ui-vue";
+
 interface Tab {
   key: string;
   label: string;
-  icon: string;
   count: number;
   danger?: boolean;
 }
@@ -122,42 +122,27 @@ interface Task {
   time: string;
   unread: boolean;
   tag?: string;
-  tagClass?: string;
+  tagColor?: "red" | "orange" | "amber" | "yellow" | "cyan" | "blue" | "violet";
 }
 
-const activeTab = ref(0);
+const activeTabKey = ref("approval");
+const hoveredIdx = ref(-1);
 
 const tabs: Tab[] = [
-  { key: "approval", label: "待我审批", icon: "heroicons:clock", count: 12 },
-  {
-    key: "appraisal",
-    label: "待鉴定档案",
-    icon: "heroicons:magnifying-glass-circle",
-    count: 5,
-  },
-  {
-    key: "request",
-    label: "查档申请",
-    icon: "heroicons:folder-open",
-    count: 3,
-  },
-  {
-    key: "alert",
-    label: "异常告警",
-    icon: "heroicons:exclamation-triangle",
-    count: 2,
-    danger: true,
-  },
+  { key: "approval",  label: "待我审批",  count: 12 },
+  { key: "appraisal", label: "待鉴定档案", count: 5 },
+  { key: "request",   label: "查档申请",  count: 3 },
+  { key: "alert",     label: "异常告警",  count: 2, danger: true },
 ];
 
-const tasks: Task[] = [
+const allTasks: Task[] = [
   {
     title: "档案销毁申请 - 项目X文档 (2018-2020)",
     author: "张伟",
     time: "2小时前",
     unread: true,
     tag: "紧急",
-    tagClass: "bg-warning/10 text-warning",
+    tagColor: "orange",
   },
   {
     title: "元数据更正审批 - 财务部批次 #4021",
@@ -178,10 +163,81 @@ const tasks: Task[] = [
     unread: false,
   },
   {
-    title: "新用户注册审批: 市场部负责人",
+    title: "新用户注册审批：市场部负责人",
     author: "HR系统",
     time: "3天前",
     unread: false,
   },
 ];
+
+function tasksForTab(key: string): Task[] {
+  // 按标签页截取不同长度，模拟不同内容
+  const offsets: Record<string, number> = {
+    approval: 0,
+    appraisal: 1,
+    request: 2,
+    alert: 3,
+  };
+  const start = offsets[key] ?? 0;
+  return [...allTasks.slice(start), ...allTasks.slice(0, start)];
+}
+
+function onTabChange(key: string | number) {
+  activeTabKey.value = String(key);
+  hoveredIdx.value = -1;
+}
+
+// 使用 h() 渲染带数量徽标的 Tab 标题
+function renderTabLabel(tab: Tab) {
+  return h("span", { style: "display: inline-flex; align-items: center; gap: 5px;" }, [
+    h("span", {}, tab.label),
+    h(
+      "span",
+      {
+        style: `
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          border-radius: 9px;
+          font-size: 11px;
+          font-weight: 600;
+          background: ${tab.danger
+            ? "var(--semi-color-danger-light-default)"
+            : "var(--semi-color-primary-light-default)"};
+          color: ${tab.danger
+            ? "var(--semi-color-danger)"
+            : "var(--semi-color-primary)"};
+        `,
+      },
+      String(tab.count),
+    ),
+  ]);
+}
 </script>
+
+<style scoped>
+/* 让 Tabs 的 tabBar 撑满宽度并设置左右内边距 */
+.workbench-tabs :deep(.semi-tabs-bar) {
+  padding: 0 20px;
+  border-bottom: 1px solid var(--semi-color-border);
+}
+
+/* TabPane 内容区去掉多余 padding */
+.workbench-tabs :deep(.semi-tabs-content) {
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.workbench-tabs :deep(.semi-tabs-pane) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+</style>

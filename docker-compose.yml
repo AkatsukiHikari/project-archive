@@ -1,4 +1,6 @@
 services:
+  # ─── SAMS 核心基础设施 ─────────────────────────────────────────────────────────
+
   db:
     image: pgvector/pgvector:pg17
     container_name: sams-db
@@ -17,7 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Cache & Celery Result Backend: Redis 7.4 (Latest verified stable on Docker Hub)
   redis:
     image: redis:7.4.2-alpine
     container_name: sams-redis
@@ -32,8 +33,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # Message Broker for Celery: RabbitMQ 3.13 (Latest verified 3.x stable)
-  # Note: RabbitMQ 3.x was selected per specific user request.
   rabbitmq:
     image: rabbitmq:3.13.7-management-alpine
     container_name: sams-rabbitmq
@@ -42,33 +41,36 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"   # AMQP protocol
-      - "15672:15672" # Management UI
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Search Engine: Elasticsearch 9.3.0 (Official Elastic Registry)
-  # Verified: Available at docker.elastic.co
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
     container_name: sams-elasticsearch
+    restart: always
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false # Disabled for local dev simplicity
+      - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
     ports:
       - "9200:9200"
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  # Object Storage: MinIO (Official Quay Registry)
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-01-20T14-49-07Z
     container_name: sams-minio
     command: server /data --console-address ":9001"
     restart: always
@@ -76,8 +78,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000" # API
-      - "9001:9001" # Console
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -86,9 +88,62 @@ services:
       timeout: 20s
       retries: 3
 
+  # ─── SAMS Celery Worker ────────────────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sams-celery-worker
+    restart: always
+    command: celery -A celery_app worker --loglevel=info -Q default,embedding,preservation --concurrency=4
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      POSTGRES_SERVER: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sams
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672//
+    env_file:
+      - ./backend/.env
+    volumes:
+      - backend_storage:/app/storage_data
+
+  # ─── Ollama：本地 LLM 推理 ─────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sams-ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # 如有 NVIDIA GPU，取消下方注释以启用加速
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
   es_data:
   minio_data:
+  backend_storage:
+  ollama_data:

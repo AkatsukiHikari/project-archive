@@ -6,8 +6,8 @@
       <h2 class="text-lg font-semibold text-[var(--semi-color-text-0)]">
         SSO 身份源接入
       </h2>
-      <Button theme="solid" type="primary" icon="material-symbols:add"
-        >添加身份源</Button
+      <Button theme="solid" type="primary"
+        ><template #icon><IconPlus /></template>添加身份源</Button
       >
     </div>
     <Table :columns="columns" :data-source="data" empty-text="暂无接入记录" />
@@ -15,12 +15,10 @@
 </template>
 
 <script setup lang="ts">
-import { definePageMeta } from "#imports";
 import { Button, Table } from "@kousum/semi-ui-vue";
+import { IconPlus } from "@kousum/semi-icons-vue";
 
-definePageMeta({
-  layout: "admin",
-});
+definePageMeta({ layout: "admin", middleware: "auth" });
 
 const columns = [
   { title: "身份源名称", dataIndex: "name" },

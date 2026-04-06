@@ -12,10 +12,6 @@ export default <Config>{
   ],
   theme: {
     extend: {
-      colors: {
-        primary: "#1978e5",
-        "primary-hover": "#1462bd",
-      },
       fontFamily: {
         display: ["Inter", "system-ui", "sans-serif"],
       },
@@ -34,6 +30,46 @@ export default <Config>{
   },
   plugins: [daisyui],
   daisyui: {
-    themes: ["light", "dark", "cupcake", "nord", "business", "dracula"],
+    themes: [
+      // light: 把 DaisyUI 默认的紫色 primary 替换成系统品牌蓝
+      {
+        light: {
+          "color-scheme": "light",
+          "primary": "#1978e5",
+          "primary-content": "#ffffff",
+          "secondary": "oklch(69.71% 0.329 342.55)",
+          "secondary-content": "oklch(98.71% 0.0106 342.55)",
+          "accent": "oklch(76.76% 0.184 183.61)",
+          "neutral": "#2B3440",
+          "neutral-content": "#D7DDE4",
+          "base-100": "oklch(100% 0 0)",
+          "base-200": "#F2F2F2",
+          "base-300": "#E5E6E6",
+          "base-content": "#1f2937",
+        },
+      },
+      // coffee: primary 从暗橙改为暖金色，hero card 渐变不再泥棕
+      {
+        coffee: {
+          "color-scheme": "dark",
+          "primary": "#C8813A",
+          "primary-content": "#ffffff",
+          "secondary": "#263E3F",
+          "accent": "#10576D",
+          "neutral": "#120C12",
+          "base-100": "#20161F",
+          "base-content": "#c59f60",
+          "info": "#8DCAC1",
+          "success": "#9DB787",
+          "warning": "#FFD25F",
+          "error": "#FC9581",
+        },
+      },
+      "dark",
+      "aqua",
+      "night",
+      "valentine",
+      "lemonade",
+    ],
   },
 };

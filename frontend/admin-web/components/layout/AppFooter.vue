@@ -1,7 +1,7 @@
 <template>
   <footer class="mt-auto border-t border-base-300 bg-base-100 py-6">
     <div
-      class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-sm text-base-content/60"
+      class="px-6 flex flex-col md:flex-row justify-between items-center text-sm text-base-content/60"
     >
       <p>
         &copy; {{ new Date().getFullYear() }} 智慧档案管理平台. 保留所有权利.

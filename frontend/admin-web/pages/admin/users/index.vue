@@ -21,7 +21,11 @@
         </Select>
       </div>
       <div class="flex gap-2">
-        <Input prefix="search" placeholder="搜索用户..." class="w-64" />
+        <Input placeholder="搜索用户..." class="w-64">
+          <template #prefix>
+            <IconSearch />
+          </template>
+        </Input>
         <Button
           theme="solid"
           type="primary"
@@ -49,77 +53,64 @@
     <Modal
       v-model:visible="userModalVisible"
       :title="isEdit ? '编辑用户' : '新增用户'"
-      @ok="handleSave"
-      @cancel="userModalVisible = false"
       :confirm-loading="saving"
+      @ok="handleModalOk"
+      @cancel="userModalVisible = false"
     >
-      <div class="flex flex-col gap-4 mt-4">
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >用户名 <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="formData.username"
-            :disabled="isEdit"
-            placeholder="请输入登录用户名"
-          />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >真实姓名 <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="formData.full_name"
-            placeholder="请输入用户真实姓名"
-          />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >邮箱 <span class="text-red-500">*</span></label
-          >
-          <Input v-model="formData.email" placeholder="请输入用户邮箱" />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >所属部门</label
-          >
-          <!-- 这里使用 Select 下拉列表渲染部门，如果没有就不选 -->
-          <Select
-            v-model="formData.org_id"
-            class="w-full"
-            placeholder="未分配部门"
-          >
-            <Select.Option
-              v-for="org in orgList"
-              :key="org.id"
-              :value="org.id"
-              >{{ org.name }}</Select.Option
-            >
-          </Select>
-        </div>
-        <div v-if="!isEdit">
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >初始密码 <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="formData.password"
-            type="password"
-            placeholder="请输入初始登录密码"
-          />
-        </div>
-      </div>
+      <Form
+        class="mt-4"
+        :get-form-api="getFormApi"
+        :init-values="formData"
+        @submit="handleSave"
+      >
+        <Form.Input
+          field="username"
+          label="用户名"
+          trigger="blur"
+          :disabled="isEdit"
+          :rules="[{ required: true, message: '请输入登录用户名' }]"
+          placeholder="请输入登录用户名"
+        />
+        <Form.Input
+          field="full_name"
+          label="真实姓名"
+          trigger="blur"
+          :rules="[{ required: true, message: '请输入用户真实姓名' }]"
+          placeholder="请输入用户真实姓名"
+        />
+        <Form.Input
+          field="email"
+          label="邮箱"
+          trigger="blur"
+          :rules="[{ required: true, message: '请输入用户邮箱' }]"
+          placeholder="请输入用户邮箱"
+        />
+        <Form.Select
+          field="org_id"
+          label="所属部门"
+          class="w-full"
+          placeholder="未分配部门"
+        >
+          <Select.Option v-for="org in orgList" :key="org.id" :value="org.id">{{
+            org.name
+          }}</Select.Option>
+        </Form.Select>
+        <Form.Input
+          v-if="!isEdit"
+          field="password"
+          label="初始密码"
+          type="password"
+          trigger="blur"
+          :rules="[{ required: true, message: '请输入初始登录密码' }]"
+          placeholder="请输入初始登录密码"
+        />
+      </Form>
     </Modal>
   </div>
 </template>
 
 <script setup lang="tsx">
 import { ref, onMounted } from "vue";
-import { definePageMeta } from "#imports";
 import {
   Button,
   Table,
@@ -128,6 +119,7 @@ import {
   Modal,
   Toast,
   Tag,
+  Form,
 } from "@kousum/semi-ui-vue";
 import {
   TenantAPI,
@@ -137,8 +129,9 @@ import {
   type User,
   type OrganizationTree,
 } from "@/api/iam";
+import { IconSearch } from "@kousum/semi-icons-vue";
 
-definePageMeta({ layout: "admin" });
+definePageMeta({ layout: "admin", middleware: "auth" });
 
 const tenants = ref<Tenant[]>([]);
 const currentTenantId = ref<string>("");
@@ -167,26 +160,29 @@ const columns = [
   {
     title: "操作",
     dataIndex: "actions",
-    render: (_text: any, record: User) => (
-      <div class="flex gap-2">
-        <Button
-          theme="borderless"
-          type="primary"
-          size="small"
-          onClick={() => openUserModal(record)}
-        >
-          编辑
-        </Button>
-        <Button
-          theme="borderless"
-          type="danger"
-          size="small"
-          onClick={() => handleDelete(record.id)}
-        >
-          删除
-        </Button>
-      </div>
-    ),
+    render: (_text: unknown, record: unknown) => {
+      const user = record as User;
+      return (
+        <div class="flex gap-2">
+          <Button
+            theme="borderless"
+            type="primary"
+            size="small"
+            onClick={() => openUserModal(user)}
+          >
+            编辑
+          </Button>
+          <Button
+            theme="borderless"
+            type="danger"
+            size="small"
+            onClick={() => handleDelete(user.id)}
+          >
+            删除
+          </Button>
+        </div>
+      );
+    },
   },
 ];
 
@@ -203,14 +199,17 @@ async function fetchTenants() {
       currentTenantId.value = tenants.value[0].id;
       handleTenantChange(currentTenantId.value);
     }
-  } catch (err: any) {
-    Toast.error(err.message || "加载租户失败");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "加载租户失败";
+    Toast.error(msg);
   } finally {
     tenantsLoading.value = false;
   }
 }
 
-function handleTenantChange(val: any) {
+function handleTenantChange(
+  val: string | number | boolean | Record<string, any> | any[],
+) {
   currentTenantId.value = val as string;
   fetchUsers();
   fetchFlatOrgs();
@@ -256,11 +255,17 @@ const userModalVisible = ref(false);
 const isEdit = ref(false);
 const saving = ref(false);
 const currentId = ref("");
+const formApi = ref<{ submitForm: () => void } | null>(null);
+
+function getFormApi(api: { submitForm: () => void }) {
+  formApi.value = api;
+}
+
 const formData = ref<{
   username: string;
   full_name: string;
   email: string;
-  password?: string;
+  password: string;
   org_id?: string;
 }>({
   username: "",
@@ -294,34 +299,30 @@ function openUserModal(record: User | null) {
   userModalVisible.value = true;
 }
 
-async function handleSave() {
-  if (
-    !formData.value.username ||
-    !formData.value.full_name ||
-    !formData.value.email
-  ) {
-    return Toast.warning("请填写带 * 的必填项");
+function handleModalOk() {
+  if (formApi.value) {
+    formApi.value.submitForm();
   }
-  if (!isEdit.value && !formData.value.password) {
-    return Toast.warning("新增用户需填写初始密码");
-  }
+}
 
+async function handleSave(values: Record<string, unknown>) {
   saving.value = true;
   try {
     if (isEdit.value) {
-      await UserAPI.update(currentId.value, formData.value);
+      await UserAPI.update(currentId.value, values);
       Toast.success("更新用户成功");
     } else {
       await UserAPI.create({
-        ...formData.value,
+        ...values,
         tenant_id: currentTenantId.value,
       });
       Toast.success("添加用户成功");
     }
     userModalVisible.value = false;
     fetchUsers();
-  } catch (err: any) {
-    Toast.error(err.message || "保存失败");
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "保存失败";
+    Toast.error(errorMsg);
   } finally {
     saving.value = false;
   }
@@ -336,8 +337,9 @@ function handleDelete(id: string) {
         await UserAPI.delete(id);
         Toast.success("删除成功");
         fetchUsers();
-      } catch (err: any) {
-        Toast.error(err.message || "删除失败");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "删除失败";
+        Toast.error(msg);
       }
     },
   });

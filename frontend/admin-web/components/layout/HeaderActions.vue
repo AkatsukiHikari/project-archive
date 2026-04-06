@@ -197,10 +197,7 @@
         <img
           alt="用户头像"
           class="h-9 w-9 rounded-full object-cover border-2 border-[var(--semi-color-border)] shadow-sm bg-[var(--semi-color-fill-0)]"
-          :src="
-            userStore.userInfo?.avatar ||
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Admin'
-          "
+          :src="userStore.userInfo?.avatar || ''"
         />
         <div class="hidden md:block text-left">
           <div class="text-sm font-medium text-base-content">

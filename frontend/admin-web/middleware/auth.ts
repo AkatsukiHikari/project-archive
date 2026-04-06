@@ -39,4 +39,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
       return navigateTo(url, { external: true });
     }
   }
+
+  // == 进阶 RBAC 权限守卫 ==
+  // 若目标路由配置了 meta.permission，校验用户是否具备对应权限
+  if (to.meta.permission) {
+    const { hasPermission } = await import("@/utils/permission");
+    if (!hasPermission(to.meta.permission as string | string[])) {
+      // 越权访问，重定向回 403 页面
+      return navigateTo("/403");
+    }
+  }
 });

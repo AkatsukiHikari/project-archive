@@ -30,6 +30,7 @@ const redirectToLogin = async () => {
 
 onMounted(async () => {
   const code = route.query.code as string;
+  const state = route.query.state as string | undefined;
 
   if (!code) {
     error.value = "缺少授权码";
@@ -37,7 +38,7 @@ onMounted(async () => {
     return;
   }
 
-  const ok = await handleCallback(code);
+  const ok = await handleCallback(code, state);
   if (ok) {
     // 拉取用户信息
     await userStore.getUserInfo();

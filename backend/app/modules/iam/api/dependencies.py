@@ -57,9 +57,12 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 
 
+def get_iam_repository(db: AsyncSession = Depends(get_db)) -> SQLAlchemyIAMRepository:
+    return SQLAlchemyIAMRepository(db)
+
 async def get_current_user(
     token: Annotated[str, Depends(reusable_oauth2)],
-    service: Annotated[IAMService, Depends(get_iam_service)],
+    repo: Annotated[SQLAlchemyIAMRepository, Depends(get_iam_repository)],
 ) -> models.User:
     """从 JWT Token 解析当前登录用户"""
     try:
@@ -85,7 +88,7 @@ async def get_current_user(
             message="无效的认证凭证格式",
         )
 
-    user = await service.get_user_by_id(user_uuid)
+    user = await repo.get_by_id(user_uuid)
     if not user:
         raise AuthenticationException(
             code=ErrorCode.USER_NOT_FOUND,

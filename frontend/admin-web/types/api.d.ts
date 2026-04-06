@@ -18,6 +18,7 @@ export interface RoleInfo {
   name: string;
   code: string;
   description?: string;
+  menus?: any[];
 }
 
 // 用户信息结构（与后端 User schema 一致）
@@ -40,6 +41,8 @@ export interface UserInfo {
   roles: RoleInfo[];
   /** 角色码列表（从 roles 派生，供权限判断使用） */
   roleCodes: string[];
+  /** 真实的细粒度权限标识列表 */
+  permissions?: string[];
 }
 
 // 分页查询参数

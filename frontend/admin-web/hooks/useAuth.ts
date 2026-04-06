@@ -55,9 +55,13 @@ export function useAuth() {
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-    // 存储 PKCE code_verifier（回调时需要）
+    // 生成 state 防 CSRF
+    const state = crypto.randomUUID();
+
+    // 存储 PKCE code_verifier + state（回调时需要）
     sessionStorage.setItem("pkce_code_verifier", codeVerifier);
     sessionStorage.setItem("oauth_redirect_uri", redirectUri);
+    sessionStorage.setItem("oauth_state", state);
     // 存储原始页面路径
     if (returnPath) {
       sessionStorage.setItem("auth_return_path", returnPath);
@@ -70,20 +74,31 @@ export function useAuth() {
       redirect_uri: redirectUri,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
-      state: crypto.randomUUID(),
+      state,
     });
 
     return `/oauth/authorize?${params.toString()}`;
   }
 
   /**
-   * 处理 OAuth2 回调：用授权码换 tokens
+   * 处理 OAuth2 回调：校验 state，然后用授权码换 tokens
    */
-  async function handleCallback(code: string): Promise<boolean> {
+  async function handleCallback(
+    code: string,
+    returnedState?: string
+  ): Promise<boolean> {
     const codeVerifier = sessionStorage.getItem("pkce_code_verifier");
     const redirectUri = sessionStorage.getItem("oauth_redirect_uri");
+    const savedState = sessionStorage.getItem("oauth_state");
+
     if (!codeVerifier || !redirectUri) {
       console.error("Missing PKCE code_verifier or redirect_uri");
+      return false;
+    }
+
+    // CSRF 防御：校验 state 参数
+    if (returnedState !== undefined && returnedState !== savedState) {
+      console.error("OAuth state mismatch — possible CSRF attack");
       return false;
     }
 
@@ -111,6 +126,7 @@ export function useAuth() {
         // 清理 PKCE 临时数据
         sessionStorage.removeItem("pkce_code_verifier");
         sessionStorage.removeItem("oauth_redirect_uri");
+        sessionStorage.removeItem("oauth_state");
         return true;
       }
 
@@ -169,6 +185,7 @@ export function useAuth() {
     localStorage.removeItem("refresh_token");
     sessionStorage.removeItem("pkce_code_verifier");
     sessionStorage.removeItem("oauth_redirect_uri");
+    sessionStorage.removeItem("oauth_state");
     sessionStorage.removeItem("auth_return_path");
 
     // 重定向到登录

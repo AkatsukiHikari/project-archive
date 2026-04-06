@@ -83,6 +83,7 @@ export interface User {
   bio?: string;
   last_login_time?: string;
   roles?: Role[];
+  permissions?: string[];
   create_time: string;
 }
 

@@ -13,6 +13,8 @@ export const useUserStore = defineStore("user", {
     userInfo: null as UserInfo | null,
     /** 角色编码列表（供权限判断使用） */
     roles: [] as string[],
+    /** 权限标识列表 */
+    permissions: [] as string[],
   }),
 
   actions: {
@@ -30,8 +32,8 @@ export const useUserStore = defineStore("user", {
      */
     setUserInfo(info: UserInfo) {
       this.userInfo = info;
-      // 从 roles 对象数组中提取 code 字段，供中间件/权限判断使用
       this.roles = info.roles?.map((r) => r.code) ?? [];
+      this.permissions = info.permissions ?? [];
     },
 
     /**
@@ -41,6 +43,7 @@ export const useUserStore = defineStore("user", {
       this.token = "";
       this.userInfo = null;
       this.roles = [];
+      this.permissions = [];
       const cookie = useCookie("access_token");
       cookie.value = null;
     },
@@ -77,8 +80,10 @@ export const useUserStore = defineStore("user", {
             name: r.name,
             code: r.code,
             description: r.description,
+            menus: r.menus,
           })) ?? [],
         roleCodes: user.roles?.map((r) => r.code) ?? [],
+        permissions: user.permissions ?? [],
       });
     },
   },

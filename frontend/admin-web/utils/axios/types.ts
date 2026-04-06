@@ -1,4 +1,4 @@
-import type { InternalAxiosRequestConfig, AxiosResponse } from "axios";
+import type { InternalAxiosRequestConfig } from "axios";
 
 /**
  * 接口响应基础结构

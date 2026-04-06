@@ -31,7 +31,37 @@ def create_app() -> FastAPI:
     # 健康检查
     @app.get("/health", tags=["health"])
     async def health_check():
-        return {"status": "ok"}
+        from sqlalchemy import text
+        from fastapi import status
+        from fastapi.responses import JSONResponse
+        from app.infra.db.session import AsyncSessionLocal
+        from app.infra.cache.redis import redis_service
+
+        health_status = {"status": "ok", "components": {}}
+        is_healthy = True
+
+        # Check DB
+        try:
+            async with AsyncSessionLocal() as session:
+                await session.execute(text("SELECT 1"))
+            health_status["components"]["db"] = "ok"
+        except Exception as e:
+            health_status["components"]["db"] = f"error: {str(e)}"
+            is_healthy = False
+
+        # Check Redis
+        try:
+            await redis_service.redis.ping()
+            health_status["components"]["redis"] = "ok"
+        except Exception as e:
+            health_status["components"]["redis"] = f"error: {str(e)}"
+            is_healthy = False
+
+        if not is_healthy:
+            health_status["status"] = "error"
+            return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=health_status)
+
+        return health_status
 
     # API 路由注册
     from app.api.v1.router import v1_router

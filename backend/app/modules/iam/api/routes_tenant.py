@@ -4,12 +4,17 @@ from app.modules.iam import schemas
 from app.modules.iam.api.dependencies import get_tenant_service, get_current_user
 from app.modules.iam.services.tenant_service import TenantService
 from app.modules.iam.models import User
-from app.common.response import success
+from app.common.response import success, ResponseModel
 import uuid
 
 router = APIRouter()
 
-@router.get("")
+@router.get(
+    "",
+    response_model=ResponseModel[List[schemas.Tenant]],
+    summary="获取租户列表",
+    response_description="系统内所有租户的分页列表"
+)
 async def list_tenants(
     skip: int = 0,
     limit: int = 100,
@@ -20,7 +25,12 @@ async def list_tenants(
     tenants = await tenant_service.get_tenants(skip=skip, limit=limit)
     return success(data=[schemas.Tenant.model_validate(t).model_dump(mode="json") for t in tenants])
 
-@router.get("/{tenant_id}")
+@router.get(
+    "/{tenant_id}",
+    response_model=ResponseModel[schemas.Tenant],
+    summary="获取租户详情",
+    response_description="单个租户的信息"
+)
 async def get_tenant(
     tenant_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
@@ -30,7 +40,13 @@ async def get_tenant(
     tenant = await tenant_service.get_tenant(tenant_id)
     return success(data=schemas.Tenant.model_validate(tenant).model_dump(mode="json"))
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ResponseModel[schemas.Tenant],
+    summary="创建新租户",
+    response_description="创建成功后的租户全量信息"
+)
 async def create_tenant(
     tenant_in: schemas.TenantCreate,
     current_user: User = Depends(get_current_user),
@@ -40,7 +56,12 @@ async def create_tenant(
     tenant = await tenant_service.create_tenant(tenant_in)
     return success(data=schemas.Tenant.model_validate(tenant).model_dump(mode="json"))
 
-@router.put("/{tenant_id}")
+@router.put(
+    "/{tenant_id}",
+    response_model=ResponseModel[schemas.Tenant],
+    summary="更新租户信息",
+    response_description="更新成功后的租户全量信息"
+)
 async def update_tenant(
     tenant_id: uuid.UUID,
     tenant_in: schemas.TenantUpdate,
@@ -51,7 +72,12 @@ async def update_tenant(
     tenant = await tenant_service.update_tenant(tenant_id, tenant_in)
     return success(data=schemas.Tenant.model_validate(tenant).model_dump(mode="json"))
 
-@router.delete("/{tenant_id}")
+@router.delete(
+    "/{tenant_id}",
+    response_model=ResponseModel[None],
+    summary="删除租户",
+    response_description="仅返回删除成功状态"
+)
 async def delete_tenant(
     tenant_id: uuid.UUID,
     current_user: User = Depends(get_current_user),

@@ -13,12 +13,8 @@
             活跃租户总数
           </p>
           <h3 class="text-2xl font-bold text-[var(--semi-color-text-0)] mt-1">
-            128
+            {{ stats?.active_tenants ?? "—" }}
           </h3>
-          <p class="text-xs text-green-600 mt-2 flex items-center font-medium">
-            <Icon name="material-symbols:trending-up" class="text-sm mr-1" />
-            +12% 较上月
-          </p>
         </div>
         <div class="p-2 bg-blue-100 rounded-lg">
           <Icon
@@ -35,21 +31,23 @@
           <p
             class="text-xs font-semibold text-[var(--semi-color-text-2)] uppercase tracking-wide"
           >
-            当前在线用户
+            活跃用户数
           </p>
           <h3 class="text-2xl font-bold text-[var(--semi-color-text-0)] mt-1">
-            2,451
+            {{ stats?.active_users ?? "—" }}
           </h3>
-          <p class="text-xs text-green-600 mt-2 flex items-center font-medium">
-            <Icon name="material-symbols:trending-up" class="text-sm mr-1" />
-            +5% 峰值
+          <p
+            v-if="stats"
+            class="text-xs text-[var(--semi-color-text-2)] mt-2"
+          >
+            共 {{ stats.total_users }} 个账号
           </p>
         </div>
         <div class="p-2 bg-blue-100 rounded-lg">
           <Icon name="material-symbols:groups" class="text-blue-600 text-xl" />
         </div>
       </div>
-      <!-- Stat Card 3 -->
+      <!-- Stat Card 3 - placeholder for future system health metric -->
       <div
         class="bg-[var(--semi-color-bg-0)] rounded-xl p-5 border border-[var(--semi-color-border)] shadow-sm flex items-start justify-between"
       >
@@ -57,13 +55,13 @@
           <p
             class="text-xs font-semibold text-[var(--semi-color-text-2)] uppercase tracking-wide"
           >
-            系统安全评分
+            系统状态
           </p>
           <h3 class="text-2xl font-bold text-[var(--semi-color-text-0)] mt-1">
-            98.5
+            正常
           </h3>
           <p class="text-xs text-[var(--semi-color-text-2)] mt-2">
-            上次扫描: 10分钟前
+            所有服务运行中
           </p>
         </div>
         <div class="p-2 bg-green-100 rounded-lg">
@@ -84,9 +82,12 @@
             待处理审批
           </p>
           <h3 class="text-2xl font-bold text-[var(--semi-color-text-0)] mt-1">
-            8
+            {{ stats?.pending_sips ?? "—" }}
           </h3>
-          <p class="text-xs text-yellow-600 mt-2 flex items-center font-medium">
+          <p
+            v-if="stats && stats.pending_sips > 0"
+            class="text-xs text-yellow-600 mt-2 flex items-center font-medium"
+          >
             <Icon name="material-symbols:priority-high" class="text-sm mr-1" />
             需尽快处理
           </p>
@@ -99,15 +100,35 @@
         </div>
       </div>
     </div>
-
-    <!-- Quick Actions Panel using Semi UI components could go here -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { definePageMeta } from "#imports";
+import { service } from "@/utils/axios/service";
 
 definePageMeta({
   layout: "admin",
+});
+
+interface DashboardStats {
+  active_tenants: number;
+  total_users: number;
+  active_users: number;
+  pending_sips: number;
+}
+
+const stats = ref<DashboardStats | null>(null);
+
+onMounted(async () => {
+  try {
+    const res = await service.get<{ code: number; data: DashboardStats }>(
+      "/api/v1/stats/dashboard"
+    );
+    if (res.data.code === 0) {
+      stats.value = res.data.data;
+    }
+  } catch {
+    // stats remain null — cards show "—"
+  }
 });
 </script>

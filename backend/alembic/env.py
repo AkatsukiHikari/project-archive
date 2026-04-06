@@ -14,6 +14,10 @@ from app.common.entity.base import Base
 from app.modules.iam import models as iam_models  # noqa
 from app.modules.notification import models as notification_models  # noqa
 from app.modules.audit.models import audit_log as audit_models  # noqa
+from app.modules.schedule import models as schedule_models  # noqa
+from app.modules.preservation.models import detection as preservation_models  # noqa
+from app.modules.collection.models import sip as collection_models  # noqa
+from app.modules.repository.models import archive as repository_models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

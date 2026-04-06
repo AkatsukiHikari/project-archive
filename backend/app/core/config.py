@@ -48,12 +48,15 @@ class Settings(BaseSettings):
     OSS_ACCESS_KEY_SECRET: str | None = None
     OSS_ENDPOINT: str | None = None
 
-    # SECURITY
-    SECRET_KEY: str = "sams_secret_key"
+    # SECURITY — 必填，无默认值，生产环境必须通过 .env 注入
+    SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
+        "http://localhost:3000",   # admin-web dev
+        "http://localhost:3001",   # public-portal dev
+    ]
 
     # ── OAuth2 SSO ──
     OAUTH_CLIENTS: Dict[str, Any] = {
@@ -68,6 +71,20 @@ class Settings(BaseSettings):
     }
     SESSION_EXPIRE_HOURS: int = 24
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    # ── Elasticsearch ──
+    ELASTICSEARCH_URL: str = "http://localhost:9200"
+
+    # ── RabbitMQ / Celery ──
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672//"
+
+    # ── AI / RAG ──
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_CHAT_MODEL: str = "qwen2.5:7b"
+    OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
+    EMBEDDING_DIMENSION: int = 768
+    DIFY_BASE_URL: str = "http://localhost/v1"
+    DIFY_API_KEY: str = ""
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

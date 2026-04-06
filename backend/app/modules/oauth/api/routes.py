@@ -20,10 +20,39 @@ from app.modules.oauth.session import create_session, get_session, delete_sessio
 from app.modules.iam.services.iam_service import IAMService
 from app.modules.iam.repositories.iam_repository import SQLAlchemyIAMRepository
 from app.infra.db.session import AsyncSessionLocal
+from app.infra.cache.redis import redis_service
 from app.common.response import success, fail
 from app.common.error_code import ErrorCode
 
 import os
+
+# 登录限速配置
+_LOGIN_FAIL_KEY = "login_fail:{ip}"
+_LOGIN_FAIL_MAX = 10          # 最大失败次数
+_LOGIN_FAIL_WINDOW = 300      # 计数窗口（秒）
+_LOGIN_LOCKOUT_DURATION = 900 # 封禁时长（秒）
+
+
+async def _check_login_rate_limit(ip: str) -> bool:
+    """返回 True 表示允许继续，False 表示已超限"""
+    key = _LOGIN_FAIL_KEY.format(ip=ip)
+    raw = await redis_service.get(key)
+    count = int(raw) if raw else 0
+    return count < _LOGIN_FAIL_MAX
+
+
+async def _record_login_failure(ip: str) -> None:
+    key = _LOGIN_FAIL_KEY.format(ip=ip)
+    raw = await redis_service.get(key)
+    count = int(raw) if raw else 0
+    new_count = count + 1
+    # 首次失败时设置窗口，超过阈值后延长封禁时长
+    ttl = _LOGIN_LOCKOUT_DURATION if new_count >= _LOGIN_FAIL_MAX else _LOGIN_FAIL_WINDOW
+    await redis_service.set(key, str(new_count), expire=ttl)
+
+
+async def _clear_login_failure(ip: str) -> None:
+    await redis_service.delete(_LOGIN_FAIL_KEY.format(ip=ip))
 
 router = APIRouter()
 
@@ -137,6 +166,21 @@ async def login_submit(
     2. 创建 SSO Session → Set-Cookie
     3. 签发授权码 → 重定向回前端
     """
+    client_ip = request.client.host if request.client else "unknown"
+
+    # 检查 IP 是否被限速封禁
+    if not await _check_login_rate_limit(client_ip):
+        params = urlencode({
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "code_challenge": code_challenge,
+            "code_challenge_method": code_challenge_method,
+            "response_type": response_type,
+            "state": state,
+            "error": "登录尝试次数过多，请 15 分钟后再试",
+        })
+        return RedirectResponse(url=f"/oauth/login?{params}", status_code=302)
+
     # 构建 IAM Service 实例
     async with AsyncSessionLocal() as db:
         repo = SQLAlchemyIAMRepository(db)
@@ -144,6 +188,8 @@ async def login_submit(
         user = await iam_service.authenticate(username=username, password=password)
 
     if not user:
+        # 记录失败次数
+        await _record_login_failure(client_ip)
         # 登录失败 → 重新显示登录页
         params = urlencode({
             "client_id": client_id,
@@ -167,6 +213,9 @@ async def login_submit(
             "error": "用户已被禁用",
         })
         return RedirectResponse(url=f"/oauth/login?{params}", status_code=302)
+
+    # 登录成功，清除失败计数
+    await _clear_login_failure(client_ip)
 
     # 校验客户端
     oauth_service.validate_client(client_id, redirect_uri)

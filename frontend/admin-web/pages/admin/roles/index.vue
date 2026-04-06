@@ -36,20 +36,23 @@
             角色列表
           </h2>
           <Button
-            icon="material-symbols:add"
-            theme="borderless"
             type="primary"
-            @click="openRoleModal(null)"
+            theme="borderless"
             :disabled="!currentTenantId"
-          />
+            @click="openRoleModal(null)"
+            ><template #icon><IconPlus /></template>新增角色</Button
+          >
         </div>
         <div class="p-3 border-b border-[var(--semi-color-border)] shrink-0">
           <Input
-            prefix="search"
+            v-model="roleSearchText"
             placeholder="搜索角色..."
             style="width: 100%"
-            v-model="roleSearchText"
-          />
+          >
+            <template #prefix>
+              <IconSearch />
+            </template>
+          </Input>
         </div>
         <div class="overflow-y-auto flex-1 custom-scrollbar">
           <ul class="divide-y divide-[var(--semi-color-border)]">
@@ -148,10 +151,9 @@
             <Button
               theme="solid"
               type="primary"
-              icon="material-symbols:save"
               @click="savePermissions"
               :loading="savingPermissions"
-              >保存配置</Button
+              ><template #icon><IconSave /></template>保存配置</Button
             >
           </div>
         </div>
@@ -178,48 +180,52 @@
     <Modal
       v-model:visible="roleModalVisible"
       :title="isRoleEdit ? '编辑角色' : '新增角色'"
-      @ok="handleRoleSave"
+      @ok="handleRoleModalOk"
       @cancel="roleModalVisible = false"
       :confirm-loading="roleSaving"
     >
-      <div class="flex flex-col gap-4 mt-4">
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >角色名称 <span class="text-red-500">*</span></label
-          >
-          <Input v-model="roleFormData.name" placeholder="请输入角色名称" />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >角色标识 (Code) <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="roleFormData.code"
-            :disabled="isRoleEdit"
-            placeholder="请输入唯一英文字母标识"
-          />
-        </div>
-        <div>
-          <label
-            class="block text-sm font-medium mb-1 text-[var(--semi-color-text-1)]"
-            >描述</label
-          >
-          <Input
-            v-model="roleFormData.description"
-            placeholder="角色描述信息"
-          />
-        </div>
-      </div>
+      <Form
+        class="mt-4"
+        :get-form-api="getRoleFormApi"
+        :init-values="roleFormData"
+        @submit="handleRoleSave"
+      >
+        <Form.Input
+          field="name"
+          label="角色名称"
+          trigger="blur"
+          :rules="[{ required: true, message: '请输入角色名称' }]"
+          placeholder="请输入角色名称"
+        />
+        <Form.Input
+          field="code"
+          label="角色标识 (Code)"
+          trigger="blur"
+          :disabled="isRoleEdit"
+          :rules="[{ required: true, message: '请输入唯一英文字母标识' }]"
+          placeholder="请输入唯一英文字母标识"
+        />
+        <Form.Input
+          field="description"
+          label="描述"
+          placeholder="角色描述信息"
+        />
+      </Form>
     </Modal>
   </div>
 </template>
 
 <script setup lang="tsx">
 import { ref, computed, onMounted } from "vue";
-import { definePageMeta } from "#imports";
-import { Button, Input, Tree, Select, Modal, Toast } from "@kousum/semi-ui-vue";
+import {
+  Button,
+  Input,
+  Tree,
+  Select,
+  Modal,
+  Toast,
+  Form,
+} from "@kousum/semi-ui-vue";
 import {
   TenantAPI,
   RoleAPI,
@@ -228,9 +234,15 @@ import {
   type Role,
   type MenuTree,
 } from "@/api/iam";
-import { IconEdit, IconDelete } from "@kousum/semi-icons-vue";
+import {
+  IconEdit,
+  IconDelete,
+  IconSearch,
+  IconPlus,
+  IconSave,
+} from "@kousum/semi-icons-vue";
 
-definePageMeta({ layout: "admin" });
+definePageMeta({ layout: "admin", middleware: "auth" });
 
 const tenants = ref<Tenant[]>([]);
 const currentTenantId = ref<string>("");
@@ -313,6 +325,12 @@ function handleRoleSelect(role: Role) {
 const roleModalVisible = ref(false);
 const isRoleEdit = ref(false);
 const roleSaving = ref(false);
+const roleFormApi = ref<{ submitForm: () => void } | null>(null);
+
+function getRoleFormApi(api: { submitForm: () => void }) {
+  roleFormApi.value = api;
+}
+
 const roleFormData = ref({ name: "", code: "", description: "" });
 
 function openRoleModal(role: Role | null) {
@@ -330,25 +348,30 @@ function openRoleModal(role: Role | null) {
   roleModalVisible.value = true;
 }
 
-async function handleRoleSave() {
-  if (!roleFormData.value.name || !roleFormData.value.code)
-    return Toast.warning("内容不能为空");
+function handleRoleModalOk() {
+  if (roleFormApi.value) {
+    roleFormApi.value.submitForm();
+  }
+}
+
+async function handleRoleSave(values: Record<string, unknown>) {
   roleSaving.value = true;
   try {
     if (isRoleEdit.value) {
-      await RoleAPI.update(selectedRoleId.value, roleFormData.value);
+      await RoleAPI.update(selectedRoleId.value, values);
       Toast.success("更新成功");
     } else {
       await RoleAPI.create({
-        ...roleFormData.value,
+        ...values,
         tenant_id: currentTenantId.value,
-      });
+      } as any);
       Toast.success("创建成功");
     }
     roleModalVisible.value = false;
     fetchRoles();
-  } catch (err: any) {
-    Toast.error(err.message || "保存失败");
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "保存失败";
+    Toast.error(errorMsg);
   } finally {
     roleSaving.value = false;
   }

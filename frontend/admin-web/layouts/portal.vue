@@ -1,11 +1,9 @@
 <template>
   <div
-    class="bg-base-200 min-h-screen flex flex-col font-display text-base-content"
+    class="bg-base-200 h-screen flex flex-col font-display text-base-content overflow-hidden"
   >
     <LayoutAppHeader />
-    <main
-      class="flex-grow max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8"
-    >
+    <main class="flex-1 min-h-0 w-full px-6 py-6 overflow-auto">
       <slot />
     </main>
     <LayoutAppFooter />

@@ -92,18 +92,12 @@ service.interceptors.response.use(
     }
 
     // 二进制数据特殊处理（如 Excel 导出）
-    if (
-      response.request.responseType === "blob" ||
-      response.request.responseType === "arraybuffer"
-    ) {
-      if ((body as unknown as Blob).type === "application/json") {
+    if (body instanceof Blob) {
+      if (body.type === "application/json") {
         // 后端实际返回了错误 JSON
-        return new Response(body as unknown as Blob)
-          .json()
-          .then((parsed: ApiResponse) => {
-            // if (import.meta.client) toast.error(parsed.message || "导出失败");
-            return Promise.reject(new Error(parsed.message));
-          });
+        const text = await body.text();
+        const parsed = JSON.parse(text) as ApiResponse;
+        return Promise.reject(new Error(parsed.message));
       }
       // 真正的数据流，直接返回原始 response
       return response;
@@ -111,22 +105,41 @@ service.interceptors.response.use(
 
     const { code, message: msg } = body;
 
-    // 1. Token 过期或无效 → 跳 SSO 登录
+    // 1. Token 过期或无效 → 尝试刷新 Token
     if (code === 1000 || code === 1001 || code === 1003) {
       if (!isRefreshToken) {
         isRefreshToken = true;
-        if (import.meta.client) {
-          // toast.error("会话已过期，请重新登录");
+        try {
+          const { useAuth } = await import("@/hooks/useAuth");
+          const { refreshAccessToken, buildAuthorizeUrl } = useAuth();
+
+          const refreshSuccess = await refreshAccessToken();
+          if (refreshSuccess) {
+            // 刷新成功，释放冻结的请求队列
+            isRefreshToken = false;
+            requestList.forEach((cb) => cb());
+            requestList.length = 0;
+            // 重新发送当前失败的请求
+            return service(response.config);
+          } else {
+            // 刷新失败，跳 SSO 登录
+            const userStore = useUserStore();
+            userStore.resetToken();
+            const url = await buildAuthorizeUrl(window.location.pathname);
+            window.location.href = url;
+            return Promise.reject(new Error(msg || "会话失效，请重新登录"));
+          }
+        } catch {
           const userStore = useUserStore();
           userStore.resetToken();
-          // 触发 OAuth2 SSO 重新登录
           const { useAuth } = await import("@/hooks/useAuth");
           const { buildAuthorizeUrl } = useAuth();
           const url = await buildAuthorizeUrl(window.location.pathname);
           window.location.href = url;
+          return Promise.reject(new Error("认证过程发生异常，请重新登录"));
         }
-        return Promise.reject(new Error(msg));
       } else {
+        // 正在刷新中，将其加入等待队列
         return new Promise((resolve) => {
           requestList.push(() => {
             resolve(service(response.config));
@@ -144,27 +157,49 @@ service.interceptors.response.use(
     }
 
     // 3. 成功 (code === 0) — 返回完整 body，调用方通过 .data 取业务数据
-    return body as unknown as AxiosResponse;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return body as any;
   },
-  (error: AxiosError<ApiResponse>) => {
+  async (error: AxiosError<ApiResponse>) => {
     let message = error.message;
 
     // Handle HTTP 401 Unauthorized globally
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && error.config) {
       if (!isRefreshToken) {
         isRefreshToken = true;
-        if (import.meta.client) {
+        try {
+          const { useAuth } = await import("@/hooks/useAuth");
+          const { refreshAccessToken, buildAuthorizeUrl } = useAuth();
+
+          const refreshSuccess = await refreshAccessToken();
+          if (refreshSuccess) {
+            isRefreshToken = false;
+            requestList.forEach((cb) => cb());
+            requestList.length = 0;
+            return service(error.config);
+          } else {
+            const userStore = useUserStore();
+            userStore.resetToken();
+            const url = await buildAuthorizeUrl(window.location.pathname);
+            window.location.href = url;
+            return Promise.reject(new Error("认证失效，请重新登录"));
+          }
+        } catch {
           const userStore = useUserStore();
           userStore.resetToken();
-          import("@/hooks/useAuth").then(({ useAuth }) => {
-            const { buildAuthorizeUrl } = useAuth();
-            buildAuthorizeUrl(window.location.pathname).then((url) => {
-              window.location.href = url;
-            });
-          });
+          const { useAuth } = await import("@/hooks/useAuth");
+          const { buildAuthorizeUrl } = useAuth();
+          const url = await buildAuthorizeUrl(window.location.pathname);
+          window.location.href = url;
+          return Promise.reject(new Error("认证失效，请重试"));
         }
+      } else {
+        return new Promise((resolve) => {
+          requestList.push(() => {
+            if (error.config) resolve(service(error.config));
+          });
+        });
       }
-      return Promise.reject(new Error("认证失效，请重新登录"));
     }
 
     if (message === "Network Error") {

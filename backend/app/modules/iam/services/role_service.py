@@ -56,4 +56,6 @@ class RoleService:
 
     async def delete_role(self, role_id: uuid.UUID) -> bool:
         role = await self.get_role(role_id)
+        if getattr(role, "is_system", False):
+            raise HTTPException(status_code=400, detail="系统内置角色不可删除")
         return await self.role_repo.delete(role.id)

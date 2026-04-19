@@ -14,6 +14,7 @@ class MenuBase(BaseModel):
     icon: Optional[str] = Field(None, max_length=100, description="菜单图标标识（如 Lucide/Heroicon name）")
     sort_order: int = Field(0, description="同级展示排序号")
     is_visible: bool = Field(True, description="是否在侧边栏渲染可见（某些隐式路由可设为 False）")
+    is_system: bool = Field(False, description="是否系统内置菜单，系统菜单不可删除")
 
 class MenuCreate(MenuBase):
     pass

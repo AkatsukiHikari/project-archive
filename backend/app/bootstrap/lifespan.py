@@ -10,6 +10,10 @@ async def lifespan(app: FastAPI):
     from app.infra.search.es_client import ensure_index
     await ensure_index()
 
+    # 幂等种子数据（SKIP_SEED=true 可跳过）
+    from app.scripts.seed import run_seed
+    await run_seed()
+
     yield
 
     # ── Shutdown ──

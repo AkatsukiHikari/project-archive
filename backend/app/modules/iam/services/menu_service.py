@@ -17,23 +17,40 @@ class MenuService:
 
     async def get_menu_tree(self) -> List[schemas.MenuTree]:
         menus = await self.menu_repo.get_all()
-        
-        # Build tree
-        menu_dict = {menu.id: schemas.MenuTree.model_validate(menu) for menu in menus}
-        root_nodes = []
-        
-        for menu in menus:
-            if menu.parent_id and menu.parent_id in menu_dict:
-                menu_dict[menu.parent_id].children.append(menu_dict[menu.id])
+
+        # 逐个将 ORM 对象手动映射为 MenuTree，避免 Pydantic 验证 SQLAlchemy
+        # InstrumentedList（children 关系属性）时报 validation error
+        menu_dict: dict[uuid.UUID, schemas.MenuTree] = {}
+        for m in menus:
+            menu_dict[m.id] = schemas.MenuTree(
+                id=m.id,
+                parent_id=m.parent_id,
+                code=m.code,
+                name=m.name,
+                type=m.type,
+                path=m.path,
+                icon=m.icon,
+                sort_order=m.sort_order,
+                is_visible=m.is_visible,
+                is_system=getattr(m, "is_system", False),
+                create_time=m.create_time,
+                update_time=m.update_time,
+                children=[],
+            )
+
+        root_nodes: List[schemas.MenuTree] = []
+        for m in menus:
+            node = menu_dict[m.id]
+            if m.parent_id and m.parent_id in menu_dict:
+                menu_dict[m.parent_id].children.append(node)
             else:
-                root_nodes.append(menu_dict[menu.id])
-                
-        # Sort children by sort_order
-        def sort_tree(nodes: List[schemas.MenuTree]):
+                root_nodes.append(node)
+
+        def sort_tree(nodes: List[schemas.MenuTree]) -> None:
             nodes.sort(key=lambda x: x.sort_order)
             for node in nodes:
                 sort_tree(node.children)
-                
+
         sort_tree(root_nodes)
         return root_nodes
 
@@ -64,4 +81,6 @@ class MenuService:
 
     async def delete_menu(self, menu_id: uuid.UUID) -> bool:
         menu = await self.get_menu(menu_id)
+        if getattr(menu, "is_system", False):
+            raise HTTPException(status_code=400, detail="系统内置菜单不可删除")
         return await self.menu_repo.delete(menu.id)

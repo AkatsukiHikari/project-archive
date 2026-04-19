@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     # ── RabbitMQ / Celery ──
     RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672//"
 
+    # ── 初始化数据 ──
+    ADMIN_EMAIL: str = "admin@sams.local"
+    ADMIN_PASSWORD: str = ""
+    SKIP_SEED: bool = False
+
     # ── AI / RAG ──
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_CHAT_MODEL: str = "qwen2.5:7b"

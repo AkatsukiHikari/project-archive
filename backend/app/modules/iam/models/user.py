@@ -20,7 +20,8 @@ class Role(BaseEntity):
     name: Mapped[str] = mapped_column(String(50), unique=True, index=True, comment="角色名称")
     code: Mapped[str] = mapped_column(String(50), unique=True, index=True, comment="角色编码")
     description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, comment="描述")
-    
+    is_system: Mapped[bool] = mapped_column(default=False, server_default="false", comment="系统内置角色，不可删除")
+
     tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("iam_tenant.id", ondelete="CASCADE"), index=True, nullable=True, comment="所属租户ID (空为全局)")
 
     users: Mapped[List["User"]] = relationship(

@@ -22,6 +22,7 @@ class RoleUpdate(BaseModel):
 
 class Role(RoleBase):
     id: uuid.UUID = Field(..., description="角色系统唯一标识")
+    is_system: bool = Field(False, description="系统内置角色，不可删除")
     create_time: datetime = Field(..., description="创建时间")
     update_time: datetime = Field(..., description="最后一次更新时间")
     menus: List[Menu] = Field(default_factory=list, description="角色绑定的菜单/权限节点列表")

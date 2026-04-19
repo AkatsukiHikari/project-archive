@@ -9,6 +9,7 @@ OAuth2 API 路由
 - POST /oauth/logout    — 注销
 """
 
+import asyncio
 from urllib.parse import urlencode, quote
 
 from fastapi import APIRouter, Request, Response, Form, Query
@@ -216,6 +217,27 @@ async def login_submit(
 
     # 登录成功，清除失败计数
     await _clear_login_failure(client_ip)
+
+    # 写入登录审计日志（异步，不阻塞主流程）
+    async def _write_login_audit() -> None:
+        try:
+            from app.modules.audit.models import AuditLog
+            async with AsyncSessionLocal() as audit_db:
+                async with audit_db.begin():
+                    log = AuditLog(
+                        user_id=user.id,
+                        tenant_id=user.tenant_id,
+                        action="USER_LOGIN",
+                        module="IAM",
+                        ip_address=client_ip,
+                        status="SUCCESS",
+                        details={"username": user.username},
+                    )
+                    audit_db.add(log)
+        except Exception:
+            pass  # 审计写入失败不影响登录
+
+    asyncio.create_task(_write_login_audit())
 
     # 校验客户端
     oauth_service.validate_client(client_id, redirect_uri)

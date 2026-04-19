@@ -24,7 +24,8 @@ class Menu(BaseEntity):
     icon: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="图标")
     sort_order: Mapped[int] = mapped_column(default=0, comment="排序号")
     is_visible: Mapped[bool] = mapped_column(default=True, comment="是否可见")
-    
+    is_system: Mapped[bool] = mapped_column(default=False, server_default="false", comment="系统内置菜单，不可删除")
+
     children: Mapped[List["Menu"]] = relationship("Menu", back_populates="parent", remote_side="Menu.id")
     parent: Mapped[Optional["Menu"]] = relationship("Menu", back_populates="children", remote_side="Menu.parent_id")
     roles: Mapped[List["Role"]] = relationship("Role", secondary=role_menu_association, back_populates="menus")

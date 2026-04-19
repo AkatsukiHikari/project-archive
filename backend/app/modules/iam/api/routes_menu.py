@@ -21,7 +21,7 @@ async def get_menu_tree(
 ):
     """获取所有菜单/权限的树状结构"""
     tree = await menu_service.get_menu_tree()
-    return success(data=[schemas.MenuTree.model_validate(m).model_dump(mode="json") for m in tree])
+    return success(data=[m.model_dump(mode="json") for m in tree])
 
 @router.get(
     "/{menu_id}",

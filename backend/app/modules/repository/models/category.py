@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from sqlalchemy import String, Boolean, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from app.common.entity.base import BaseEntity
 
@@ -39,8 +39,13 @@ class ArchiveCategory(BaseEntity):
         comment="是否含个人隐私字段（专业档案）"
     )
     field_schema: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True,
-        comment="字段定义列表：[{name,label,type,required,options,...}]"
+        JSONB, nullable=True,
+        comment="字段定义列表 list[FieldDefinition]"
+    )
+    archive_no_rule_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("repo_archive_no_rule.id", ondelete="SET NULL"),
+        nullable=True, comment="激活的档号规则（NULL 表示不自动生成）"
     )
     tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),

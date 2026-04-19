@@ -13,7 +13,7 @@
 import uuid
 from typing import Optional, List
 from sqlalchemy import String, Integer, BigInteger, JSON, ForeignKey, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.common.entity.base import BaseEntity
 
@@ -124,7 +124,7 @@ class Archive(BaseEntity):
 
     # ── 门类私有字段 ─────────────────────────────────────────────────
     ext_fields: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True, comment="门类私有字段（GIN 索引）"
+        JSONB, nullable=True, comment="门类私有字段（GIN 索引）"
     )
 
     # ── 存储引用 ──────────────────────────────────────────────────────

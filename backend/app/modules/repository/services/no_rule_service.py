@@ -17,10 +17,16 @@ class NoRuleService:
     async def list_all(self, tenant_id: Optional[uuid.UUID] = None) -> list[ArchiveNoRule]:
         return await self._repo.list_by_tenant(tenant_id=tenant_id)
 
-    async def get(self, rule_id: uuid.UUID) -> ArchiveNoRule:
-        rule = await self._repo.get_by_id(rule_id)
+    async def get(
+        self,
+        rule_id: uuid.UUID,
+        tenant_id: Optional[uuid.UUID] = None,
+    ) -> ArchiveNoRule:
+        rule = await self._repo.get_by_id(rule_id, tenant_id=tenant_id)
         if not rule:
-            raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="档号规则不存在")
+            raise NotFoundException(
+                code=ErrorCode.ARCHIVE_NO_RULE_NOT_FOUND, message="档号规则不存在"
+            )
         return rule
 
     async def create(
@@ -38,8 +44,15 @@ class NoRuleService:
 
     async def update(self, rule_id: uuid.UUID, data: NoRuleUpdate) -> ArchiveNoRule:
         rule = await self.get(rule_id)
-        for field, value in data.model_dump(exclude_unset=True).items():
-            setattr(rule, field, value)
+        update_data = data.model_dump(exclude_unset=True)
+        if "name" in update_data:
+            rule.name = update_data["name"]
+        if "rule_template" in update_data:
+            rule.rule_template = update_data["rule_template"]
+        if "seq_scope" in update_data:
+            rule.seq_scope = update_data["seq_scope"]
+        if "is_active" in update_data:
+            rule.is_active = update_data["is_active"]
         return rule
 
     async def delete(self, rule_id: uuid.UUID) -> None:

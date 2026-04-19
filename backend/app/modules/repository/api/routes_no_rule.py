@@ -49,7 +49,7 @@ async def get_no_rule(
     current_user: User = Depends(get_current_user),
 ):
     svc = NoRuleService(db)
-    item = await svc.get(rule_id)
+    item = await svc.get(rule_id, tenant_id=current_user.tenant_id)
     return success(NoRuleRead.model_validate(item))
 
 
@@ -87,7 +87,7 @@ async def preview_no_rule(
 ):
     """用样本数据预览生成档号，不写 DB。"""
     svc = NoRuleService(db)
-    rule = await svc.get(rule_id)
+    rule = await svc.get(rule_id, tenant_id=current_user.tenant_id)
     engine = ArchiveNoEngine(db)
     archive_no, parts = await engine.preview(rule, req.model_dump(exclude_none=True))
     return success(PreviewResponse(archive_no=archive_no, segments=parts))

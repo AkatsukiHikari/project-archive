@@ -204,18 +204,11 @@ async def test_engine_sequence_preview_uses_zeros():
 
 @pytest.mark.asyncio
 async def test_engine_sequence_real_increments():
-    """preview=False 时序号从 SeqRepository 取，并返回带补零的字符串"""
+    """preview=False 时序号通过 SeqRepository.increment 原子获取，首次返回 1"""
     db = AsyncMock()
-    # 模拟 get_and_lock 返回 None（首次），create_seq 返回 seq=1
-    from app.modules.repository.models.no_rule_seq import ArchiveNoSeq
-    seq_row = _sa_new(ArchiveNoSeq)
-    seq_row.current_seq = 1
-
     engine = ArchiveNoEngine(db)
-    # 注入 mock SeqRepository
     mock_seq_repo = AsyncMock()
-    mock_seq_repo.get_and_lock = AsyncMock(return_value=None)
-    mock_seq_repo.create_seq = AsyncMock(return_value=seq_row)
+    mock_seq_repo.increment = AsyncMock(return_value=1)
     engine._seq_repo = mock_seq_repo
 
     rule = _make_rule({
@@ -228,20 +221,16 @@ async def test_engine_sequence_real_increments():
     archive = _make_archive(fonds_code="J001", year=2024)
     result = await engine.generate(rule, archive, preview=False)
     assert result == "J001-0001"
-    mock_seq_repo.create_seq.assert_called_once()
+    mock_seq_repo.increment.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_engine_sequence_existing_row_increments():
-    """已有序号行时递增后返回新值"""
+    """已有序号时 increment 返回下一个值（如 23），带补零"""
     db = AsyncMock()
-    from app.modules.repository.models.no_rule_seq import ArchiveNoSeq
-    seq_row = _sa_new(ArchiveNoSeq)
-    seq_row.current_seq = 22   # 已有 22，下一个应为 23
-
     engine = ArchiveNoEngine(db)
     mock_seq_repo = AsyncMock()
-    mock_seq_repo.get_and_lock = AsyncMock(return_value=seq_row)
+    mock_seq_repo.increment = AsyncMock(return_value=23)
     engine._seq_repo = mock_seq_repo
 
     rule = _make_rule({
@@ -253,7 +242,6 @@ async def test_engine_sequence_existing_row_increments():
     archive = _make_archive(year=2024)
     result = await engine.generate(rule, archive, preview=False)
     assert result == "0023"
-    assert seq_row.current_seq == 23
 
 
 # --- Task 5: NoRuleService tests ---

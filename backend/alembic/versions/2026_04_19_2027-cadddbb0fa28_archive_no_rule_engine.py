@@ -35,8 +35,8 @@ def upgrade() -> None:
     sa.UniqueConstraint('rule_id', 'scope_key', name='uq_no_seq_rule_scope')
     )
     op.create_index(op.f('ix_repo_archive_no_seq_rule_id'), 'repo_archive_no_seq', ['rule_id'], unique=False)
-    op.drop_index(op.f('ix_repo_archive_ext_fields_gin'), table_name='repo_archive', postgresql_ops={'ext_fields': 'jsonb_path_ops'}, postgresql_using='gin')
-    op.drop_index(op.f('ix_repo_archive_fonds_catalog_year'), table_name='repo_archive')
+    # Note: GIN index on ext_fields and composite index on (fonds_id, catalog_id, year)
+    # were created manually in migration 2a6b72efc717 — keep them, do not drop.
     op.add_column('repo_archive_category', sa.Column('archive_no_rule_id', sa.UUID(), nullable=True, comment='激活的档号规则（NULL 表示不自动生成）'))
     op.alter_column('repo_archive_category', 'field_schema',
                existing_type=postgresql.JSON(astext_type=sa.Text()),
@@ -59,8 +59,7 @@ def downgrade() -> None:
                existing_comment='字段定义列表 list[FieldDefinition]',
                existing_nullable=True)
     op.drop_column('repo_archive_category', 'archive_no_rule_id')
-    op.create_index(op.f('ix_repo_archive_fonds_catalog_year'), 'repo_archive', ['fonds_id', 'catalog_id', 'year'], unique=False)
-    op.create_index(op.f('ix_repo_archive_ext_fields_gin'), 'repo_archive', ['ext_fields'], unique=False, postgresql_ops={'ext_fields': 'jsonb_path_ops'}, postgresql_using='gin')
+    # GIN and composite indexes were created manually in 2a6b72efc717 — no need to recreate on downgrade.
     op.drop_index(op.f('ix_repo_archive_no_seq_rule_id'), table_name='repo_archive_no_seq')
     op.drop_table('repo_archive_no_seq')
     # ### end Alembic commands ###

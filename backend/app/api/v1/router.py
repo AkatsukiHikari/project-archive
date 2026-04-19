@@ -8,6 +8,8 @@ from app.modules.preservation.api import routes as preservation_routes
 from app.modules.collection.api import routes as collection_routes
 from app.modules.ai.api import routes as ai_routes
 from app.modules.repository.api import routes as repository_routes
+from app.modules.repository.api.routes_category import router as archive_category_router
+from app.modules.repository.api.routes_archive import router as archive_router
 from app.api.v1 import ws, stats
 
 # ---------------------------------------------------------------------------
@@ -37,6 +39,8 @@ v1_router.include_router(collection_routes.router, prefix="/collection/sip", tag
 v1_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 v1_router.include_router(ai_routes.router, prefix="/ai", tags=["ai"])
 v1_router.include_router(repository_routes.router, prefix="/repository", tags=["repository"])
+v1_router.include_router(archive_category_router)
+v1_router.include_router(archive_router)
 
 from app.modules.utilization.api.search import router as search_router
 v1_router.include_router(search_router, prefix="/utilization", tags=["utilization"])

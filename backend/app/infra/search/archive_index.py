@@ -15,26 +15,29 @@ from typing import Any
 import uuid
 
 from app.infra.search.es_client import get_es_client, ARCHIVE_ITEM_INDEX
-from app.modules.repository.models.archive import ArchiveItem
+from app.modules.repository.models.archive import Archive
 
 logger = logging.getLogger(__name__)
 
 
-async def index_item(item: ArchiveItem, fonds_code: str = "", file_number: str = "") -> None:
+async def index_item(item: Archive, fonds_code: str = "", file_number: str = "") -> None:
     """将档案条目索引到 Elasticsearch（新增或覆盖）"""
     client = get_es_client()
     doc = {
         "id": str(item.id),
         "title": item.title,
-        "author": item.author,
-        "document_date": item.document_date,
-        "item_type": item.item_type,
+        "creator": item.creator,
+        "doc_date": item.doc_date,
+        "level": item.level,
         "security_level": item.security_level,
-        "archive_file_id": str(item.archive_file_id),
-        "file_number": file_number,
-        "fonds_code": fonds_code,
+        "catalog_id": str(item.catalog_id),
+        "archive_no": item.archive_no,
+        "fonds_code": item.fonds_code or fonds_code,
+        "year": item.year,
+        "retention_period": item.retention_period,
+        "status": item.status,
         "tenant_id": str(item.tenant_id) if item.tenant_id else None,
-        "metadata_json": item.metadata_json,
+        "ext_fields": item.ext_fields,
         "create_time": item.create_time.isoformat() if item.create_time else None,
     }
     try:
@@ -93,7 +96,7 @@ async def search_items(
         {
             "multi_match": {
                 "query": query,
-                "fields": ["title^3", "author^2"],  # ^N 是字段权重
+                "fields": ["title^3", "creator^2"],  # ^N 是字段权重
                 "type": "best_fields",
                 "fuzziness": "AUTO",  # 容错模糊匹配
             }
@@ -121,14 +124,14 @@ async def search_items(
             }
         },
         "highlight": {
-            "fields": {"title": {}, "author": {}},
+            "fields": {"title": {}, "creator": {}},
             "pre_tags": ["<em>"],
             "post_tags": ["</em>"],
         },
         "from": skip,
         "size": limit,
-        "_source": ["id", "title", "author", "document_date", "item_type",
-                    "fonds_code", "file_number", "archive_file_id", "create_time"],
+        "_source": ["id", "title", "creator", "doc_date", "level",
+                    "fonds_code", "archive_no", "catalog_id", "year", "create_time"],
     }
 
     try:

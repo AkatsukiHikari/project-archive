@@ -254,3 +254,59 @@ async def test_engine_sequence_existing_row_increments():
     result = await engine.generate(rule, archive, preview=False)
     assert result == "0023"
     assert seq_row.current_seq == 23
+
+
+# --- Task 5: NoRuleService tests ---
+
+from app.modules.repository.services.no_rule_service import NoRuleService
+from app.modules.repository.schemas.no_rule import NoRuleCreate
+from app.common.exceptions.base import NotFoundException
+
+
+@pytest.fixture
+def mock_no_rule_repo_svc():
+    repo = AsyncMock()
+    rule = _make_rule({
+        "separator": "-",
+        "segments": [{"type": "literal", "value": "X"}],
+    })
+    rule.name = "测试规则"
+    rule.is_active = True
+    rule.tenant_id = None
+    rule.is_deleted = False
+    repo.get_by_id = AsyncMock(return_value=rule)
+    repo.list_by_tenant = AsyncMock(return_value=[rule])
+    repo.create = AsyncMock(return_value=rule)
+    repo.delete = AsyncMock()
+    return repo, rule
+
+
+@pytest.fixture
+def no_rule_service(mock_no_rule_repo_svc):
+    repo, _ = mock_no_rule_repo_svc
+    svc = NoRuleService.__new__(NoRuleService)
+    svc._repo = repo
+    return svc
+
+
+@pytest.mark.asyncio
+async def test_no_rule_service_list(no_rule_service, mock_no_rule_repo_svc):
+    repo, rule = mock_no_rule_repo_svc
+    result = await no_rule_service.list_all(tenant_id=None)
+    repo.list_by_tenant.assert_called_once()
+    assert len(result) == 1
+
+
+@pytest.mark.asyncio
+async def test_no_rule_service_get_not_found(no_rule_service, mock_no_rule_repo_svc):
+    repo, _ = mock_no_rule_repo_svc
+    repo.get_by_id = AsyncMock(return_value=None)
+    with pytest.raises(NotFoundException):
+        await no_rule_service.get(uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_no_rule_service_delete(no_rule_service, mock_no_rule_repo_svc):
+    repo, rule = mock_no_rule_repo_svc
+    await no_rule_service.delete(rule.id)
+    repo.delete.assert_called_once_with(rule)

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, Literal, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SegmentDef(BaseModel):
@@ -19,7 +19,15 @@ class SegmentDef(BaseModel):
 
     # type=date_part: 从 doc_date 提取日期部分
     date_field: str = "doc_date"       # 来源字段
-    format: str = "%Y"                 # strftime 格式，如 "%Y%m%d"
+    date_format: str = "%Y"            # strftime 格式，如 "%Y%m%d"
+
+    @model_validator(mode="after")
+    def check_type_fields(self) -> "SegmentDef":
+        if self.type == "field" and not self.field:
+            raise ValueError("field segment requires 'field' to be set")
+        if self.type == "literal" and self.value is None:
+            raise ValueError("literal segment requires 'value' to be set")
+        return self
 
 
 class RuleTemplate(BaseModel):
@@ -31,9 +39,15 @@ class RuleTemplate(BaseModel):
 class NoRuleCreate(BaseModel):
     category_id: uuid.UUID
     name: str = Field(..., max_length=100)
-    rule_template: dict[str, Any]      # 存为 JSONB，运行时通过 RuleTemplate 验证
+    rule_template: dict[str, Any]      # 存为 JSONB，通过 RuleTemplate 验证结构
     seq_scope: Literal["catalog", "catalog_year", "fonds"] = "catalog_year"
     is_active: bool = True
+
+    @field_validator("rule_template", mode="before")
+    @classmethod
+    def validate_rule_template(cls, v: Any) -> Any:
+        RuleTemplate.model_validate(v)  # raises ValidationError on bad input
+        return v
 
 
 class NoRuleUpdate(BaseModel):
@@ -42,13 +56,20 @@ class NoRuleUpdate(BaseModel):
     seq_scope: Optional[Literal["catalog", "catalog_year", "fonds"]] = None
     is_active: Optional[bool] = None
 
+    @field_validator("rule_template", mode="before")
+    @classmethod
+    def validate_rule_template(cls, v: Any) -> Any:
+        if v is not None:
+            RuleTemplate.model_validate(v)
+        return v
+
 
 class NoRuleRead(BaseModel):
     id: uuid.UUID
     category_id: uuid.UUID
     name: str
     rule_template: Optional[dict[str, Any]]
-    seq_scope: str
+    seq_scope: Literal["catalog", "catalog_year", "fonds"]
     is_active: bool
     tenant_id: Optional[uuid.UUID] = None
 

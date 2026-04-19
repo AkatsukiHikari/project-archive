@@ -47,7 +47,6 @@ def test_rule_template_valid():
 
 
 def test_no_rule_create_valid():
-    import uuid
     data = NoRuleCreate(
         category_id=uuid.uuid4(),
         name="文书一文一件规则",
@@ -63,8 +62,24 @@ def test_no_rule_create_valid():
     assert data.name == "文书一文一件规则"
 
 
+def test_no_rule_create_invalid_template():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        NoRuleCreate(
+            category_id=uuid.uuid4(),
+            name="坏规则",
+            rule_template={"separator": "-", "segments": []},  # min_length=1 violated
+            seq_scope="catalog_year",
+        )
+
+
+def test_segment_def_field_missing_field_raises():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        SegmentDef(type="field")  # field is required when type="field"
+
+
 def test_preview_request():
-    import uuid
     req = PreviewRequest(
         fonds_code="J001",
         year=2024,

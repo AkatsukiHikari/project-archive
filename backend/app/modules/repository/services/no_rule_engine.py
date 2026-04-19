@@ -123,7 +123,7 @@ class ArchiveNoEngine:
         seq_row = await self._seq_repo.get_and_lock(rule_id, scope_key)
         if seq_row is None:
             seq_row = await self._seq_repo.create_seq(rule_id, scope_key, initial=1)
-            return str(1).zfill(padding)
+            return str(seq_row.current_seq).zfill(padding)
         seq_row.current_seq += 1
         await self._db.flush()
         return str(seq_row.current_seq).zfill(padding)

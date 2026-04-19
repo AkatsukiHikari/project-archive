@@ -86,3 +86,24 @@ def test_preview_request():
         catalog_no="1",
     )
     assert req.fonds_code == "J001"
+
+
+# --- Task 3: NoRuleRepository tests ---
+
+from unittest.mock import AsyncMock
+from app.modules.repository.repositories.no_rule_repo import NoRuleRepository
+
+
+@pytest.fixture
+def mock_no_rule_repo():
+    repo = AsyncMock()
+    repo.get_by_id = AsyncMock(return_value=None)
+    repo.list_by_category = AsyncMock(return_value=[])
+    repo.create = AsyncMock()
+    return repo
+
+
+@pytest.mark.asyncio
+async def test_no_rule_repo_list_empty(mock_no_rule_repo):
+    result = await mock_no_rule_repo.list_by_category(uuid.uuid4())
+    assert result == []

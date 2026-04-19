@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
-from sqlalchemy import String, Boolean, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from app.common.entity.base import BaseEntity
 
@@ -20,7 +20,7 @@ class ArchiveNoRule(BaseEntity):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False, comment="规则名称")
     rule_template: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True, comment="规则段定义（见 docs/features/feature_档案管理.md 第五章）"
+        JSONB, nullable=True, comment="规则段定义（见 docs/features/feature_档案管理.md 第五章）"
     )
     seq_scope: Mapped[str] = mapped_column(
         String(20), nullable=False, default="catalog_year",

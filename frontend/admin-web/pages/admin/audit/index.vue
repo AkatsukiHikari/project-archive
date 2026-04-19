@@ -1,149 +1,125 @@
 <template>
   <div class="flex flex-col gap-4">
-    <!-- 顶部租户选择 -->
-    <div
-      class="bg-[var(--semi-color-bg-0)] rounded-xl border border-[var(--semi-color-border)] shadow-sm p-4 flex items-center justify-between"
-    >
+    <div class="rounded-xl border p-4 flex items-center justify-between"
+      style="background:var(--semi-color-bg-0);border-color:var(--semi-color-border)">
       <div class="flex items-center gap-4">
-        <span class="font-medium text-[var(--semi-color-text-0)] text-sm"
-          >当前管理租户：</span
-        >
-        <Select
-          v-model="currentTenantId"
-          @change="handleTenantChange"
-          :style="{ width: '280px' }"
+        <span class="font-medium text-sm" style="color:var(--semi-color-text-0)">当前管理租户：</span>
+        <NSelect
+          v-model:value="currentTenantId"
+          :options="tenantOptions"
           :loading="tenantsLoading"
+          style="width:280px"
           placeholder="请选择租户"
-        >
-          <Select.Option v-for="t in tenants" :key="t.id" :value="t.id">
-            {{ t.name }} ({{ t.code }})
-          </Select.Option>
-        </Select>
+          @update:value="handleTenantChange"
+        />
       </div>
-      <div class="flex gap-2">
-        <Button theme="light" disabled
-          ><template #icon><IconDownload /></template>导出报表</Button
-        >
-      </div>
+      <NButton disabled>
+        <template #icon><Icon name="heroicons:arrow-down-tray" class="w-4 h-4" /></template>
+        导出报表
+      </NButton>
     </div>
 
-    <div
-      class="bg-[var(--semi-color-bg-0)] rounded-xl border border-[var(--semi-color-border)] shadow-sm p-6 min-h-[500px]"
-    >
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-lg font-semibold text-[var(--semi-color-text-0)]">
-          系统安全审计
-        </h2>
-      </div>
-      <Table
+    <div class="rounded-xl border p-6 min-h-[500px]"
+      style="background:var(--semi-color-bg-0);border-color:var(--semi-color-border)">
+      <h2 class="text-lg font-semibold mb-6" style="color:var(--semi-color-text-0)">系统安全审计</h2>
+      <NDataTable
         :columns="columns"
-        :data-source="auditLogs"
+        :data="auditLogs"
         :loading="loading"
-        empty-text="暂无审计日志"
-        rowKey="id"
-      />
+        :pagination="{ pageSize: 20, showSizePicker: true, pageSizes: [20, 50, 100] }"
+        :row-key="(row: AuditLog) => row.id"
+      >
+        <template #empty><NEmpty description="暂无审计日志" class="py-10" /></template>
+      </NDataTable>
     </div>
   </div>
 </template>
 
 <script setup lang="tsx">
-import { ref, onMounted } from "vue";
-import {
-  Button,
-  Table,
-  Select,
-  Toast,
-  Tag,
-  Popover,
-} from "@kousum/semi-ui-vue";
-import { IconDownload } from "@kousum/semi-icons-vue";
+import { ref, computed, onMounted } from "vue";
+import { NButton, NSelect, NDataTable, NEmpty, NTag, NPopover, useMessage } from "naive-ui";
 import { TenantAPI, type Tenant } from "@/api/iam";
 import { AuditAPI, type AuditLog } from "@/api/audit";
 
 definePageMeta({ layout: "admin", middleware: "auth" });
 
+const message = useMessage();
 const tenants = ref<Tenant[]>([]);
-const currentTenantId = ref<string>("");
+const currentTenantId = ref<string | null>(null);
 const tenantsLoading = ref(false);
-
 const auditLogs = ref<AuditLog[]>([]);
 const loading = ref(false);
 
+const tenantOptions = computed(() => tenants.value.map((t) => ({ label: `${t.name} (${t.code})`, value: t.id })));
+
 const columns = [
   {
-    title: "操作时间",
-    dataIndex: "create_time",
-    render: (text: string) => new Date(text).toLocaleString(),
+    title: "操作时间", key: "create_time",
+    render: (row: AuditLog) => new Date(row.create_time).toLocaleString("zh-CN"),
   },
-  { title: "操作员 ID", dataIndex: "user_id" },
+  { title: "操作员 ID", key: "user_id" },
   {
-    title: "操作模块",
-    dataIndex: "module",
-    render: (text: string) => <Tag>{text}</Tag>,
+    title: "操作模块", key: "module",
+    render: (row: AuditLog) => <NTag size="small">{row.module}</NTag>,
   },
   {
-    title: "动作",
-    dataIndex: "action",
-    render: (text: string) => <span class="font-medium">{text}</span>,
+    title: "动作", key: "action",
+    render: (row: AuditLog) => <span class="font-medium">{row.action}</span>,
   },
-  { title: "IP 地址", dataIndex: "ip_address" },
+  { title: "IP 地址", key: "ip_address" },
   {
-    title: "状态",
-    dataIndex: "status",
-    render: (val: string) => (
-      <Tag color={val === "success" ? "green" : ("red" as any)}>
-        {val === "success" ? "成功" : "失败"}
-      </Tag>
+    title: "状态", key: "status",
+    render: (row: AuditLog) => (
+      <NTag type={row.status === "success" ? "success" : "error"} size="small">
+        {row.status === "success" ? "成功" : "失败"}
+      </NTag>
     ),
   },
   {
-    title: "详情",
-    dataIndex: "details",
-    render: (_text: any, record: AuditLog) => {
-      if (!record.details) return <span>-</span>;
-      // 简单展示 JSON 格式详情
+    title: "详情", key: "details",
+    render: (row: AuditLog) => {
+      if (!row.details) return <span>-</span>;
       return (
-        <Popover
-          content={
-            <div class="p-2 max-w-xs break-all">
-              <pre class="text-xs">
-                {JSON.stringify(record.details, null, 2)}
-              </pre>
-            </div>
-          }
-          position="topLeft"
-        >
-          <span class="text-[var(--semi-color-primary)] cursor-pointer hover:underline text-xs">
-            查看详细
-          </span>
-        </Popover>
+        <NPopover trigger="hover">
+          {{
+            trigger: () => (
+              <span class="cursor-pointer hover:underline text-xs" style="color:var(--semi-color-primary)">
+                查看详细
+              </span>
+            ),
+            default: () => (
+              <div class="p-2 max-w-xs break-all">
+                <pre class="text-xs">{JSON.stringify(row.details, null, 2)}</pre>
+              </div>
+            ),
+          }}
+        </NPopover>
       );
     },
   },
 ];
 
-onMounted(async () => {
-  await fetchTenants();
-});
+onMounted(fetchTenants);
 
 async function fetchTenants() {
   tenantsLoading.value = true;
   try {
-    const res = await TenantAPI.list();
-    tenants.value = (res as any).data || [];
-    if (tenants.value.length > 0) {
-      currentTenantId.value = tenants.value[0].id;
-      handleTenantChange(currentTenantId.value);
+    const res = (await TenantAPI.list()) as any;
+    tenants.value = res.data || [];
+    const firstTenant = tenants.value[0];
+    if (firstTenant) {
+      currentTenantId.value = firstTenant.id;
+      fetchAuditLogs();
     }
-  } catch (err: any) {
-    Toast.error(err.message || "加载租户失败");
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : "加载租户失败");
   } finally {
     tenantsLoading.value = false;
   }
 }
 
-function handleTenantChange(val: any) {
-  currentTenantId.value = val as string;
+function handleTenantChange(val: string) {
+  currentTenantId.value = val;
   fetchAuditLogs();
 }
 
@@ -151,13 +127,10 @@ async function fetchAuditLogs() {
   if (!currentTenantId.value) return;
   loading.value = true;
   try {
-    const res = await AuditAPI.list({
-      tenant_id: currentTenantId.value,
-      limit: 100,
-    });
-    auditLogs.value = (res as any).data || [];
-  } catch (err: any) {
-    Toast.error(err.message || "加载审计日志失败");
+    const res = (await AuditAPI.list({ tenant_id: currentTenantId.value, limit: 100 })) as any;
+    auditLogs.value = res.data || [];
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : "加载审计日志失败");
   } finally {
     loading.value = false;
   }

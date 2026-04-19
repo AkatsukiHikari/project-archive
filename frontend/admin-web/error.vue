@@ -33,8 +33,8 @@
 
       <!-- 底部辅助信息 -->
       <div class="mt-12 text-sm text-base-content/40">
-        <p v-if="error.message && statusCode === 500">
-          错误详情: {{ error.message }}
+        <p v-if="error?.message && statusCode === 500">
+          错误详情: {{ error?.message }}
         </p>
         <p class="mt-2">如果您认为这是一个系统故障，请联系系统管理员。</p>
       </div>

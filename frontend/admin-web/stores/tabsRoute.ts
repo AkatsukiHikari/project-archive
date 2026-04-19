@@ -29,7 +29,7 @@ const HOME_PATH = "/admin";
 
 function getTabTitle(path: string): string {
   // Strip query string for lookup
-  const cleanPath = path.split("?")[0];
+  const cleanPath = path.split("?")[0] ?? path;
   return ROUTE_TITLE_MAP[cleanPath] ?? cleanPath.split("/").pop() ?? path;
 }
 
@@ -63,7 +63,7 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
     closeTab(path: string): string | null {
       const idx = this.tabs.findIndex((t) => t.path === path);
       if (idx === -1) return null;
-      if (!this.tabs[idx].closable) return null;
+      if (!this.tabs[idx]?.closable) return null;
 
       this.tabs = this.tabs.filter((t) => t.path !== path);
 

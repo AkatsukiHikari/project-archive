@@ -1,88 +1,112 @@
 <template>
-  <Layout class="min-h-screen bg-[var(--semi-color-bg-0)]">
-    <!-- Sidebar -->
-    <LayoutSider
-      class="bg-[var(--semi-color-bg-0)] border-r border-[var(--semi-color-border)] shadow-sm z-40 transition-all duration-300"
-      :style="{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: '100vh',
-        width: isCollapsed ? '60px' : '240px',
-      }"
-    >
-      <Nav
-        :default-open-keys="['platform-group', 'security-group']"
-        :selected-keys="[currentRoutePath]"
-        class="h-full overflow-y-auto w-full custom-scrollbar"
-        :items="navItems"
-        :header="{
-          style: {
-            padding: '14px 10px',
-            display: 'flex',
-            justifyContent: 'center',
-          },
-          logo: h(LogoIcon, { size: 34 }),
-          text: h(
-            'div',
-            { style: 'padding-left: 4px; line-height: 1.25;' },
-            [
-              h('div', { style: 'font-size: 14px; font-weight: 700; color: var(--semi-color-text-0); white-space: nowrap;' }, '智慧档案平台'),
-              h('div', { style: 'font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--semi-color-text-2); margin-top: 1px;' }, 'SAMS · Enterprise'),
-            ],
-          ),
-        }"
-        :footer="{ collapseButton: true }"
-        @collapse-change="onCollapseChange"
-        @select="onSelect"
-      />
-    </LayoutSider>
+  <!-- overflow-x:hidden 防止展开动画期间出现横向滚动条 -->
+  <div class="flex min-h-screen" style="overflow-x:hidden">
 
-    <Layout
-      class="flex flex-col min-h-screen bg-[var(--semi-color-bg-1)] transition-all duration-300"
+    <!-- ── 左侧固定侧边栏 ─────────────────────────────────────── -->
+    <aside
+      class="fixed inset-y-0 left-0 z-40 flex flex-col"
+      style="transition:width 0.3s ease"
       :style="{
-        marginLeft: isCollapsed ? '60px' : '240px',
-        paddingTop: '104px',
+        width: isCollapsed ? '64px' : '240px',
+        background: 'var(--semi-color-bg-0)',
+        borderRight: '1px solid var(--semi-color-border)',
       }"
     >
-      <!-- Fixed top bar: SystemHeader + TabsBar -->
+      <!-- Logo -->
       <div
-        :style="{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          left: isCollapsed ? '60px' : '240px',
-          zIndex: 30,
-          transition: 'left 0.3s',
-        }"
+        class="flex items-center shrink-0 overflow-hidden transition-all duration-300"
+        :style="{ padding: isCollapsed ? '12px 14px' : '12px 14px', height: '56px' }"
+      >
+        <LogoIcon :size="28" class="shrink-0" />
+        <Transition name="logo-text">
+          <div v-if="!isCollapsed" class="ml-2.5 overflow-hidden">
+            <div class="text-[13px] font-bold leading-tight whitespace-nowrap" style="color: var(--semi-color-text-0)">
+              智慧档案平台
+            </div>
+            <div class="text-[9px] tracking-widest uppercase mt-0.5" style="color: var(--semi-color-text-2)">
+              SAMS · Enterprise
+            </div>
+          </div>
+        </Transition>
+      </div>
+
+      <!-- Nav menu -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar">
+        <NMenu
+          :options="menuOptions"
+          :collapsed="isCollapsed"
+          :collapsed-width="64"
+          :collapsed-icon-size="20"
+          :indent="18"
+          :value="selectedKey"
+          :expanded-keys="expandedKeys"
+          @update:value="onMenuSelect"
+          @update:expanded-keys="expandedKeys = $event"
+        />
+      </div>
+
+      <!-- 折叠按钮 -->
+      <div
+        class="shrink-0 border-t"
+        style="border-color: var(--semi-color-border)"
+      >
+        <button
+          class="w-full flex items-center justify-center h-10 transition-colors cursor-pointer hover:bg-[var(--semi-color-fill-0)]"
+          @click="isCollapsed = !isCollapsed"
+        >
+          <Icon
+            :name="isCollapsed ? 'heroicons:chevron-right' : 'heroicons:chevron-left'"
+            class="w-4 h-4"
+            style="color: var(--semi-color-text-2)"
+          />
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── 占位块：与侧边栏等宽，把主体区域正确推到右边 ──────────── -->
+    <!-- position:fixed 的 aside 脱离文档流，需要这个块维持 flex 宽度计算 -->
+    <div
+      class="flex-none shrink-0"
+      style="transition:width 0.3s ease"
+      :style="{ width: isCollapsed ? '64px' : '240px' }"
+    />
+
+    <!-- ── 右侧主体区域 ─────────────────────────────────────────── -->
+    <div
+      class="flex flex-col min-h-screen flex-1 min-w-0"
+      :style="{
+        paddingTop: '104px',
+        background: 'var(--semi-color-bg-1)',
+      }"
+    >
+      <!-- 顶部固定栏 -->
+      <div
+        class="fixed top-0 right-0 z-30"
+        style="transition:left 0.3s ease"
+        :style="{ left: isCollapsed ? '64px' : '240px' }"
       >
         <SystemHeader />
         <TabsBar />
       </div>
 
-      <LayoutContent class="p-6 flex-1 w-full">
+      <!-- 内容区 -->
+      <main class="p-6 flex-1 w-full min-w-0 overflow-x-hidden">
         <slot />
-      </LayoutContent>
+      </main>
 
-      <LayoutFooter class="shrink-0">
-        <AppFooter />
-      </LayoutFooter>
-    </Layout>
-  </Layout>
+      <!-- 底部 -->
+      <AppFooter />
+    </div>
+
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, h } from "vue";
+import { ref, computed, watch, h, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import {
-  Layout,
-  LayoutSider,
-  LayoutFooter,
-  LayoutContent,
-  Nav,
-} from "@kousum/semi-ui-vue";
-import * as Icons from "@kousum/semi-icons-vue";
-import * as LabIcons from "@kousum/semi-icons-lab-vue";
+import { NMenu, type MenuOption } from "naive-ui";
+import * as HeroIcons from "@heroicons/vue/24/outline";
+import type { Component } from "vue";
 import SystemHeader from "@/components/layout/SystemHeader.vue";
 import TabsBar from "@/components/layout/TabsBar.vue";
 import AppFooter from "@/components/layout/AppFooter.vue";
@@ -95,165 +119,153 @@ const route = useRoute();
 const userStore = useUserStore();
 const tabsStore = useTabsRouteStore();
 
-// ─── Auto-add tab on route change ─────────────────────────────────────────
+// ─── 刷新后补全用户信息 ────────────────────────────────────────────────────────
+onMounted(async () => {
+  if (userStore.token && !userStore.userInfo) {
+    try {
+      await userStore.getUserInfo();
+    } catch {
+      // 拉取失败由 auth 中间件统一处理跳转
+    }
+  }
+});
+
+// ─── 路由变化时自动开标签页 ───────────────────────────────────────────────────
 watch(
   () => route.path,
   (path) => {
     if (!path.startsWith("/admin")) return;
-    // Derive tab title from route meta breadcrumb (last item) or fallback
-    const breadcrumbs = route.meta.breadcrumb as
-      | { name: string; path: string }[]
-      | undefined;
+    const breadcrumbs = route.meta.breadcrumb as { name: string; path: string }[] | undefined;
     const title = breadcrumbs?.[breadcrumbs.length - 1]?.name;
     tabsStore.openTab(path, title);
   },
   { immediate: true },
 );
 
-// ─── Sidebar nav items ─────────────────────────────────────────────────────
-function renderIcon(iconName?: string) {
+// ─── 图标解析（heroicons:xxx → Vue 组件） ────────────────────────────────────
+function resolveHeroIcon(iconName?: string): Component | undefined {
   if (!iconName) return undefined;
-  // @ts-expect-error Dynamic icon loading based on string name
-  const Comp = Icons[iconName] || LabIcons[iconName];
-  return Comp ? h(Comp) : undefined;
+  const name = iconName.startsWith("heroicons:") ? iconName.slice(10) : iconName;
+  const compName =
+    name
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join("") + "Icon";
+  return (HeroIcons as Record<string, Component>)[compName];
 }
 
-const navItems = computed(() => {
-  if (!userStore.userInfo?.roles) return [];
+function makeMenuIcon(iconName?: string): MenuOption["icon"] {
+  const Comp = resolveHeroIcon(iconName);
+  if (Comp) return () => h(Comp, { style: "width:18px;height:18px;display:block" });
+  // フォールバック：アイコン未設定のメニュー項目でも折り畳み時に判別できるよう小円を表示
+  return () =>
+    h("span", {
+      style:
+        "display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.4;flex-shrink:0",
+    });
+}
+
+// ─── 后端菜单节点类型 ──────────────────────────────────────────────────────────
+interface RawMenuNode {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  path?: string | null;
+  icon?: string;
+  parent_id?: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  children: RawMenuNode[];
+}
+
+// ─── 菜单树转 NMenu options ────────────────────────────────────────────────────
+function mapToMenuOptions(menus: RawMenuNode[]): MenuOption[] {
+  return menus.map((m) => {
+    const option: MenuOption = {
+      key: m.path || m.id,
+      label: m.name,
+      icon: makeMenuIcon(m.icon),
+    };
+    if (m.children.length > 0) {
+      option.children = mapToMenuOptions(m.children);
+    }
+    return option;
+  });
+}
+
+// ─── 侧边栏菜单数据 ────────────────────────────────────────────────────────────
+const ADMIN_PREFIXES = ["platform", "security"];
+
+const menuOptions = computed<MenuOption[]>(() => {
+  if (!userStore.userInfo || !userStore.roles.length) return [];
+
   const allMenus = userStore.userInfo.roles.flatMap((r) => r.menus || []);
+  const uniqueMenus = Array.from(new Map(allMenus.map((m) => [m.id, m])).values());
 
-  // Deduplicate by ID
-  const uniqueMenus = Array.from(
-    new Map(allMenus.map((m) => [m.id, m])).values(),
-  );
+  const filtered = uniqueMenus
+    .filter(
+      (m) =>
+        m.type !== "BUTTON" &&
+        m.is_visible &&
+        ADMIN_PREFIXES.some((prefix) => m.code.startsWith(prefix)),
+    )
+    .sort((a, b) => a.sort_order - b.sort_order);
 
-  // Filter out BUTTON types and non-visible menus
-  const navMenus = uniqueMenus.filter(
-    (m) => m.type !== "BUTTON" && m.is_visible,
-  );
+  const menuMap = new Map<string, RawMenuNode>();
+  filtered.forEach((m) => menuMap.set(m.id, { ...m, children: [] } as RawMenuNode));
 
-  // Sort by sort_order
-  navMenus.sort((a, b) => a.sort_order - b.sort_order);
-
-  // Build tree
-  const menuMap = new Map();
-  navMenus.forEach((m) => menuMap.set(m.id, { ...m, children: [] }));
-
-  const tree: Record<string, unknown>[] = [];
-  navMenus.forEach((m) => {
+  const tree: RawMenuNode[] = [];
+  filtered.forEach((m) => {
     if (m.parent_id && menuMap.has(m.parent_id)) {
-      menuMap.get(m.parent_id).children.push(menuMap.get(m.id));
+      menuMap.get(m.parent_id)!.children.push(menuMap.get(m.id)!);
     } else {
-      tree.push(menuMap.get(m.id));
+      tree.push(menuMap.get(m.id)!);
     }
   });
 
-  if (
-    tree.length === 0 &&
-    (userStore.roles.includes("superadmin") ||
-      userStore.roles.includes("admin") ||
-      userStore.userInfo?.username === "admin")
-  ) {
-    return [
-      {
-        itemKey: "platform-group",
-        text: "平台基础管理(系统默认)",
-        icon: renderIcon("IconServer"),
-        items: [
-          {
-            itemKey: "/admin/organizations",
-            text: "组织架构管理",
-            icon: renderIcon("IconTree"),
-          },
-          {
-            itemKey: "/admin/tenants",
-            text: "租户管理",
-            icon: renderIcon("IconHome"),
-          },
-          {
-            itemKey: "/admin/users",
-            text: "用户管理",
-            icon: renderIcon("IconUserGroup"),
-          },
-          {
-            itemKey: "/admin/roles",
-            text: "角色与权限配置",
-            icon: renderIcon("IconShield"),
-          },
-          {
-            itemKey: "/admin/menus",
-            text: "菜单与权限管理",
-            icon: renderIcon("IconList"),
-          },
-        ],
-      },
-      {
-        itemKey: "security-group",
-        text: "安全与集成",
-        icon: renderIcon("IconSetting"),
-        items: [
-          {
-            itemKey: "/admin/sso",
-            text: "SSO集成设置",
-            icon: renderIcon("IconKey"),
-          },
-          {
-            itemKey: "/admin/audit",
-            text: "审计日志",
-            icon: renderIcon("IconList"),
-          },
-        ],
-      },
-    ];
-  }
-
-  // Map to Semi UI Nav format
-  function mapToNavItems(
-    menus: Record<string, unknown>[],
-  ): Record<string, unknown>[] {
-    return menus.map((m) => {
-      const item: Record<string, unknown> = {
-        itemKey: m.path || m.id,
-        text: m.name,
-        icon: renderIcon(m.icon as string | undefined),
-      };
-      if (Array.isArray(m.children) && m.children.length > 0) {
-        item.items = mapToNavItems(m.children as Record<string, unknown>[]);
-      }
-      return item;
-    });
-  }
-
-  return mapToNavItems(tree);
+  return mapToMenuOptions(tree);
 });
 
-const currentRoutePath = computed(() => route.path);
+// ─── 当前路由高亮 ──────────────────────────────────────────────────────────────
+const selectedKey = computed(() => route.path);
 
-const onSelect = (data: { itemKey?: string | number }) => {
-  if (data.itemKey && String(data.itemKey).startsWith("/")) {
-    router.push(String(data.itemKey));
+// ─── 展开状态管理 ─────────────────────────────────────────────────────────────
+const expandedKeys = ref<string[]>([]);
+
+watch(
+  menuOptions,
+  (opts) => {
+    if (expandedKeys.value.length === 0) {
+      expandedKeys.value = opts
+        .filter((o) => Array.isArray(o.children) && o.children.length > 0)
+        .map((o) => String(o.key));
+    }
+  },
+  { immediate: true },
+);
+
+// ─── 菜单选中跳转 ──────────────────────────────────────────────────────────────
+function onMenuSelect(key: string) {
+  if (key.startsWith("/")) {
+    router.push(key);
   }
-};
+}
 
+// ─── 侧边栏折叠 ───────────────────────────────────────────────────────────────
 const isCollapsed = ref(false);
-const onCollapseChange = (collapse: boolean) => {
-  isCollapsed.value = collapse;
-};
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: var(--semi-color-fill-1);
   border-radius: 20px;
 }
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: var(--semi-color-fill-2);
-}
+
+.logo-text-enter-active,
+.logo-text-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.logo-text-enter-from,
+.logo-text-leave-to { opacity: 0; transform: translateX(-6px); }
 </style>

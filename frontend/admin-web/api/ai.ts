@@ -33,7 +33,8 @@ export interface ChatChunk {
  */
 export async function* streamChat(
   query: string,
-  conversationId?: string
+  conversationId?: string,
+  signal?: AbortSignal,
 ): AsyncGenerator<ChatChunk> {
   const userStore = useUserStore();
 
@@ -47,6 +48,7 @@ export async function* streamChat(
       query,
       conversation_id: conversationId ?? null,
     }),
+    signal,
   });
 
   if (!response.ok) {

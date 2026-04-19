@@ -33,6 +33,7 @@ export interface UserInfo {
   location?: string;
   bio?: string;
   is_active: boolean;
+  is_superadmin?: boolean;
   tenant_id?: string;
   org_id?: string;
   last_login_time?: string;

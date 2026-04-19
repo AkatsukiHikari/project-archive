@@ -194,11 +194,21 @@
         role="button"
         class="flex items-center gap-3 pl-2 cursor-pointer hover:opacity-80 transition-opacity"
       >
+        <!-- 有头像时显示图片，加载失败或无头像时显示首字母占位 -->
         <img
+          v-if="userStore.userInfo?.avatar && !headerAvatarError"
           alt="用户头像"
-          class="h-9 w-9 rounded-full object-cover border-2 border-[var(--semi-color-border)] shadow-sm bg-[var(--semi-color-fill-0)]"
-          :src="userStore.userInfo?.avatar || ''"
+          class="h-9 w-9 rounded-full object-cover border-2 border-[var(--semi-color-border)] shadow-sm"
+          :src="userStore.userInfo.avatar"
+          @error="headerAvatarError = true"
         />
+        <div
+          v-else
+          class="h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 border-[var(--semi-color-border)] shadow-sm shrink-0"
+          style="background:oklch(var(--p));color:oklch(var(--pc))"
+        >
+          {{ (userStore.userInfo?.full_name || userStore.userInfo?.username || 'U').charAt(0).toUpperCase() }}
+        </div>
         <div class="hidden md:block text-left">
           <div class="text-sm font-medium text-base-content">
             {{ userStore.userInfo?.username || "系统管理员" }}
@@ -259,6 +269,10 @@ import {
 const userStore = useUserStore();
 const { logout: handleLogout } = useAuth();
 const { currentTheme, themes, setTheme } = useTheme();
+
+// 头像加载错误回退
+const headerAvatarError = ref(false);
+watch(() => userStore.userInfo?.avatar, () => { headerAvatarError.value = false; });
 
 // ─── 实时时间 ───
 const currentTime = ref("");

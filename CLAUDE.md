@@ -118,3 +118,4 @@ Backend reads from `backend/.env`. Key variables:
 | `STORAGE_TYPE` | `local` / `minio` / `aws` / `alioss` |
 | `SECRET_KEY` | JWT signing key |
 | `CORS_ORIGINS` | Allowed frontend origins |
+

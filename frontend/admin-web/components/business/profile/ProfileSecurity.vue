@@ -1,125 +1,91 @@
 <template>
   <div
-    class="rounded-2xl bg-[var(--semi-color-bg-0)] border border-[var(--semi-color-border)] shadow-sm"
+    class="rounded-2xl border shadow-sm"
+    style="background:var(--semi-color-bg-0);border-color:var(--semi-color-border)"
   >
-    <div class="px-6 py-4 border-b border-[var(--semi-color-border)]">
-      <h2 class="font-semibold text-[var(--semi-color-text-0)]">安全管理</h2>
-      <p class="text-xs text-[var(--semi-color-text-2)] mt-0.5">
-        管理账户安全设置
-      </p>
+    <div class="px-6 py-4 border-b" style="border-color:var(--semi-color-border)">
+      <h2 class="font-semibold" style="color:var(--semi-color-text-0)">安全管理</h2>
+      <p class="text-xs mt-0.5" style="color:var(--semi-color-text-2)">管理账户安全设置</p>
     </div>
     <div class="p-6 flex flex-col gap-4">
       <!-- 密码行 -->
       <div
-        class="flex items-center justify-between p-4 rounded-xl border border-[var(--semi-color-border)] bg-[var(--semi-color-bg-1)]"
+        class="flex items-center justify-between p-4 rounded-xl border"
+        style="border-color:var(--semi-color-border);background:var(--semi-color-bg-1)"
       >
         <div class="flex items-center gap-3">
-          <div
-            class="w-9 h-9 rounded-lg bg-[oklch(var(--p)/0.1)] flex items-center justify-center"
-          >
-            <Icon
-              name="material-symbols:lock-outline"
-              class="text-lg text-[oklch(var(--p))]"
-            />
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:oklch(var(--p)/0.1)">
+            <Icon name="material-symbols:lock-outline" class="text-lg" style="color:oklch(var(--p))" />
           </div>
           <div>
-            <p class="text-sm font-medium text-[var(--semi-color-text-0)]">
-              登录密码
-            </p>
-            <p class="text-xs text-[var(--semi-color-text-2)]">
-              定期修改密码可提高账号安全性
-            </p>
+            <p class="text-sm font-medium" style="color:var(--semi-color-text-0)">登录密码</p>
+            <p class="text-xs" style="color:var(--semi-color-text-2)">定期修改密码可提高账号安全性</p>
           </div>
         </div>
-        <Button type="primary" theme="light" @click="modalVisible = true"
-          >修改密码</Button
-        >
+        <NButton @click="modalVisible = true">修改密码</NButton>
       </div>
       <!-- 最近登录行 -->
       <div
-        class="flex items-center justify-between p-4 rounded-xl border border-[var(--semi-color-border)] bg-[var(--semi-color-bg-1)]"
+        class="flex items-center justify-between p-4 rounded-xl border"
+        style="border-color:var(--semi-color-border);background:var(--semi-color-bg-1)"
       >
         <div class="flex items-center gap-3">
-          <div
-            class="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center"
-          >
-            <Icon
-              name="material-symbols:history"
-              class="text-lg text-green-600"
-            />
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-green-500/10">
+            <Icon name="material-symbols:history" class="text-lg text-green-600" />
           </div>
           <div>
-            <p class="text-sm font-medium text-[var(--semi-color-text-0)]">
-              最近登录
-            </p>
-            <p class="text-xs text-[var(--semi-color-text-2)]">
-              {{ lastLoginDisplay }}
-            </p>
+            <p class="text-sm font-medium" style="color:var(--semi-color-text-0)">最近登录</p>
+            <p class="text-xs" style="color:var(--semi-color-text-2)">{{ lastLoginDisplay }}</p>
           </div>
         </div>
-        <Tag color="green">安全</Tag>
+        <NTag type="success">安全</NTag>
       </div>
     </div>
 
     <!-- 密码弹窗 -->
-    <Modal
-      v-model:visible="modalVisible"
+    <NModal
+      v-model:show="modalVisible"
+      preset="card"
       title="修改密码"
-      :confirm-loading="saving"
-      @ok="save"
-      @cancel="reset"
+      style="width:440px"
+      :mask-closable="false"
+      @update:show="(v) => { if (!v) reset(); }"
     >
-      <div class="flex flex-col gap-4 mt-4">
+      <div class="flex flex-col gap-4 mt-2">
         <div>
-          <label class="field-label"
-            >当前密码 <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="form.old_password"
-            type="password"
-            placeholder="请输入当前密码"
-          />
+          <label class="field-label">当前密码 <span class="text-red-500">*</span></label>
+          <NInput v-model:value="form.old_password" type="password" placeholder="请输入当前密码" show-password-on="click" />
         </div>
         <div>
-          <label class="field-label"
-            >新密码 <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="form.new_password"
-            type="password"
-            placeholder="至少 8 位，含字母和数字"
-          />
+          <label class="field-label">新密码 <span class="text-red-500">*</span></label>
+          <NInput v-model:value="form.new_password" type="password" placeholder="至少 8 位，含字母和数字" show-password-on="click" />
         </div>
         <div>
-          <label class="field-label"
-            >确认新密码 <span class="text-red-500">*</span></label
-          >
-          <Input
-            v-model="form.confirm"
-            type="password"
-            placeholder="再次输入新密码"
-          />
+          <label class="field-label">确认新密码 <span class="text-red-500">*</span></label>
+          <NInput v-model:value="form.confirm" type="password" placeholder="再次输入新密码" show-password-on="click" />
         </div>
-        <p
-          v-if="formError"
-          class="text-sm text-red-500 flex items-center gap-1"
-        >
-          <Icon name="material-symbols:error-outline" class="text-base" />{{
-            formError
-          }}
+        <p v-if="formError" class="text-sm text-red-500 flex items-center gap-1">
+          <Icon name="material-symbols:error-outline" class="text-base" />{{ formError }}
         </p>
       </div>
-    </Modal>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <NButton @click="reset">取消</NButton>
+          <NButton type="primary" :loading="saving" @click="save">确认修改</NButton>
+        </div>
+      </template>
+    </NModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { Button, Input, Modal, Tag, Toast } from "@kousum/semi-ui-vue";
+import { NButton, NInput, NModal, NTag, useMessage } from "naive-ui";
 import { UserAPI } from "@/api/iam";
 
 defineProps<{ lastLoginDisplay: string }>();
 
+const message = useMessage();
 const modalVisible = ref(false);
 const saving = ref(false);
 const formError = ref("");
@@ -151,7 +117,7 @@ async function save() {
       old_password: form.value.old_password,
       new_password: form.value.new_password,
     });
-    Toast.success("密码修改成功");
+    message.success("密码修改成功");
     reset();
   } catch (e) {
     formError.value = e instanceof Error ? e.message : "密码修改失败";

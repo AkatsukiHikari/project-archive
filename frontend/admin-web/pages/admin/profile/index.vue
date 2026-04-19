@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[var(--semi-color-bg-1)] py-8 px-6">
+  <div class="min-h-screen py-8 px-6" style="background:var(--semi-color-bg-1)">
     <div class="max-w-5xl mx-auto flex gap-6 items-start">
       <!-- 左侧信息卡 + 导航 -->
       <aside class="w-64 shrink-0">
@@ -50,7 +50,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { Toast } from "@kousum/semi-ui-vue";
+import { useMessage } from "naive-ui";
 import { UserAPI, type User } from "@/api/iam";
 import { useUserStore } from "@/stores/user";
 import ProfileSidebarCard from "@/components/business/profile/ProfileSidebarCard.vue";
@@ -61,6 +61,7 @@ import ProfileAuditLog from "@/components/business/profile/ProfileAuditLog.vue";
 
 definePageMeta({ layout: "default" });
 
+const message = useMessage();
 const userStore = useUserStore();
 const loading = ref(true);
 const profile = ref<User | null>(null);
@@ -83,7 +84,6 @@ const lastLoginDisplay = computed(() =>
 );
 
 async function loadProfile() {
-  // Pinia 快速通道，避免白屏
   if (userStore.userInfo?.avatar) avatarSrc.value = userStore.userInfo.avatar;
   try {
     const res = await UserAPI.getProfile();
@@ -107,7 +107,7 @@ async function onAvatarChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
-    Toast.error("头像不得超过 5MB");
+    message.error("头像不得超过 5MB");
     return;
   }
   const prev = avatarSrc.value;
@@ -118,10 +118,10 @@ async function onAvatarChange(e: Event) {
     avatarSrc.value = res.data.avatar_url;
     if (profile.value) profile.value.avatar = res.data.avatar_url;
     await userStore.getUserInfo();
-    Toast.success("头像更新成功");
+    message.success("头像更新成功");
   } catch {
     avatarSrc.value = prev;
-    Toast.error("头像上传失败");
+    message.error("头像上传失败");
   } finally {
     avatarUploading.value = false;
     if (avatarInputRef.value) avatarInputRef.value.value = "";

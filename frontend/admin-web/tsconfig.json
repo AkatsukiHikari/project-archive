@@ -2,11 +2,7 @@
   // https://nuxt.com/docs/guide/concepts/typescript
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"],
-      "~/*": ["./*"]
-    },
+    "ignoreDeprecations": "6.0",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "types": ["node"],

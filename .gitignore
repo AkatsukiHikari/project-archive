@@ -1,0 +1,105 @@
+# ============================================================
+# Root .gitignore — SAMS project
+# ============================================================
+
+# ── OS ──────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editors ───────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*.suo
+*.user
+.fleet/
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+.installed.cfg
+MANIFEST
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.hypothesis/
+*.prof
+
+# ── uv ──────────────────────────────────────────────────────
+# uv.lock is intentionally committed — do not ignore it
+
+# ── Alembic ─────────────────────────────────────────────────
+# Keep migration scripts; ignore compiled cache inside versions
+backend/alembic/versions/__pycache__/
+
+# ── Backend storage ─────────────────────────────────────────
+backend/storage_data/
+
+# ── Node / Frontend ─────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# Nuxt build outputs
+.nuxt/
+.output/
+.nitro/
+.data/
+.cache/
+
+# Build artifacts
+dist/
+.next/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Docker ──────────────────────────────────────────────────
+# Keep docker-compose files; ignore ephemeral data volumes
+
+# ── Secrets / Credentials ───────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# ── Misc ────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig

@@ -46,6 +46,7 @@ export interface Role {
   name: string;
   code: string;
   description?: string;
+  is_system: boolean;   // 系统内置角色，不可删除
   create_time: string;
   menus?: Menu[];
 }
@@ -60,7 +61,7 @@ export interface Menu {
   icon?: string;
   sort_order: number;
   is_visible: boolean;
-  is_system: boolean;
+  is_system: boolean;   // 系统内置菜单，不可删除
   create_time: string;
 }
 
@@ -232,4 +233,89 @@ export const UserAPI = {
       "/audits/me",
       { params },
     ),
+};
+
+// ─── 统计 & 健康检查 API ───────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  active_tenants: number;     // -1 = 无权限（前端隐藏）
+  total_users: number;
+  active_users: number;
+  total_roles: number;        // -1 = 无权限
+  total_orgs: number;
+  new_users_today: number;
+  // 存储层 KPI（超管可见，非超管 = -1）
+  minio_objects: number;
+  minio_size_gb: number;
+  pg_connections: number;
+  redis_memory_mb: number;
+}
+
+export interface DayActivity {
+  date: string;   // "2026-04-06"
+  count: number;
+}
+
+export interface UserActivityData {
+  days: number;
+  data: DayActivity[];
+}
+
+export interface ModuleCount {
+  module: string;
+  count: number;
+}
+
+export interface MetricItem {
+  label: string;
+  value: string;
+}
+
+export interface BucketStat {
+  name: string;
+  object_count: number;
+  size_mb: number;
+}
+
+export interface StorageComponent {
+  name: string;
+  type: "postgres" | "redis" | "minio" | "elasticsearch" | "rabbitmq";
+  status: "ok" | "error" | "unknown";
+  latency_ms: number;
+  summary: string;
+  metrics: MetricItem[];
+  chart_data?: BucketStat[] | null;
+}
+
+export interface StorageOverviewData {
+  components: StorageComponent[];
+  checked_at: string;
+}
+
+export interface RoleUserCount {
+  role_name: string;
+  role_code: string;
+  user_count: number;
+}
+
+export interface PlatformConfig {
+  storage_type: string;
+  total_menus: number;
+  total_buttons: number;
+  total_menu_visible: number;
+  total_roles: number;
+  total_tenants: number;
+}
+
+export const StatsAPI = {
+  dashboard: () =>
+    http.get<ApiResponse<DashboardStats>, ApiResponse<DashboardStats>>("/stats/dashboard"),
+  storage: () =>
+    http.get<ApiResponse<StorageOverviewData>, ApiResponse<StorageOverviewData>>("/stats/storage"),
+  platformConfig: () =>
+    http.get<ApiResponse<PlatformConfig>, ApiResponse<PlatformConfig>>("/stats/platform-config"),
+  userActivity: (days: 7 | 30 = 7) =>
+    http.get<ApiResponse<UserActivityData>, ApiResponse<UserActivityData>>("/stats/user-activity", {
+      params: { days },
+    }),
 };

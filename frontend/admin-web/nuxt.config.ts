@@ -58,7 +58,7 @@ export default defineNuxtConfig({
 
   // 确保 vue-sonner 样式被构建
   build: {
-    transpile: ["vue-sonner"],
+    transpile: ["vue-sonner", "naive-ui", "@css-render/vue3-ssr"],
   },
 
   css: ["~/assets/css/daisy-semi-sync.css"],

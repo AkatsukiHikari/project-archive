@@ -1,165 +1,122 @@
-"""
-档案库 Pydantic Schema（请求/响应 DTO）
-"""
-
 import uuid
-from typing import Optional, List
-from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Any, Literal
+from pydantic import BaseModel, Field
 
 
-# ─── Fonds（全宗）────────────────────────────────────────────────────────────
+# ── 目录 ──────────────────────────────────────────────────────────────────────
 
-class FondsCreate(BaseModel):
-    fonds_code: str = Field(..., max_length=50, description="全宗号")
-    name: str = Field(..., max_length=255, description="全宗名称")
-    short_name: Optional[str] = Field(None, max_length=100)
-    description: Optional[str] = None
-    start_year: Optional[int] = None
-    end_year: Optional[int] = None
-    retention_period: str = Field("permanent", description="保管期限: permanent/long/short")
-    tenant_id: Optional[uuid.UUID] = None
-    custodian_id: Optional[uuid.UUID] = None
-    metadata_json: Optional[dict] = None
-
-
-class FondsUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=255)
-    short_name: Optional[str] = Field(None, max_length=100)
-    description: Optional[str] = None
-    start_year: Optional[int] = None
-    end_year: Optional[int] = None
-    retention_period: Optional[str] = None
-    status: Optional[str] = None
-    custodian_id: Optional[uuid.UUID] = None
-    metadata_json: Optional[dict] = None
-
-
-class FondsOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    fonds_code: str
-    name: str
-    short_name: Optional[str]
-    description: Optional[str]
-    start_year: Optional[int]
-    end_year: Optional[int]
-    retention_period: str
-    status: str
-    tenant_id: Optional[uuid.UUID]
-    custodian_id: Optional[uuid.UUID]
-    metadata_json: Optional[dict]
-    create_time: datetime
-    update_time: datetime
-
-    # 统计（按需填充）
-    archive_file_count: Optional[int] = None
-
-
-# ─── ArchiveFile（案卷）──────────────────────────────────────────────────────
-
-class ArchiveFileCreate(BaseModel):
-    fonds_id: uuid.UUID = Field(..., description="所属全宗 ID")
-    file_number: str = Field(..., max_length=100, description="案卷号")
-    title: str = Field(..., max_length=512, description="案卷题名")
+class CatalogCreate(BaseModel):
+    fonds_id: uuid.UUID
+    category_id: uuid.UUID
+    catalog_no: str = Field(..., max_length=50)
+    name: str = Field(..., max_length=255)
     year: Optional[int] = None
-    classification: Optional[str] = Field(None, max_length=100)
-    retention_period: str = Field("permanent")
-    security_level: str = Field("public")
-    tenant_id: Optional[uuid.UUID] = None
-    source_sip_id: Optional[uuid.UUID] = None
-    metadata_json: Optional[dict] = None
-    notes: Optional[str] = None
+    org_mode: Literal["by_item", "by_volume"] = "by_item"
 
 
-class ArchiveFileUpdate(BaseModel):
-    title: Optional[str] = Field(None, max_length=512)
+class CatalogUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=255)
     year: Optional[int] = None
-    classification: Optional[str] = None
-    retention_period: Optional[str] = None
-    security_level: Optional[str] = None
-    status: Optional[str] = None
-    metadata_json: Optional[dict] = None
-    notes: Optional[str] = None
+    org_mode: Optional[Literal["by_item", "by_volume"]] = None
 
 
-class ArchiveFileOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class CatalogRead(BaseModel):
     id: uuid.UUID
     fonds_id: uuid.UUID
-    file_number: str
-    title: str
-    year: Optional[int]
-    classification: Optional[str]
-    retention_period: str
-    security_level: str
-    item_count: int
-    status: str
-    source_sip_id: Optional[uuid.UUID]
-    tenant_id: Optional[uuid.UUID]
-    metadata_json: Optional[dict]
-    notes: Optional[str]
-    create_time: datetime
-    update_time: datetime
+    category_id: uuid.UUID
+    catalog_no: str
+    name: str
+    year: Optional[int] = None
+    org_mode: str
+    tenant_id: Optional[uuid.UUID] = None
+
+    model_config = {"from_attributes": True}
 
 
-# ─── ArchiveItem（文件条目）──────────────────────────────────────────────────
+# ── 档案 ──────────────────────────────────────────────────────────────────────
 
-class ArchiveItemCreate(BaseModel):
-    archive_file_id: uuid.UUID = Field(..., description="所属案卷 ID")
-    item_number: str = Field(..., max_length=100)
-    title: str = Field(..., max_length=512)
-    item_type: str = Field("document")
-    author: Optional[str] = Field(None, max_length=200)
-    document_date: Optional[str] = None
+class ArchiveCreate(BaseModel):
+    fonds_id: uuid.UUID
+    catalog_id: uuid.UUID
+    parent_id: Optional[uuid.UUID] = None
+    category_id: uuid.UUID
+    level: Literal["volume", "item"] = "item"
+
+    # DA/T 必有项
+    title: str = Field(..., max_length=512, description="题名（必填）")
+    fonds_code: str = Field(..., max_length=50)
+    year: Optional[int] = None
+    creator: Optional[str] = Field(default=None, max_length=200)
+    catalog_no: Optional[str] = Field(default=None, max_length=50)
+    volume_no: Optional[str] = Field(default=None, max_length=50)
+    item_no: Optional[str] = Field(default=None, max_length=50)
+    archive_no: Optional[str] = Field(default=None, max_length=100)
+    security_level: Literal["public", "internal", "confidential", "secret"] = "public"
+    retention_period: Literal["permanent", "long", "short"] = "permanent"
+    doc_date: Optional[str] = None
     pages: Optional[int] = None
-    security_level: str = Field("public")
+
+    # 门类私有字段
+    ext_fields: Optional[dict[str, Any]] = None
+
+    # 存储（可选，归档后再填）
     storage_key: Optional[str] = None
     storage_bucket: Optional[str] = None
     file_size: Optional[int] = None
     file_format: Optional[str] = None
     sha256_hash: Optional[str] = None
-    tenant_id: Optional[uuid.UUID] = None
-    metadata_json: Optional[dict] = None
 
 
-class ArchiveItemUpdate(BaseModel):
-    title: Optional[str] = Field(None, max_length=512)
-    author: Optional[str] = None
-    document_date: Optional[str] = None
+class ArchiveUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=512)
+    creator: Optional[str] = Field(default=None, max_length=200)
+    year: Optional[int] = None
+    security_level: Optional[Literal["public", "internal", "confidential", "secret"]] = None
+    retention_period: Optional[Literal["permanent", "long", "short"]] = None
+    doc_date: Optional[str] = None
     pages: Optional[int] = None
-    security_level: Optional[str] = None
-    metadata_json: Optional[dict] = None
+    status: Optional[Literal["active", "restricted", "destroyed"]] = None
+    ext_fields: Optional[dict[str, Any]] = None
+    archive_no: Optional[str] = Field(default=None, max_length=100)
 
 
-class ArchiveItemOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class ArchiveRead(BaseModel):
     id: uuid.UUID
-    archive_file_id: uuid.UUID
-    item_number: str
+    fonds_id: uuid.UUID
+    catalog_id: uuid.UUID
+    parent_id: Optional[uuid.UUID] = None
+    category_id: uuid.UUID
+    level: str
+    archive_no: Optional[str] = None
+    fonds_code: str
+    catalog_no: Optional[str] = None
+    volume_no: Optional[str] = None
+    item_no: Optional[str] = None
+    year: Optional[int] = None
     title: str
-    item_type: str
-    author: Optional[str]
-    document_date: Optional[str]
-    pages: Optional[int]
+    creator: Optional[str] = None
     security_level: str
-    storage_key: Optional[str]
-    storage_bucket: Optional[str]
-    file_size: Optional[int]
-    file_format: Optional[str]
-    sha256_hash: Optional[str]
+    retention_period: str
+    doc_date: Optional[str] = None
+    pages: Optional[int] = None
+    status: str
+    ext_fields: Optional[dict[str, Any]] = None
+    file_format: Optional[str] = None
+    file_size: Optional[int] = None
     embedding_status: str
-    tenant_id: Optional[uuid.UUID]
-    metadata_json: Optional[dict]
-    create_time: datetime
-    update_time: datetime
+    tenant_id: Optional[uuid.UUID] = None
+
+    model_config = {"from_attributes": True}
 
 
-# ─── 聚合视图（档案树节点） ───────────────────────────────────────────────────
-
-class FondsTree(FondsOut):
-    """全宗树（含案卷列表，不含条目，用于左侧导航树）"""
-    children: List[ArchiveFileOut] = Field(default_factory=list)
+class ArchiveListQuery(BaseModel):
+    """档案列表查询参数"""
+    fonds_id: Optional[uuid.UUID] = None
+    catalog_id: Optional[uuid.UUID] = None
+    category_id: Optional[uuid.UUID] = None
+    year: Optional[int] = None
+    keyword: Optional[str] = Field(default=None, description="题名/责任者关键字")
+    security_level: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)

@@ -24,7 +24,7 @@ router = APIRouter(tags=["档案管理"])
 async def list_catalogs(
     fonds_id: uuid.UUID = Query(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
     svc = CatalogService(db)
     items = await svc.list_by_fonds(fonds_id)
@@ -47,7 +47,7 @@ async def create_catalog(
 async def delete_catalog(
     catalog_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
     svc = CatalogService(db)
     await svc.delete(catalog_id)
@@ -103,7 +103,7 @@ async def create_archive(
 async def get_archive(
     archive_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
     svc = ArchiveService(db)
     item = await svc.get(archive_id)
@@ -115,7 +115,7 @@ async def update_archive(
     archive_id: uuid.UUID,
     data: ArchiveUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
     svc = ArchiveService(db)
     item = await svc.update(archive_id, data)
@@ -128,7 +128,7 @@ async def update_archive(
 async def delete_archive(
     archive_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
     svc = ArchiveService(db)
     await svc.delete(archive_id)
@@ -142,7 +142,7 @@ async def override_archive_no(
     archive_id: uuid.UUID,
     archive_no: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
     """手动覆盖档号"""
     svc = ArchiveService(db)

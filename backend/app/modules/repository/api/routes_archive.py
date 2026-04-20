@@ -1,16 +1,19 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Body
+
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.common.response import ResponseModel, success
 from app.infra.db.session import get_db
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
-from app.modules.repository.services.archive_service import CatalogService, ArchiveService
 from app.modules.repository.schemas.archive import (
+    ArchiveCreate, ArchiveListQuery, ArchiveRead, ArchiveUpdate,
     CatalogCreate, CatalogRead,
-    ArchiveCreate, ArchiveUpdate, ArchiveRead, ArchiveListQuery,
 )
-from app.common.response import success, ResponseModel
+from app.modules.repository.services.archive_service import ArchiveService, CatalogService
+from app.modules.repository.services.es_sync_service import delete_one, sync_one
 
 router = APIRouter(tags=["档案管理"])
 
@@ -92,6 +95,7 @@ async def create_archive(
     svc = ArchiveService(db)
     item = await svc.create(data, tenant_id=current_user.tenant_id)
     await db.commit()
+    await sync_one(item)   # PG 提交后异步同步 ES（失败只记日志）
     return success(ArchiveRead.model_validate(item))
 
 
@@ -116,6 +120,7 @@ async def update_archive(
     svc = ArchiveService(db)
     item = await svc.update(archive_id, data)
     await db.commit()
+    await sync_one(item)   # 更新后同步 ES
     return success(ArchiveRead.model_validate(item))
 
 
@@ -128,6 +133,7 @@ async def delete_archive(
     svc = ArchiveService(db)
     await svc.delete(archive_id)
     await db.commit()
+    await delete_one(str(archive_id))  # 软删除后从 ES 移除
     return success()
 
 
@@ -142,4 +148,19 @@ async def override_archive_no(
     svc = ArchiveService(db)
     item = await svc.update(archive_id, ArchiveUpdate(archive_no=archive_no))
     await db.commit()
+    await sync_one(item)
     return success(ArchiveRead.model_validate(item))
+
+
+# ── ES 全量重建（管理员） ─────────────────────────────────────────────────────
+
+@router.post("/archive/admin/rebuild-es-index", response_model=ResponseModel[dict])
+async def rebuild_es_index(
+    current_user: User = Depends(get_current_user),
+):
+    """触发 ES 全量重建任务（超级管理员）。"""
+    from app.modules.repository.tasks.es_rebuild import rebuild_archive_index
+    task = rebuild_archive_index.delay(
+        str(current_user.tenant_id) if current_user.tenant_id else None
+    )
+    return success({"task_id": task.id})

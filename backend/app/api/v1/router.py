@@ -46,3 +46,6 @@ v1_router.include_router(no_rule_router)
 
 from app.modules.utilization.api.search import router as search_router
 v1_router.include_router(search_router, prefix="/utilization", tags=["utilization"])
+
+from app.modules.collection.api.routes_import import router as import_router
+v1_router.include_router(import_router)

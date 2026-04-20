@@ -23,6 +23,8 @@ from app.modules.repository.models.category import ArchiveCategory  # noqa: F401
 from app.modules.repository.models.no_rule import ArchiveNoRule  # noqa: F401
 from app.modules.repository.models.archive import Catalog, Archive  # noqa: F401
 from app.modules.repository.models.no_rule_seq import ArchiveNoSeq  # noqa: F401
+from app.modules.collection.models.import_task import ImportTask  # noqa: F401
+from app.modules.collection.models.mapping_template import FieldMappingTemplate  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

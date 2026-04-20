@@ -82,8 +82,27 @@ class ArchiveService:
         archive = await self._repo.get_by_id(archive_id)
         if not archive:
             raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="档案不存在")
-        for field, value in data.model_dump(exclude_unset=True).items():
-            setattr(archive, field, value)
+        update_data = data.model_dump(exclude_unset=True)
+        if "title" in update_data:
+            archive.title = update_data["title"]
+        if "creator" in update_data:
+            archive.creator = update_data["creator"]
+        if "year" in update_data:
+            archive.year = update_data["year"]
+        if "doc_date" in update_data:
+            archive.doc_date = update_data["doc_date"]
+        if "pages" in update_data:
+            archive.pages = update_data["pages"]
+        if "security_level" in update_data:
+            archive.security_level = update_data["security_level"]
+        if "retention_period" in update_data:
+            archive.retention_period = update_data["retention_period"]
+        if "archive_no" in update_data:
+            archive.archive_no = update_data["archive_no"]
+        if "ext_fields" in update_data:
+            archive.ext_fields = update_data["ext_fields"]
+        if "status" in update_data:
+            archive.status = update_data["status"]
         return archive
 
     async def delete(self, archive_id: uuid.UUID) -> None:

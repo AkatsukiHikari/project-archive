@@ -26,6 +26,8 @@ celery_app = Celery(
     backend=f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/2",  # Redis DB 2 存任务结果
     include=[
         "app.modules.repository.tasks.embedding",
+        "app.modules.repository.tasks.es_rebuild",
+        "app.modules.collection.tasks.import_task",
         "app.modules.preservation.tasks.detection",
     ],
 )
@@ -43,6 +45,8 @@ celery_app.conf.update(
     # 任务路由（不同类型任务进不同队列）
     task_routes={
         "app.modules.repository.tasks.embedding.*": {"queue": "embedding"},
+        "app.modules.repository.tasks.es_rebuild.*": {"queue": "default"},
+        "app.modules.collection.tasks.import_task.*": {"queue": "default"},
         "app.modules.preservation.tasks.detection.*": {"queue": "preservation"},
     },
     # Worker 并发数（CPU 密集型任务建议等于 CPU 核数）

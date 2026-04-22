@@ -8,8 +8,10 @@ WebSocket 端点
 4. 断开时自动清理连接
 """
 
+import asyncio
 import json
 import logging
+import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -110,3 +112,94 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
         logger.error("用户 %s WebSocket 异常: %s", user_id, str(e))
     finally:
         ws_manager.disconnect(user_id)
+
+
+@router.websocket("/import/{task_id}")
+async def import_progress_ws(
+    websocket: WebSocket,
+    task_id: uuid.UUID,
+    token: str = "",
+):
+    """
+    导入任务实时进度推送端点。
+
+    连接 URL: ws://host/ws/import/{task_id}?token=<jwt>
+
+    服务端订阅 Redis pub/sub 频道 import_progress:{task_id}，
+    将 Celery worker 推送的进度 JSON 转发给前端，直到任务结束或客户端断开。
+
+    进度消息格式（由 execute_import task 发布）：
+      {"type": "progress", "processed": 120, "total": 500, "success": 118, "failed": 2}
+      {"type": "done",     "success": 490, "failed": 10, "skipped": 0, "report_url": "..."}
+      {"type": "failed",   "reason": "..."}
+    """
+    await websocket.accept()
+
+    # ── 认证 ──
+    from app.infra.db.session import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        user = await _authenticate_ws(token, db)
+
+    if user is None:
+        await websocket.send_text(
+            json.dumps({"event": "error", "data": {"message": "认证失败"}})
+        )
+        await websocket.close(code=4001, reason="authentication_failed")
+        return
+
+    # ── 订阅 Redis 频道 ──
+    from app.infra.cache.redis import redis_service
+
+    channel = f"import_progress:{task_id}"
+    pubsub = redis_service.pubsub()
+    await pubsub.subscribe(channel)
+
+    logger.info("用户 %s 订阅导入进度频道 %s", user.id, channel)
+
+    async def _forward():
+        """从 Redis pub/sub 读消息并转发，遇到终态消息后退出。"""
+        async for message in pubsub.listen():
+            if message["type"] != "message":
+                continue
+            raw: str = message["data"]
+            await websocket.send_text(raw)
+            try:
+                payload = json.loads(raw)
+                if payload.get("type") in ("done", "failed"):
+                    return
+            except (json.JSONDecodeError, AttributeError):
+                pass
+
+    async def _receive():
+        """接收客户端心跳，维持连接并检测断开。"""
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                msg = json.loads(raw)
+                if msg.get("event") == "ping":
+                    await websocket.send_text(json.dumps({"event": "pong"}))
+            except (json.JSONDecodeError, AttributeError):
+                pass
+
+    try:
+        # 同时跑 forward 和 receive，任一完成则停止
+        forward_task = asyncio.ensure_future(_forward())
+        receive_task = asyncio.ensure_future(_receive())
+        done, pending = await asyncio.wait(
+            [forward_task, receive_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for t in pending:
+            t.cancel()
+    except WebSocketDisconnect:
+        logger.info("用户 %s 断开导入进度频道 %s", user.id, channel)
+    except Exception as e:
+        logger.error("导入进度 WebSocket 异常 [%s]: %s", channel, str(e))
+    finally:
+        await pubsub.unsubscribe(channel)
+        await pubsub.aclose()
+        try:
+            await websocket.close()
+        except Exception:
+            pass

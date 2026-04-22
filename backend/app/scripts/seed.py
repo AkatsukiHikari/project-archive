@@ -67,9 +67,90 @@ MENU_TREE = [
         "icon": "heroicons:archive-box",
         "sort_order": 30,
         "children": [
-            {"code": "archive:collection",   "name": "档案收集", "type": "MENU", "path": "/archive/collection",  "icon": "heroicons:inbox-arrow-down",   "sort_order": 1},
-            {"code": "archive:repository",   "name": "档案库房", "type": "MENU", "path": "/archive/repository",  "icon": "heroicons:folder-open",        "sort_order": 2},
-            {"code": "archive:preservation", "name": "四性检测", "type": "MENU", "path": "/preservation",        "icon": "heroicons:shield-exclamation", "sort_order": 3},
+            # ── 档案收集 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.collection", "name": "档案收集", "type": "DIR",
+                "icon": "heroicons:inbox-arrow-down", "sort_order": 1,
+                "children": [
+                    {"code": "archive.collection.transfer",   "name": "归档移交", "type": "MENU", "path": "/archive/collection/transfer",  "icon": "heroicons:arrow-down-tray",          "sort_order": 1},
+                    {"code": "archive.collection.receive",    "name": "接收登记", "type": "MENU", "path": "/archive/collection/receive",   "icon": "heroicons:clipboard-document-check", "sort_order": 2},
+                    {"code": "archive.collection.import",     "name": "批量导入", "type": "MENU", "path": "/archive/collection/import",    "icon": "heroicons:table-cells",              "sort_order": 3},
+                    {"code": "archive.collection.ledger",     "name": "收集台账", "type": "MENU", "path": "/archive/collection/ledger",    "icon": "heroicons:book-open",                "sort_order": 4},
+                ],
+            },
+            # ── 档案整理 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.organize", "name": "档案整理", "type": "DIR",
+                "icon": "heroicons:pencil-square", "sort_order": 2,
+                "children": [
+                    {"code": "archive.organize.records",  "name": "档案著录",   "type": "MENU", "path": "/archive/organize/records",  "icon": "heroicons:document-text",       "sort_order": 1},
+                    {"code": "archive.organize.catalogs", "name": "目录管理",   "type": "MENU", "path": "/archive/organize/catalogs", "icon": "heroicons:bars-3-bottom-left",  "sort_order": 2},
+                    {"code": "archive.organize.digitize", "name": "数字化加工", "type": "MENU", "path": "/archive/organize/digitize", "icon": "heroicons:computer-desktop",    "sort_order": 3},
+                    {"code": "archive.organize.ledger",   "name": "整理台账",   "type": "MENU", "path": "/archive/organize/ledger",   "icon": "heroicons:book-open",           "sort_order": 4},
+                ],
+            },
+            # ── 档案保管 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.storage", "name": "档案保管", "type": "DIR",
+                "icon": "heroicons:building-library", "sort_order": 3,
+                "children": [
+                    {"code": "archive.storage.vault",     "name": "库房管理",   "type": "MENU", "path": "/archive/storage/vault",     "icon": "heroicons:home-modern",          "sort_order": 1},
+                    {"code": "archive.storage.inout",     "name": "出入库记录", "type": "MENU", "path": "/archive/storage/inout",     "icon": "heroicons:arrows-right-left",    "sort_order": 2},
+                    {"code": "archive.storage.detection", "name": "四性检测",   "type": "MENU", "path": "/archive/storage/detection", "icon": "heroicons:shield-check",         "sort_order": 3},
+                    {"code": "archive.storage.repair",    "name": "档案修复",   "type": "MENU", "path": "/archive/storage/repair",    "icon": "heroicons:wrench-screwdriver",   "sort_order": 4},
+                    {"code": "archive.storage.ledger",    "name": "保管台账",   "type": "MENU", "path": "/archive/storage/ledger",    "icon": "heroicons:book-open",            "sort_order": 5},
+                ],
+            },
+            # ── 档案利用 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.utilization", "name": "档案利用", "type": "DIR",
+                "icon": "heroicons:magnifying-glass-circle", "sort_order": 4,
+                "children": [
+                    {"code": "archive.utilization.apply",       "name": "利用申请", "type": "MENU", "path": "/archive/utilization/apply",       "icon": "heroicons:document-plus",       "sort_order": 1},
+                    {"code": "archive.utilization.reading",     "name": "查阅登记", "type": "MENU", "path": "/archive/utilization/reading",     "icon": "heroicons:eye",                 "sort_order": 2},
+                    {"code": "archive.utilization.borrow",      "name": "借阅管理", "type": "MENU", "path": "/archive/utilization/borrow",      "icon": "heroicons:arrow-uturn-right",   "sort_order": 3},
+                    {"code": "archive.utilization.copy",        "name": "复制申请", "type": "MENU", "path": "/archive/utilization/copy",        "icon": "heroicons:document-duplicate",  "sort_order": 4},
+                    {"code": "archive.utilization.certificate", "name": "证明开具", "type": "MENU", "path": "/archive/utilization/certificate", "icon": "heroicons:identification",      "sort_order": 5},
+                    {"code": "archive.utilization.ledger",      "name": "利用台账", "type": "MENU", "path": "/archive/utilization/ledger",      "icon": "heroicons:book-open",           "sort_order": 6},
+                ],
+            },
+            # ── 档案鉴定 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.appraisal", "name": "档案鉴定", "type": "DIR",
+                "icon": "heroicons:scale", "sort_order": 5,
+                "children": [
+                    {"code": "archive.appraisal.plan",            "name": "鉴定计划", "type": "MENU", "path": "/archive/appraisal/plan",            "icon": "heroicons:calendar",                "sort_order": 1},
+                    {"code": "archive.appraisal.review",          "name": "期限复查", "type": "MENU", "path": "/archive/appraisal/review",          "icon": "heroicons:clock",                   "sort_order": 2},
+                    {"code": "archive.appraisal.evaluate",        "name": "鉴定工作", "type": "MENU", "path": "/archive/appraisal/evaluate",        "icon": "heroicons:clipboard-document-list", "sort_order": 3},
+                    {"code": "archive.appraisal.destroy-apply",   "name": "销毁申请", "type": "MENU", "path": "/archive/appraisal/destroy-apply",   "icon": "heroicons:trash",                   "sort_order": 4},
+                    {"code": "archive.appraisal.destroy-approve", "name": "销毁审批", "type": "MENU", "path": "/archive/appraisal/destroy-approve", "icon": "heroicons:check-badge",             "sort_order": 5},
+                    {"code": "archive.appraisal.destroy-exec",    "name": "销毁执行", "type": "MENU", "path": "/archive/appraisal/destroy-exec",    "icon": "heroicons:fire",                    "sort_order": 6},
+                    {"code": "archive.appraisal.ledger",          "name": "鉴定台账", "type": "MENU", "path": "/archive/appraisal/ledger",          "icon": "heroicons:book-open",               "sort_order": 7},
+                ],
+            },
+            # ── 档案编研 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.research", "name": "档案编研", "type": "DIR",
+                "icon": "heroicons:academic-cap", "sort_order": 6,
+                "children": [
+                    {"code": "archive.research.project",     "name": "编研项目", "type": "MENU", "path": "/archive/research/project",     "icon": "heroicons:folder-open",       "sort_order": 1},
+                    {"code": "archive.research.compilation", "name": "专题汇编", "type": "MENU", "path": "/archive/research/compilation", "icon": "heroicons:book-open",         "sort_order": 2},
+                    {"code": "archive.research.stats",       "name": "档案统计", "type": "MENU", "path": "/archive/research/stats",       "icon": "heroicons:chart-bar",         "sort_order": 3},
+                    {"code": "archive.research.annual",      "name": "年报管理", "type": "MENU", "path": "/archive/research/annual",      "icon": "heroicons:document-chart-bar", "sort_order": 4},
+                ],
+            },
+            # ── 基础配置 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.settings", "name": "基础配置", "type": "DIR",
+                "icon": "heroicons:cog-6-tooth", "sort_order": 7,
+                "children": [
+                    {"code": "archive.settings.fonds",      "name": "全宗管理",   "type": "MENU", "path": "/archive/settings/fonds",      "icon": "heroicons:building-library", "sort_order": 1},
+                    {"code": "archive.settings.categories", "name": "档案门类",   "type": "MENU", "path": "/archive/settings/categories", "icon": "heroicons:tag",              "sort_order": 2},
+                    {"code": "archive.settings.norules",    "name": "档号规则",   "type": "MENU", "path": "/archive/settings/norules",    "icon": "heroicons:hashtag",          "sort_order": 3},
+                    {"code": "archive.settings.retention",  "name": "保管期限表", "type": "MENU", "path": "/archive/settings/retention",  "icon": "heroicons:calendar-days",    "sort_order": 4},
+                    {"code": "archive.settings.metadata",   "name": "元数据方案", "type": "MENU", "path": "/archive/settings/metadata",   "icon": "heroicons:variable",         "sort_order": 5},
+                ],
+            },
         ],
     },
     {

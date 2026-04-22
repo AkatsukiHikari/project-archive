@@ -76,6 +76,22 @@ class CategoryService:
             category.field_schema = [f.model_dump() for f in data.field_schema]
         return category
 
+    async def get(self, category_id: uuid.UUID) -> ArchiveCategory:
+        category = await self._repo.get_by_id(category_id)
+        if not category:
+            raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="门类不存在")
+        return category
+
+    async def update_schema(
+        self, category_id: uuid.UUID, field_schema: list
+    ) -> ArchiveCategory:
+        """专用：仅更新 field_schema（表单设计器保存入口）。"""
+        category = await self._repo.get_by_id(category_id)
+        if not category:
+            raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="门类不存在")
+        category.field_schema = field_schema
+        return category
+
     async def delete(self, category_id: uuid.UUID) -> None:
         category = await self._repo.get_by_id(category_id)
         if not category:

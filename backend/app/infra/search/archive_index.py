@@ -14,7 +14,7 @@ import logging
 from typing import Any
 import uuid
 
-from app.infra.search.es_client import get_es_client, ARCHIVE_ITEM_INDEX
+from app.infra.search.es_client import get_es_client, ARCHIVE_INDEX
 from app.modules.repository.models.archive import Archive
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ async def index_item(item: Archive, fonds_code: str = "", file_number: str = "")
     }
     try:
         await client.index(
-            index=ARCHIVE_ITEM_INDEX,
+            index=ARCHIVE_INDEX,
             id=str(item.id),
             document=doc,
         )
@@ -55,7 +55,7 @@ async def delete_item(item_id: uuid.UUID) -> None:
     client = get_es_client()
     try:
         await client.delete(
-            index=ARCHIVE_ITEM_INDEX,
+            index=ARCHIVE_INDEX,
             id=str(item_id),
             ignore=[404],  # 不存在时静默忽略
         )
@@ -135,7 +135,7 @@ async def search_items(
     }
 
     try:
-        resp = await client.search(index=ARCHIVE_ITEM_INDEX, body=es_query)
+        resp = await client.search(index=ARCHIVE_INDEX, body=es_query)
         hits = resp["hits"]["hits"]
         return {
             "total": resp["hits"]["total"]["value"],

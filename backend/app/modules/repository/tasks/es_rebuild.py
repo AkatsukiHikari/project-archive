@@ -26,7 +26,7 @@ async def _rebuild_async(tenant_id_str: str | None) -> dict:
     import uuid
     from sqlalchemy import select, and_
     from app.infra.db.session import AsyncSessionLocal
-    from app.modules.repository.models.archive import Archive
+    from app.modules.repository.models.archive import ArchiveStaging as Archive
     from app.modules.repository.services.es_sync_service import bulk_sync
     from app.infra.search.es_client import get_es_client, ARCHIVE_INDEX
 

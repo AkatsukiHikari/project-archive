@@ -1,7 +1,9 @@
 import uuid
+
 import pytest
+
+from app.modules.repository.models.archive import ArchiveStaging, Catalog
 from app.modules.repository.models.category import ArchiveCategory
-from app.modules.repository.models.archive import Catalog, Archive
 
 
 def test_archive_category_instantiate():
@@ -18,38 +20,47 @@ def test_catalog_instantiate():
         catalog_no="1",
         name="2024年度文书目录",
         year=2024,
-        org_mode="by_item",
+        catalog_type="一文一件",
     )
-    assert cat.org_mode == "by_item"
+    assert cat.catalog_type == "一文一件"
     assert cat.catalog_no == "1"
 
 
-def test_archive_instantiate():
-    arch = Archive(
+def test_catalog_case_volume():
+    cat = Catalog(
         fonds_id=uuid.uuid4(),
-        catalog_id=uuid.uuid4(),
         category_id=uuid.uuid4(),
-        level="item",
-        title="关于XXX的通知",
+        catalog_no="2",
+        name="2024年案卷目录",
         year=2024,
-        fonds_code="J001",
-        status="active",
+        catalog_type="案卷目录",
     )
-    assert arch.level == "item"
-    assert arch.status == "active"
-    assert arch.title == "关于XXX的通知"
-    assert arch.fonds_code == "J001"
+    assert cat.catalog_type == "案卷目录"
+    assert cat.volume_archive_id is None
 
 
-def test_archive_volume_level():
-    vol = Archive(
+def test_archive_staging_instantiate():
+    arch = ArchiveStaging(
         fonds_id=uuid.uuid4(),
         catalog_id=uuid.uuid4(),
         category_id=uuid.uuid4(),
-        level="volume",
-        title="2024年文书案卷001",
-        fonds_code="J001",
-        status="active",
+        QZH="J001",
+        TM="关于XXX的通知",
+        ND=2024,
+        status="draft",
     )
-    assert vol.level == "volume"
-    assert vol.parent_id is None
+    assert arch.status == "draft"
+    assert arch.TM == "关于XXX的通知"
+    assert arch.QZH == "J001"
+
+
+def test_archive_staging_default_status():
+    arch = ArchiveStaging(
+        fonds_id=uuid.uuid4(),
+        catalog_id=uuid.uuid4(),
+        category_id=uuid.uuid4(),
+        QZH="J001",
+        TM="test",
+    )
+    assert arch.MJ == "public"
+    assert arch.BGQX == "permanent"

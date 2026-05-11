@@ -11,7 +11,6 @@
       :data="fondsList"
       :loading="loading"
       empty-content="暂无全宗数据"
-      :page-size="0"
     >
       <template #toolbar-right>
         <NButton type="primary" @click="openModal(null)">
@@ -62,14 +61,14 @@
 <script setup lang="tsx">
 import { ref, onMounted, reactive } from "vue";
 import {
-  NButton, NInput, NInputNumber, NSelect, NForm, NFormItem, NTag, NSpace,
+  NButton, NInput, NInputNumber, NSelect, NForm, NFormItem, NTag,
   useMessage, useDialog,
 } from "naive-ui";
 import type { FormInst, DataTableColumns } from "naive-ui";
 import { FondsAPI, type Fonds, type FondsCreate, type FondsUpdate } from "@/api/repository";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
-import ProTable from "@/components/ui/ProTable.vue";
-import CrudModal from "@/components/ui/CrudModal.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { ProTable } from "@/components/ui";
+import { CrudModal } from "@/components/ui";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 
@@ -98,25 +97,27 @@ const statusLabel: Record<string, string> = { active: "在用", archived: "归�
 const retentionLabel: Record<string, string> = { permanent: "永久", long: "长期", short: "短期" };
 
 const columns: DataTableColumns<Fonds> = [
-  { title: "全宗号", key: "fonds_code", width: 110 },
-  { title: "全宗名称", key: "name", ellipsis: { tooltip: true } },
+  {
+    title: "全宗号", key: "fonds_code", width: 110,
+    search: { placeholder: "请输入全宗号" },
+  },
+  {
+    title: "全宗名称", key: "name", ellipsis: { tooltip: true },
+    search: { placeholder: "请输入全宗名称" },
+  },
   { title: "简称", key: "short_name", width: 120 },
   {
-    title: "保管期限",
-    key: "retention_period",
-    width: 100,
+    title: "保管期限", key: "retention_period", width: 100,
+    search: { type: "select", options: retentionOptions },
     render: (row) => retentionLabel[row.retention_period] ?? row.retention_period,
   },
   {
-    title: "起止年度",
-    key: "year_range",
-    width: 120,
+    title: "起止年度", key: "year_range", width: 120,
     render: (row) => `${row.start_year ?? "—"} ~ ${row.end_year ?? "现存"}`,
   },
   {
-    title: "状态",
-    key: "status",
-    width: 90,
+    title: "状态", key: "status", width: 90,
+    search: { type: "select", options: statusOptions },
     render: (row) => (
       <NTag type={statusColor[row.status] ?? "default"} size="small">
         {statusLabel[row.status] ?? row.status}
@@ -124,14 +125,12 @@ const columns: DataTableColumns<Fonds> = [
     ),
   },
   {
-    title: "操作",
-    key: "actions",
-    width: 120,
+    title: "操作", key: "actions", width: 120,
     render: (row) => (
-      <NSpace size="small">
+      <div class="flex items-center gap-1 flex-nowrap">
         <NButton size="small" onClick={() => openModal(row)}>编辑</NButton>
         <NButton size="small" type="error" onClick={() => confirmDelete(row)}>删除</NButton>
-      </NSpace>
+      </div>
     ),
   },
 ];
@@ -241,7 +240,7 @@ async function loadList() {
   loading.value = true;
   try {
     const res = await FondsAPI.list();
-    fondsList.value = res.data.data;
+    fondsList.value = res.data;
   } finally {
     loading.value = false;
   }

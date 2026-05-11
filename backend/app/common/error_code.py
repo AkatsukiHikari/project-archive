@@ -18,6 +18,9 @@ class ErrorCode:
     # ── 成功 ──
     SUCCESS = 0
 
+    # ── 通用 ──
+    NOT_FOUND = 404
+
     # ── 认证 / 授权 (1000-1099) ──
     NOT_AUTHENTICATED = 1000
     TOKEN_EXPIRED = 1001

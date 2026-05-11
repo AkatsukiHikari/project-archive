@@ -77,7 +77,7 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import KpiCard from "@/components/admin/dashboard/KpiCard.vue";
+import { KpiCard } from "@/components/admin";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 

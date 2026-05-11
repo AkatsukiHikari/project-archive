@@ -12,7 +12,32 @@ class FieldDefinition(BaseModel):
     placeholder: Optional[str] = None
     validation: Optional[dict[str, Any]] = None
     options: Optional[list[str]] = None
+    default_value: Optional[Any] = Field(
+        default=None,
+        description="默认值；$currentYear=当前年度、$currentUser=当前用户名",
+    )
+    sort_order: int = Field(default=0, description="字段显示顺序（升序）")
     inherited: bool = Field(default=False, description="从父门类继承，不可删除")
+
+
+# ── 表单排版 Layout ────────────────────────────────────────────────────────────
+
+class FormLayoutCell(BaseModel):
+    """排版单元格：指向一个字段，span 1=半行 2=整行"""
+    field: str = Field(..., description="FieldDefinition.name")
+    span: int = Field(default=1, ge=1, le=2)
+
+
+class FormLayoutRow(BaseModel):
+    """排版行，包含 1~2 个单元格"""
+    id: str = Field(..., description="唯一行 ID（前端生成）")
+    cells: list[FormLayoutCell]
+
+
+class FormLayout(BaseModel):
+    """表单排版定义，存入 repo_archive_category.form_layout"""
+    cols: int = Field(default=2, description="表单总列数（当前固定 2）")
+    rows: list[FormLayoutRow] = []
 
 
 class CategoryCreate(BaseModel):
@@ -31,6 +56,7 @@ class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(default=None, max_length=100)
     requires_privacy_guard: Optional[bool] = None
     field_schema: Optional[list[FieldDefinition]] = None
+    form_layout: Optional[FormLayout] = None
 
 
 class CategoryRead(BaseModel):
@@ -42,6 +68,7 @@ class CategoryRead(BaseModel):
     is_builtin: bool
     requires_privacy_guard: bool
     field_schema: Optional[list[FieldDefinition]] = None
+    form_layout: Optional[FormLayout] = None
     tenant_id: Optional[uuid.UUID] = None
 
     model_config = {"from_attributes": True}

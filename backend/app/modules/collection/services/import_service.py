@@ -27,18 +27,16 @@ from app.modules.collection.services.file_parser import parse_file
 from app.modules.collection.services.mapping_service import (
     MappingTemplateRepository, auto_match,
 )
-from app.modules.repository.models.archive import Archive
+from app.modules.repository.models.archive import ArchiveStaging
 
 _IMPORT_BUCKET = "import-staging"
 
-# 必填字段（档案写入最低要求）
-_REQUIRED_FIELDS = {"title"}
+# 必填字段（档案写入最低要求，拼音缩写）
+_REQUIRED_FIELDS = {"TM"}
 
-# 支持的字段 → 对应 Archive 列名
+# 支持的 DA/T 规范化字段（拼音缩写）—— MLH/AJH/JH 已删除，层级由 DH 命名约定体现
 _FIELD_MAP = {
-    "title", "archive_no", "fonds_code", "catalog_no", "volume_no",
-    "item_no", "year", "creator", "doc_date", "pages",
-    "security_level", "retention_period",
+    "TM", "DH", "QZH", "ND", "RZZ", "WJRQ", "YS", "MJ", "BGQX",
 }
 
 
@@ -187,9 +185,9 @@ def _validate_row(mapped: dict[str, str]) -> list[tuple[str, str]]:
     for field in _REQUIRED_FIELDS:
         if not mapped.get(field, "").strip():
             issues.append(("error", f"{field} 不能为空"))
-    year = mapped.get("year", "")
-    if year and not year.isdigit():
-        issues.append(("error", "year 必须为数字"))
+    nd = mapped.get("ND", "")
+    if nd and not nd.isdigit():
+        issues.append(("error", "ND 必须为数字"))
     return issues
 
 
@@ -198,10 +196,10 @@ def build_archive_from_row(
     fonds_id: uuid.UUID,
     catalog_id: uuid.UUID,
     category_id: uuid.UUID,
-    fonds_code: str,
+    QZH: str,
     tenant_id: Optional[uuid.UUID],
-) -> Archive:
-    """从映射后的字段字典构建 Archive 实例（不包含 archive_no，由引擎生成）。"""
+) -> ArchiveStaging:
+    """从映射后的字段字典构建 ArchiveStaging 实例（不含 DH，由规则引擎生成）。"""
     ext: dict = {}
     std: dict = {}
     for k, v in mapped.items():
@@ -210,22 +208,18 @@ def build_archive_from_row(
         else:
             std[k] = v
 
-    return Archive(
+    return ArchiveStaging(
         fonds_id=fonds_id,
         catalog_id=catalog_id,
         category_id=category_id,
-        fonds_code=fonds_code,
+        QZH=QZH,
         tenant_id=tenant_id,
-        level="item",
-        title=std.get("title", ""),
-        creator=std.get("creator"),
-        year=int(std["year"]) if std.get("year", "").isdigit() else None,
-        catalog_no=std.get("catalog_no"),
-        volume_no=std.get("volume_no"),
-        item_no=std.get("item_no"),
-        doc_date=std.get("doc_date"),
-        pages=int(std["pages"]) if std.get("pages", "").isdigit() else None,
-        security_level=std.get("security_level", "public"),
-        retention_period=std.get("retention_period", "permanent"),
+        TM=std.get("TM", ""),
+        RZZ=std.get("RZZ"),
+        ND=int(std["ND"]) if std.get("ND", "").isdigit() else None,
+        WJRQ=std.get("WJRQ"),
+        YS=int(std["YS"]) if std.get("YS", "").isdigit() else None,
+        MJ=std.get("MJ", "public"),
+        BGQX=std.get("BGQX", "permanent"),
         ext_fields=ext or None,
     )

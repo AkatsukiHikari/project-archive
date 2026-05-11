@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.api import users, profile, routes_tenant, routes_org, routes_role, routes_menu
+from app.modules.iam.api.routes_dict import router as dict_router
 from app.modules.audit.api import routes as audits
 from app.modules.notification.api import routes as notifications
 from app.modules.schedule.api import routes as schedules
@@ -31,6 +32,7 @@ v1_router.include_router(routes_tenant.router, prefix="/tenants", tags=["tenants
 v1_router.include_router(routes_org.router, prefix="/organizations", tags=["organizations"])
 v1_router.include_router(routes_role.router, prefix="/roles", tags=["roles"])
 v1_router.include_router(routes_menu.router, prefix="/menus", tags=["menus"])
+v1_router.include_router(dict_router)
 
 # 其他系统集成路由
 v1_router.include_router(audits.router, prefix="/audits", tags=["audits"])

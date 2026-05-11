@@ -103,7 +103,7 @@
         :style="{ left: isCollapsed ? '64px' : '240px' }"
       >
         <SystemHeader />
-        <TabsBar />
+        <TabsBar prefix="/archive" />
       </div>
 
       <!-- 内容区 -->
@@ -135,6 +135,9 @@ const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
 const tabsStore = useTabsRouteStore();
+
+// 确保档案子系统固定首页 Tab 存在（非关闭的 home tab）
+tabsStore.ensureHome("/archive", "档案工作台");
 
 // ─── 刷新后补全用户信息 ────────────────────────────────────────────────────────
 onMounted(async () => {

@@ -53,11 +53,11 @@ import { ref, computed, onMounted } from "vue";
 import { useMessage } from "naive-ui";
 import { UserAPI, type User } from "@/api/iam";
 import { useUserStore } from "@/stores/user";
-import ProfileSidebarCard from "@/components/business/profile/ProfileSidebarCard.vue";
-import ProfileBasicForm from "@/components/business/profile/ProfileBasicForm.vue";
-import ProfileSecurity from "@/components/business/profile/ProfileSecurity.vue";
-import ProfileTodos from "@/components/business/profile/ProfileTodos.vue";
-import ProfileAuditLog from "@/components/business/profile/ProfileAuditLog.vue";
+import { ProfileSidebarCard } from "@/components/business/profile";
+import { ProfileBasicForm } from "@/components/business/profile";
+import { ProfileSecurity } from "@/components/business/profile";
+import { ProfileTodos } from "@/components/business/profile";
+import { ProfileAuditLog } from "@/components/business/profile";
 
 definePageMeta({ layout: "default" });
 

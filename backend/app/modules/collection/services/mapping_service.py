@@ -14,22 +14,12 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.collection.models.mapping_template import FieldMappingTemplate
-from app.modules.repository.models.archive import Archive
+from app.modules.repository.models.archive import ArchiveStaging, ARCHIVE_FIELD_MAP
 
-# DA/T 规范化字段（所有门类通用）
+# DA/T 规范化字段（所有门类通用，拼音缩写命名）
 _BASE_FIELDS: list[dict] = [
-    {"name": "title",            "label": "题名"},
-    {"name": "archive_no",       "label": "档号"},
-    {"name": "fonds_code",       "label": "全宗号"},
-    {"name": "catalog_no",       "label": "目录号"},
-    {"name": "volume_no",        "label": "案卷号"},
-    {"name": "item_no",          "label": "件号"},
-    {"name": "year",             "label": "年度"},
-    {"name": "creator",          "label": "责任者"},
-    {"name": "doc_date",         "label": "文件日期"},
-    {"name": "pages",            "label": "页数"},
-    {"name": "security_level",   "label": "密级"},
-    {"name": "retention_period", "label": "保管期限"},
+    {"name": field, "label": label}
+    for field, label in ARCHIVE_FIELD_MAP.items()
 ]
 
 

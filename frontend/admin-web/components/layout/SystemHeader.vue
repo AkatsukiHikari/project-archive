@@ -45,10 +45,18 @@ import HeaderActions from "./HeaderActions.vue";
 
 const route = useRoute();
 
-const breadcrumbs = computed(
-  () =>
-    (route.meta.breadcrumb as { name: string; path: string }[]) || [
-      { name: "平台基础管理", path: "/admin" },
-    ],
-);
+const SUBSYSTEM_NAMES: Record<string, { name: string; path: string }> = {
+  "/admin":   { name: "平台基础管理", path: "/admin" },
+  "/archive": { name: "档案管理系统", path: "/archive" },
+};
+
+const breadcrumbs = computed(() => {
+  if (route.meta.breadcrumb) {
+    return route.meta.breadcrumb as { name: string; path: string }[];
+  }
+  // 根据当前路径前缀动态确定所属子系统
+  const prefix = "/" + route.path.split("/").filter(Boolean)[0];
+  const subsystem = SUBSYSTEM_NAMES[prefix] ?? { name: prefix, path: prefix };
+  return [subsystem];
+});
 </script>

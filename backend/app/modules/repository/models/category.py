@@ -42,6 +42,10 @@ class ArchiveCategory(BaseEntity):
         JSONB, nullable=True,
         comment="字段定义列表 list[FieldDefinition]"
     )
+    form_layout: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True,
+        comment="表单排版定义 FormLayout（行列布局）"
+    )
     archive_no_rule_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("repo_archive_no_rule.id", ondelete="SET NULL"),

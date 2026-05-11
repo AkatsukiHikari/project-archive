@@ -9,7 +9,7 @@
       class="tabs-scroll flex-1 flex items-stretch h-full overflow-x-auto overflow-y-hidden"
     >
       <div
-        v-for="tab in tabsStore.tabs"
+        v-for="tab in visibleTabs"
         :key="tab.path"
         :ref="(el) => setTabRef(tab.path, el as HTMLElement | null)"
         class="tab-item flex items-center gap-1.5 px-3 h-full cursor-pointer whitespace-nowrap border-b-2 transition-all duration-150 shrink-0 text-xs font-medium"
@@ -142,8 +142,15 @@ import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useTabsRouteStore, type TabItem } from "@/stores/tabsRoute";
 
+const props = withDefaults(defineProps<{ prefix?: string }>(), { prefix: "/admin" });
+
 const router = useRouter();
 const tabsStore = useTabsRouteStore();
+
+/** 仅显示属于当前子系统前缀的 Tab */
+const visibleTabs = computed(() =>
+  tabsStore.tabs.filter((t) => t.path === props.prefix || t.path.startsWith(props.prefix + "/")),
+);
 
 // ─── Tab element refs for scroll-into-view ────────────────────────────────
 const scrollRef = ref<HTMLElement | null>(null);
@@ -204,13 +211,13 @@ const menuItems = computed(() => {
   const tab = menu.value.tab;
   if (!tab) return [];
 
-  const idx = tabsStore.tabs.findIndex((t) => t.path === tab.path);
+  const idx = visibleTabs.value.findIndex((t) => t.path === tab.path);
   const isActiveTab = tab.path === tabsStore.activeTab;
-  const hasRight = tabsStore.tabs.slice(idx + 1).some((t) => t.closable);
-  const hasOthers = tabsStore.tabs.some(
+  const hasRight = visibleTabs.value.slice(idx + 1).some((t) => t.closable);
+  const hasOthers = visibleTabs.value.some(
     (t) => t.closable && t.path !== tab.path,
   );
-  const hasAny = tabsStore.tabs.some((t) => t.closable);
+  const hasAny = visibleTabs.value.some((t) => t.closable);
 
   return [
     {

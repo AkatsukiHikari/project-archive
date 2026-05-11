@@ -3,6 +3,6 @@
 </template>
 
 <script setup lang="ts">
-import DevPlaceholder from "@/components/archive/DevPlaceholder.vue";
+import { DevPlaceholder } from "@/components/archive";
 definePageMeta({ layout: "archive", middleware: "auth" });
 </script>

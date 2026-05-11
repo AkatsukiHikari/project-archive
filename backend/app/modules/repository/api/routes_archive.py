@@ -62,9 +62,9 @@ async def list_archives(
     fonds_id: Optional[uuid.UUID] = Query(default=None),
     catalog_id: Optional[uuid.UUID] = Query(default=None),
     category_id: Optional[uuid.UUID] = Query(default=None),
-    year: Optional[int] = Query(default=None),
+    ND: Optional[int] = Query(default=None),
     keyword: Optional[str] = Query(default=None),
-    security_level: Optional[str] = Query(default=None),
+    MJ: Optional[str] = Query(default=None),
     status: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -73,7 +73,7 @@ async def list_archives(
 ):
     query = ArchiveListQuery(
         fonds_id=fonds_id, catalog_id=catalog_id, category_id=category_id,
-        year=year, keyword=keyword, security_level=security_level,
+        ND=ND, keyword=keyword, MJ=MJ,
         status=status, page=page, page_size=page_size,
     )
     svc = ArchiveService(db)
@@ -140,13 +140,13 @@ async def delete_archive(
 @router.patch("/archive/records/{archive_id}/override-no", response_model=ResponseModel[ArchiveRead])
 async def override_archive_no(
     archive_id: uuid.UUID,
-    archive_no: str = Body(..., embed=True),
+    DH: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
     """手动覆盖档号"""
     svc = ArchiveService(db)
-    item = await svc.update(archive_id, ArchiveUpdate(archive_no=archive_no))
+    item = await svc.update(archive_id, ArchiveUpdate(DH=DH))
     await db.commit()
     await sync_one(item)
     return success(ArchiveRead.model_validate(item))

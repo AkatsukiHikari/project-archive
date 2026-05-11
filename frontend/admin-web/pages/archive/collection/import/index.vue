@@ -7,7 +7,7 @@
     />
 
     <!-- 步骤条 -->
-    <div class="pro-card">
+    <div class="pro-card p-5">
       <NSteps :current="step" size="small">
         <NStep title="上传文件" description="选择 CSV 或 Excel 文件" />
         <NStep title="字段映射" description="将文件列与档案字段对应" />
@@ -18,7 +18,7 @@
     </div>
 
     <!-- Step 1: 上传文件 -->
-    <div v-if="step === 1" class="pro-card flex flex-col gap-5">
+    <div v-if="step === 1" class="pro-card p-5 flex flex-col gap-5">
       <div class="grid grid-cols-3 gap-4">
         <div class="flex flex-col gap-1">
           <span class="text-sm font-medium">全宗 <span class="text-red-500">*</span></span>
@@ -68,7 +68,7 @@
     </div>
 
     <!-- Step 2: 字段映射 -->
-    <div v-if="step === 2" class="pro-card flex flex-col gap-4">
+    <div v-if="step === 2" class="pro-card p-5 flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <p class="text-sm text-gray-500">
           识别到 <strong>{{ uploadResult?.columns.length }}</strong> 列，请将每列映射到档案字段（无需映射的列选"忽略"）
@@ -83,10 +83,10 @@
         />
       </div>
 
-      <NDataTable
+      <ProTable
         :columns="mappingColumns"
         :data="mappings"
-        :pagination="false"
+        :page-size="0"
         size="small"
       />
 
@@ -107,7 +107,7 @@
     </div>
 
     <!-- Step 3: 预检结果 -->
-    <div v-if="step === 3" class="pro-card flex flex-col gap-4">
+    <div v-if="step === 3" class="pro-card p-5 flex flex-col gap-4">
       <div class="grid grid-cols-4 gap-4">
         <div class="rounded-lg border p-4 text-center">
           <p class="text-2xl font-bold">{{ dryRunResult?.total ?? 0 }}</p>
@@ -127,12 +127,12 @@
         </div>
       </div>
 
-      <div v-if="dryRunResult && dryRunResult.sample_errors?.length > 0">
-        <p class="text-sm font-medium mb-2">错误样本（最多显示 20 条）</p>
-        <NDataTable
+      <div v-if="dryRunResult && dryRunResult.rows?.length > 0">
+        <p class="text-sm font-medium mb-2">行检验明细（最多显示 50 条）</p>
+        <ProTable
           :columns="dryRunColumns"
-          :data="dryRunResult.sample_errors"
-          :pagination="false"
+          :data="dryRunResult.rows"
+          :page-size="0"
           size="small"
           max-height="300"
         />
@@ -151,7 +151,7 @@
     </div>
 
     <!-- Step 4: 执行中 -->
-    <div v-if="step === 4" class="pro-card flex flex-col items-center gap-6 py-10">
+    <div v-if="step === 4" class="pro-card p-5 flex flex-col items-center gap-6 py-10">
       <NSpin :size="48" />
       <p class="text-base font-medium">正在导入，请稍候…</p>
       <div class="w-full max-w-md">
@@ -170,7 +170,7 @@
     </div>
 
     <!-- Step 5: 完成 -->
-    <div v-if="step === 5" class="pro-card flex flex-col items-center gap-6 py-10">
+    <div v-if="step === 5" class="pro-card p-5 flex flex-col items-center gap-6 py-10">
       <Icon name="heroicons:check-circle" class="w-16 h-16 text-green-500" />
       <p class="text-xl font-semibold">导入完成</p>
       <div class="grid grid-cols-3 gap-6 text-center">
@@ -202,14 +202,15 @@
 import { ref, computed, onMounted, onUnmounted, reactive } from "vue";
 import {
   NSteps, NStep, NSelect, NUpload, NUploadDragger, NSpin, NProgress,
-  NDataTable, NButton, NCheckbox, NInput, NTag, useMessage,
+  NButton, NCheckbox, NInput, NTag, useMessage,
 } from "naive-ui";
 import type { DataTableColumns, UploadCustomRequestOptions } from "naive-ui";
 import { FondsAPI, CatalogAPI, CategoryAPI } from "@/api/repository";
 import type { Fonds, Catalog, ArchiveCategory } from "@/api/repository";
 import { ImportAPI } from "@/api/collection";
 import type { UploadResponse, DryRunResponse, ImportTask, ColumnMapping, MappingTemplate } from "@/api/collection";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { ProTable } from "@/components/ui";
 import { useUserStore } from "@/stores/user";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
@@ -238,7 +239,7 @@ async function onFondsChange(id: string | null) {
   catalogList.value = [];
   if (id) {
     const res = await CatalogAPI.list(id);
-    catalogList.value = res.data.data;
+    catalogList.value = res.data;
   }
 }
 
@@ -269,7 +270,7 @@ async function handleUpload({ file, onFinish, onError }: UploadCustomRequestOpti
       meta.fonds_id!,
       meta.catalog_id!,
     );
-    const data = res.data.data;
+    const data = res.data;
     uploadResult.value = data;
     taskId.value = data.task_id;
 
@@ -279,7 +280,7 @@ async function handleUpload({ file, onFinish, onError }: UploadCustomRequestOpti
     });
 
     const tplRes = await ImportAPI.listTemplates(meta.category_id!);
-    templates.value = tplRes.data.data;
+    templates.value = tplRes.data;
 
     onFinish();
     step.value = 2;
@@ -355,7 +356,7 @@ async function submitMapping() {
       saveTemplate.value ? templateName.value : undefined,
     );
     const res = await ImportAPI.dryRun(taskId.value!);
-    dryRunResult.value = res.data.data as any;
+    dryRunResult.value = res.data as any;
     step.value = 3;
   } finally {
     mappingSaving.value = false;
@@ -364,12 +365,19 @@ async function submitMapping() {
 
 const dryRunResult = ref<DryRunResponse | null>(null);
 
-const dryRunColumns: DataTableColumns = [
+const dryRunStatusOptions = [
+  { label: "正常", value: "ok" },
+  { label: "警告", value: "warning" },
+  { label: "错误", value: "error" },
+];
+
+const dryRunColumns = [
   { title: "行号", key: "row", width: 80 },
   {
     title: "状态",
     key: "status",
     width: 90,
+    search: { type: "select" as const, options: dryRunStatusOptions },
     render: (row: any) => {
       const typeMap: Record<string, "default" | "warning" | "error"> = {
         ok: "default", warning: "warning", error: "error",
@@ -377,7 +385,7 @@ const dryRunColumns: DataTableColumns = [
       return <NTag type={typeMap[row.status] ?? "default"} size="small">{row.status}</NTag>;
     },
   },
-  { title: "说明", key: "message", ellipsis: { tooltip: true } },
+  { title: "说明", key: "message", ellipsis: { tooltip: true }, search: { placeholder: "请输入说明" } },
 ];
 
 const progress = reactive({ processed: 0, total: 0, success: 0, failed: 0, percent: 0 });
@@ -432,14 +440,14 @@ async function pollTaskStatus(tid: string) {
   const interval = setInterval(async () => {
     try {
       const res = await ImportAPI.getTask(tid);
-      const task = res.data.data;
+      const task = res.data;
       if (task.status === "done" || task.status === "failed") {
         clearInterval(interval);
         finalTask.value = task;
         step.value = 5;
         if (task.failed > 0) {
           const rRes = await ImportAPI.getReport(tid);
-          reportUrl.value = rRes.data.data.url;
+          reportUrl.value = rRes.data.url;
         }
       }
     } catch {
@@ -451,10 +459,10 @@ async function pollTaskStatus(tid: string) {
 async function loadFinalTask(tid: string) {
   try {
     const res = await ImportAPI.getTask(tid);
-    finalTask.value = res.data.data;
+    finalTask.value = res.data;
     if (finalTask.value?.failed && finalTask.value.failed > 0) {
       const rRes = await ImportAPI.getReport(tid);
-      reportUrl.value = rRes.data.data.url;
+      reportUrl.value = rRes.data.url;
     }
   } catch {
     // ignore
@@ -474,8 +482,8 @@ function restart() {
 
 async function loadRefData() {
   const [fondsRes, catRes] = await Promise.all([FondsAPI.list(), CategoryAPI.list()]);
-  fondsList.value = fondsRes.data.data;
-  categoryList.value = catRes.data.data;
+  fondsList.value = fondsRes.data;
+  categoryList.value = catRes.data;
 }
 
 onMounted(loadRefData);

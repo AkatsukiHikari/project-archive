@@ -57,27 +57,41 @@ const ROUTE_TITLE_MAP: Record<string, string> = {
   "/archive/settings/metadata": "元数据方案",
 };
 
-const HOME_PATH = "/admin";
-
-function getTabTitle(path: string): string {
-  // Strip query string for lookup
+export function getTabTitle(path: string): string {
   const cleanPath = path.split("?")[0] ?? path;
-  return ROUTE_TITLE_MAP[cleanPath] ?? cleanPath.split("/").pop() ?? path;
+  return ROUTE_TITLE_MAP[cleanPath] ?? cleanPath.split("/").filter(Boolean).pop() ?? path;
 }
 
 export const useTabsRouteStore = defineStore("tabsRoute", {
   state: (): { tabs: TabItem[]; activeTab: string } => ({
     tabs: [
-      {
-        path: HOME_PATH,
-        title: "工作台",
-        closable: false,
-      },
+      { path: "/admin", title: "工作台", closable: false },
     ],
-    activeTab: HOME_PATH,
+    activeTab: "/admin",
   }),
 
   actions: {
+    /**
+     * 确保某路径对应的 Home 标签页存在且不可关闭。
+     * 每个子系统在其 layout 挂载时调用一次，保证各子系统有独立的固定首页标签。
+     */
+    ensureHome(path: string, title?: string) {
+      const existing = this.tabs.find((t) => t.path === path);
+      if (!existing) {
+        // 插入到 tabs 最前面（所有可关闭 tab 之前）
+        const firstClosableIdx = this.tabs.findIndex((t) => t.closable);
+        const insertAt = firstClosableIdx === -1 ? this.tabs.length : firstClosableIdx;
+        this.tabs.splice(insertAt, 0, {
+          path,
+          title: title ?? getTabTitle(path),
+          closable: false,
+        });
+      } else if (existing.closable) {
+        // 如果之前被意外标记为可关闭，修正它
+        existing.closable = false;
+      }
+    },
+
     /** 导航到某个路径时调用，自动添加或激活对应 Tab */
     openTab(path: string, title?: string) {
       const existing = this.tabs.find((t) => t.path === path);
@@ -85,7 +99,8 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
         this.tabs.push({
           path,
           title: title ?? getTabTitle(path),
-          closable: path !== HOME_PATH,
+          // 非关闭判断：如果该 path 已经被 ensureHome 注册为 home，则不可关闭
+          closable: !this.tabs.some((t) => t.path === path && !t.closable),
         });
       }
       this.activeTab = path;
@@ -100,17 +115,20 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
       this.tabs = this.tabs.filter((t) => t.path !== path);
 
       if (this.activeTab === path) {
-        // 优先激活左侧 Tab，否则右侧，否则 Home
         const next = this.tabs[idx - 1] ?? this.tabs[idx] ?? this.tabs[0];
-        this.activeTab = next?.path ?? HOME_PATH;
+        this.activeTab = next?.path ?? "/admin";
         return this.activeTab;
       }
       return null;
     },
 
-    /** 关闭除指定路径外的所有可关闭 Tab */
+    /** 关闭除指定路径外的本子系统所有可关闭 Tab */
     closeOthers(path: string) {
-      this.tabs = this.tabs.filter((t) => !t.closable || t.path === path);
+      // 找出 path 属于哪个子系统（取第一个路径段作为前缀）
+      const prefix = "/" + (path.split("/")[1] ?? "");
+      this.tabs = this.tabs.filter(
+        (t) => !t.closable || t.path === path || !t.path.startsWith(prefix),
+      );
       this.activeTab = path;
     },
 
@@ -128,10 +146,10 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
       }
     },
 
-    /** 关闭所有可关闭 Tab */
+    /** 关闭本子系统所有可关闭 Tab */
     closeAll() {
       this.tabs = this.tabs.filter((t) => !t.closable);
-      this.activeTab = this.tabs[0]?.path ?? HOME_PATH;
+      this.activeTab = this.tabs[0]?.path ?? "/admin";
     },
 
     setActive(path: string) {

@@ -150,7 +150,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { NButton } from "naive-ui";
-import type { ChatMessage } from "@/components/dashboard/RagChatPanel.vue";
+import type { ChatMessage } from "@/components/dashboard";
 
 definePageMeta({
   layout: "portal",

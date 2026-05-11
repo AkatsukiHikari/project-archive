@@ -58,10 +58,10 @@ import { NButton, NInput, NSelect, NForm, NFormItem, NTag, useMessage, useDialog
 import type { FormInst } from "naive-ui";
 import { UserAPI, OrgAPI, RoleAPI, type User, type Role, type OrganizationTree, type UserUpdatePayload } from "@/api/iam";
 import { useAdminStore } from "@/stores/admin";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
-import AdminTenantBar from "@/components/admin/TenantBar.vue";
-import ProTable from "@/components/ui/ProTable.vue";
-import CrudModal from "@/components/ui/CrudModal.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { AdminTenantBar } from "@/components/admin";
+import { ProTable } from "@/components/ui";
+import { CrudModal } from "@/components/ui";
 
 definePageMeta({ layout: "admin", middleware: "auth" });
 

@@ -67,9 +67,9 @@ import { ref, computed, onMounted, reactive } from "vue";
 import { NButton, NInput, NSelect, NForm, NFormItem, NTag, useMessage, useDialog } from "naive-ui";
 import type { FormInst } from "naive-ui";
 import { TenantAPI, type Tenant } from "@/api/iam";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
-import ProTable from "@/components/ui/ProTable.vue";
-import CrudModal from "@/components/ui/CrudModal.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { ProTable } from "@/components/ui";
+import { CrudModal } from "@/components/ui";
 
 definePageMeta({ layout: "admin", middleware: "auth" });
 

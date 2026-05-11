@@ -1,14 +1,18 @@
 import uuid
 from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.modules.repository.models.archive import Catalog, Archive
-from app.modules.repository.repositories.archive_repo import CatalogRepository, ArchiveRepository
-from app.modules.repository.schemas.archive import (
-    CatalogCreate,
-    ArchiveCreate, ArchiveUpdate, ArchiveListQuery,
-)
-from app.common.exceptions.base import NotFoundException
+
 from app.common.error_code import ErrorCode
+from app.common.exceptions.base import NotFoundException
+from app.modules.repository.models.archive import ArchiveStaging, Catalog
+from app.modules.repository.repositories.archive_repo import ArchiveRepository, CatalogRepository
+from app.modules.repository.schemas.archive import (
+    ArchiveCreate,
+    ArchiveListQuery,
+    ArchiveUpdate,
+    CatalogCreate,
+)
 
 
 class CatalogService:
@@ -22,7 +26,8 @@ class CatalogService:
             catalog_no=data.catalog_no,
             name=data.name,
             year=data.year,
-            org_mode=data.org_mode,
+            catalog_type=data.catalog_type,
+            volume_archive_id=data.volume_archive_id,
             tenant_id=tenant_id,
         )
         return await self._repo.create(catalog)
@@ -41,68 +46,41 @@ class ArchiveService:
     def __init__(self, db: AsyncSession) -> None:
         self._repo = ArchiveRepository(db)
 
-    async def create(self, data: ArchiveCreate, tenant_id: Optional[uuid.UUID]) -> Archive:
-        archive = Archive(
+    async def create(self, data: ArchiveCreate, tenant_id: Optional[uuid.UUID]) -> ArchiveStaging:
+        archive = ArchiveStaging(
             fonds_id=data.fonds_id,
             catalog_id=data.catalog_id,
-            parent_id=data.parent_id,
             category_id=data.category_id,
-            level=data.level,
-            title=data.title,
-            fonds_code=data.fonds_code,
-            year=data.year,
-            creator=data.creator,
-            catalog_no=data.catalog_no,
-            volume_no=data.volume_no,
-            item_no=data.item_no,
-            archive_no=data.archive_no,
-            security_level=data.security_level,
-            retention_period=data.retention_period,
-            doc_date=data.doc_date,
-            pages=data.pages,
+            TM=data.TM,
+            QZH=data.QZH,
+            ND=data.ND,
+            RZZ=data.RZZ,
+            DH=data.DH,
+            MJ=data.MJ,
+            BGQX=data.BGQX,
+            WJRQ=data.WJRQ,
+            YS=data.YS,
             ext_fields=data.ext_fields,
-            storage_key=data.storage_key,
-            storage_bucket=data.storage_bucket,
-            file_size=data.file_size,
-            file_format=data.file_format,
-            sha256_hash=data.sha256_hash,
-            status="active",
+            status="draft",
             embedding_status="pending",
             tenant_id=tenant_id,
         )
         return await self._repo.create(archive)
 
-    async def get(self, archive_id: uuid.UUID) -> Archive:
+    async def get(self, archive_id: uuid.UUID) -> ArchiveStaging:
         archive = await self._repo.get_by_id(archive_id)
         if not archive:
             raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="档案不存在")
         return archive
 
-    async def update(self, archive_id: uuid.UUID, data: ArchiveUpdate) -> Archive:
+    async def update(self, archive_id: uuid.UUID, data: ArchiveUpdate) -> ArchiveStaging:
         archive = await self._repo.get_by_id(archive_id)
         if not archive:
             raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="档案不存在")
         update_data = data.model_dump(exclude_unset=True)
-        if "title" in update_data:
-            archive.title = update_data["title"]
-        if "creator" in update_data:
-            archive.creator = update_data["creator"]
-        if "year" in update_data:
-            archive.year = update_data["year"]
-        if "doc_date" in update_data:
-            archive.doc_date = update_data["doc_date"]
-        if "pages" in update_data:
-            archive.pages = update_data["pages"]
-        if "security_level" in update_data:
-            archive.security_level = update_data["security_level"]
-        if "retention_period" in update_data:
-            archive.retention_period = update_data["retention_period"]
-        if "archive_no" in update_data:
-            archive.archive_no = update_data["archive_no"]
-        if "ext_fields" in update_data:
-            archive.ext_fields = update_data["ext_fields"]
-        if "status" in update_data:
-            archive.status = update_data["status"]
+        for field in ("TM", "RZZ", "ND", "WJRQ", "YS", "MJ", "BGQX", "DH", "status", "ext_fields"):
+            if field in update_data:
+                setattr(archive, field, update_data[field])
         return archive
 
     async def delete(self, archive_id: uuid.UUID) -> None:
@@ -113,5 +91,5 @@ class ArchiveService:
 
     async def list_archives(
         self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
-    ) -> tuple[list[Archive], int]:
+    ) -> tuple[list[ArchiveStaging], int]:
         return await self._repo.list_with_query(query, tenant_id=tenant_id)

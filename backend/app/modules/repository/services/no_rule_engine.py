@@ -2,10 +2,10 @@
 档号规则引擎。
 
 支持四种规则段：
-  field     — 取 Archive 规范化字段值（fonds_code / year / catalog_no / volume_no / item_no / creator）
+  field     — 取 Archive DA/T 规范化字段值（QZH / ND / RZZ）
   literal   — 固定字符串
   sequence  — 自增序号（通过 SeqRepository FOR UPDATE 保证并发安全）
-  date_part — 从 doc_date 提取日期部分（strftime 格式）
+  date_part — 从 WJRQ 提取日期部分（strftime 格式）
 
 preview=True 时序号段输出全零占位，不写 DB。
 """
@@ -15,12 +15,12 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.repository.models.archive import Archive
+from app.modules.repository.models.archive import ArchiveStaging
 from app.modules.repository.models.no_rule import ArchiveNoRule
 from app.modules.repository.repositories.no_rule_repo import SeqRepository
 
-# 允许从 Archive 读取的规范化字段白名单
-_ALLOWED_FIELDS = {"fonds_code", "year", "catalog_no", "volume_no", "item_no", "creator"}
+# 允许从 ArchiveStaging 读取的 DA/T 规范化字段白名单（MLH/AJH/JH 已删除）
+_ALLOWED_FIELDS = {"QZH", "ND", "RZZ"}
 
 
 class ArchiveNoEngine:
@@ -29,7 +29,7 @@ class ArchiveNoEngine:
         self._seq_repo = SeqRepository(db)
 
     async def generate(
-        self, rule: ArchiveNoRule, archive: Archive, preview: bool = False
+        self, rule: ArchiveNoRule, archive: ArchiveStaging, preview: bool = False
     ) -> str:
         """
         根据 rule.rule_template 生成档号字符串。
@@ -69,8 +69,8 @@ class ArchiveNoEngine:
         self, rule: ArchiveNoRule, sample: dict
     ) -> tuple[str, list[str]]:
         """
-        用样本数据（dict）生成预览档号，返回 (archive_no, parts)。
-        sample 键对应 PreviewRequest 字段。
+        用样本数据（dict）生成预览档号，返回 (DH, parts)。
+        sample 键对应 PreviewRequest 字段（拼音缩写）。
         """
         fake = _FakeArchive(sample)
         template = rule.rule_template or {}
@@ -101,7 +101,7 @@ class ArchiveNoEngine:
         return str(val) if val is not None else ""
 
     def _resolve_date_part(self, archive: object, seg: dict) -> str:
-        date_field = seg.get("date_field", "doc_date")
+        date_field = seg.get("date_field", "WJRQ")
         fmt = seg.get("date_format", "%Y")
         raw: Optional[str] = getattr(archive, date_field, None)
         if not raw:
@@ -116,7 +116,7 @@ class ArchiveNoEngine:
         self,
         rule_id: uuid.UUID,
         scope_type: str,
-        archive: Archive,
+        archive: ArchiveStaging,
         padding: int,
     ) -> str:
         scope_key = self._make_scope_key(scope_type, archive)
@@ -127,14 +127,14 @@ class ArchiveNoEngine:
     def _make_scope_key(scope_type: str, archive: object) -> str:
         catalog_id = str(getattr(archive, "catalog_id", ""))
         fonds_id = str(getattr(archive, "fonds_id", ""))
-        year = str(getattr(archive, "year", "") or "")
+        nd = str(getattr(archive, "ND", "") or "")
         if scope_type == "catalog":
             return f"catalog:{catalog_id}"
         if scope_type == "catalog_year":
-            return f"catalog_year:{catalog_id}:{year}"
+            return f"catalog_year:{catalog_id}:{nd}"
         if scope_type == "fonds":
             return f"fonds:{fonds_id}"
-        return f"catalog_year:{catalog_id}:{year}"
+        return f"catalog_year:{catalog_id}:{nd}"
 
 
 class _FakeArchive:

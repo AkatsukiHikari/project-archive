@@ -108,9 +108,9 @@ import { ref, computed, onMounted } from "vue";
 import { useUserStore } from "@/stores/user";
 import type { DashboardStats, StorageComponent } from "@/api/iam";
 import { StatsAPI } from "@/api/iam";
-import KpiCard from "@/components/admin/dashboard/KpiCard.vue";
-import StorageComponentCard from "@/components/admin/dashboard/StorageComponentCard.vue";
-import PlatformStatusPanel from "@/components/admin/dashboard/PlatformStatusPanel.vue";
+import { KpiCard } from "@/components/admin";
+import { StorageComponentCard } from "@/components/admin";
+import { PlatformStatusPanel } from "@/components/admin";
 
 definePageMeta({ layout: "admin", middleware: "auth" });
 

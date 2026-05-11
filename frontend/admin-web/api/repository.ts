@@ -49,11 +49,11 @@ export interface FondsUpdate {
 }
 
 export const FondsAPI = {
-  list: () => http.get<ApiResponse<Fonds[]>>("/archive/fonds"),
-  create: (data: FondsCreate) => http.post<ApiResponse<Fonds>>("/archive/fonds", data),
+  list: () => http.get<ApiResponse<Fonds[]>, ApiResponse<Fonds[]>>("/archive/fonds"),
+  create: (data: FondsCreate) => http.post<ApiResponse<Fonds>, ApiResponse<Fonds>>("/archive/fonds", data),
   update: (id: string, data: FondsUpdate) =>
-    http.put<ApiResponse<Fonds>>(`/archive/fonds/${id}`, data),
-  remove: (id: string) => http.delete<ApiResponse<null>>(`/archive/fonds/${id}`),
+    http.put<ApiResponse<Fonds>, ApiResponse<Fonds>>(`/archive/fonds/${id}`, data),
+  remove: (id: string) => http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/fonds/${id}`),
 };
 
 // ─── 门类 ────────────────────────────────────────────────────────────────────
@@ -65,7 +65,25 @@ export interface FieldDefinition {
   required?: boolean;
   placeholder?: string;
   options?: string[];
+  dict_type?: string;
+  default_value?: string | number | boolean | null;
+  sort_order?: number;
   inherited?: boolean;
+}
+
+export interface FormLayoutCell {
+  field: string;  // FieldDefinition.name
+  span: 1 | 2;   // 1=半行 2=整行
+}
+
+export interface FormLayoutRow {
+  id: string;
+  cells: FormLayoutCell[];
+}
+
+export interface FormLayout {
+  cols: 2;
+  rows: FormLayoutRow[];
 }
 
 export interface ArchiveCategory {
@@ -77,6 +95,7 @@ export interface ArchiveCategory {
   is_builtin: boolean;
   requires_privacy_guard: boolean;
   field_schema?: FieldDefinition[];
+  form_layout?: FormLayout | null;
   tenant_id?: string;
 }
 
@@ -96,25 +115,31 @@ export interface CategoryUpdate {
 
 export const CategoryAPI = {
   list: (parent_id?: string) =>
-    http.get<ApiResponse<ArchiveCategory[]>>("/archive/categories", {
+    http.get<ApiResponse<ArchiveCategory[]>, ApiResponse<ArchiveCategory[]>>("/archive/categories", {
       params: parent_id ? { parent_id } : {},
     }),
   create: (data: CategoryCreate) =>
-    http.post<ApiResponse<ArchiveCategory>>("/archive/categories", data),
+    http.post<ApiResponse<ArchiveCategory>, ApiResponse<ArchiveCategory>>("/archive/categories", data),
   clone: (id: string, new_code: string, new_name: string) =>
-    http.post<ApiResponse<ArchiveCategory>>(`/archive/categories/${id}/clone`, null, {
+    http.post<ApiResponse<ArchiveCategory>, ApiResponse<ArchiveCategory>>(`/archive/categories/${id}/clone`, null, {
       params: { new_code, new_name },
     }),
   update: (id: string, data: CategoryUpdate) =>
-    http.put<ApiResponse<ArchiveCategory>>(`/archive/categories/${id}`, data),
-  remove: (id: string) => http.delete<ApiResponse<null>>(`/archive/categories/${id}`),
+    http.put<ApiResponse<ArchiveCategory>, ApiResponse<ArchiveCategory>>(`/archive/categories/${id}`, data),
+  remove: (id: string) => http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/categories/${id}`),
   getSchema: (id: string) =>
-    http.get<ApiResponse<FieldDefinition[]>>(`/archive/categories/${id}/schema`),
+    http.get<ApiResponse<FieldDefinition[]>, ApiResponse<FieldDefinition[]>>(`/archive/categories/${id}/schema`),
   updateSchema: (id: string, fields: FieldDefinition[]) =>
-    http.put<ApiResponse<FieldDefinition[]>>(`/archive/categories/${id}/schema`, fields),
+    http.put<ApiResponse<FieldDefinition[]>, ApiResponse<FieldDefinition[]>>(`/archive/categories/${id}/schema`, fields),
+  getLayout: (id: string) =>
+    http.get<ApiResponse<FormLayout | null>, ApiResponse<FormLayout | null>>(`/archive/categories/${id}/layout`),
+  updateLayout: (id: string, layout: FormLayout) =>
+    http.put<ApiResponse<FormLayout>, ApiResponse<FormLayout>>(`/archive/categories/${id}/layout`, layout),
 };
 
 // ─── 目录 ────────────────────────────────────────────────────────────────────
+
+export type CatalogType = "案卷目录" | "卷内目录" | "一文一件";
 
 export interface Catalog {
   id: string;
@@ -123,7 +148,8 @@ export interface Catalog {
   catalog_no: string;
   name: string;
   year?: number;
-  org_mode: "by_item" | "by_volume";
+  catalog_type: CatalogType;
+  volume_archive_id?: string;
   tenant_id?: string;
 }
 
@@ -133,14 +159,15 @@ export interface CatalogCreate {
   catalog_no: string;
   name: string;
   year?: number;
-  org_mode?: "by_item" | "by_volume";
+  catalog_type?: CatalogType;
+  volume_archive_id?: string;
 }
 
 export const CatalogAPI = {
   list: (fonds_id: string) =>
-    http.get<ApiResponse<Catalog[]>>("/archive/catalogs", { params: { fonds_id } }),
-  create: (data: CatalogCreate) => http.post<ApiResponse<Catalog>>("/archive/catalogs", data),
-  remove: (id: string) => http.delete<ApiResponse<null>>(`/archive/catalogs/${id}`),
+    http.get<ApiResponse<Catalog[]>, ApiResponse<Catalog[]>>("/archive/catalogs", { params: { fonds_id } }),
+  create: (data: CatalogCreate) => http.post<ApiResponse<Catalog>, ApiResponse<Catalog>>("/archive/catalogs", data),
+  remove: (id: string) => http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/catalogs/${id}`),
 };
 
 // ─── 档案 ────────────────────────────────────────────────────────────────────
@@ -149,60 +176,124 @@ export interface Archive {
   id: string;
   fonds_id: string;
   catalog_id: string;
-  parent_id?: string;
   category_id: string;
-  level: "volume" | "item";
-  archive_no?: string;
-  fonds_code: string;
-  catalog_no?: string;
-  volume_no?: string;
-  item_no?: string;
-  year?: number;
-  title: string;
-  creator?: string;
-  security_level: string;
-  retention_period: string;
-  doc_date?: string;
-  pages?: number;
+  DH?: string;
+  QZH: string;
+  TM: string;
+  RZZ?: string;
+  ND?: number;
+  WJRQ?: string;
+  YS?: number;
+  MJ: string;
+  BGQX: string;
   status: string;
   ext_fields?: Record<string, unknown>;
-  file_format?: string;
-  file_size?: number;
   embedding_status: string;
   tenant_id?: string;
 }
+
+// ─── 档号规则 ─────────────────────────────────────────────────────────────────
+
+export type SegmentType = "field" | "literal" | "sequence" | "date_part";
+export type SeqScope = "catalog" | "catalog_year" | "fonds";
+
+export interface SegmentDef {
+  type: SegmentType;
+  field?: string;
+  value?: string;
+  padding?: number;
+  scope?: SeqScope;
+  date_field?: string;
+  date_format?: string;
+}
+
+export interface RuleTemplate {
+  separator: string;
+  segments: SegmentDef[];
+}
+
+export interface NoRule {
+  id: string;
+  category_id: string;
+  name: string;
+  rule_template: RuleTemplate | null;
+  seq_scope: SeqScope;
+  is_active: boolean;
+  tenant_id?: string;
+  create_time?: string;
+}
+
+export interface NoRuleCreate {
+  category_id: string;
+  name: string;
+  rule_template: RuleTemplate;
+  seq_scope?: SeqScope;
+  is_active?: boolean;
+}
+
+export interface NoRuleUpdate {
+  name?: string;
+  rule_template?: RuleTemplate;
+  seq_scope?: SeqScope;
+  is_active?: boolean;
+}
+
+export interface PreviewSample {
+  QZH?: string;
+  ND?: number;
+  RZZ?: string;
+  WJRQ?: string;
+}
+
+export interface PreviewResponse {
+  DH: string;
+  segments: string[];
+}
+
+export const NoRuleAPI = {
+  list: () => http.get<ApiResponse<NoRule[]>, ApiResponse<NoRule[]>>("/archive/no-rules"),
+  create: (data: NoRuleCreate) =>
+    http.post<ApiResponse<NoRule>, ApiResponse<NoRule>>("/archive/no-rules", data),
+  update: (id: string, data: NoRuleUpdate) =>
+    http.put<ApiResponse<NoRule>, ApiResponse<NoRule>>(`/archive/no-rules/${id}`, data),
+  remove: (id: string) =>
+    http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/no-rules/${id}`),
+  preview: (id: string, sample: PreviewSample) =>
+    http.post<ApiResponse<PreviewResponse>, ApiResponse<PreviewResponse>>(
+      `/archive/no-rules/${id}/preview`,
+      sample,
+    ),
+};
+
+// ─── 档案记录 ─────────────────────────────────────────────────────────────────
 
 export interface ArchiveCreate {
   fonds_id: string;
   catalog_id: string;
   category_id: string;
-  level?: "volume" | "item";
-  title: string;
-  fonds_code: string;
-  year?: number;
-  creator?: string;
-  catalog_no?: string;
-  volume_no?: string;
-  item_no?: string;
-  archive_no?: string;
-  security_level?: string;
-  retention_period?: string;
-  doc_date?: string;
-  pages?: number;
+  TM: string;
+  QZH: string;
+  ND?: number;
+  RZZ?: string;
+  DH?: string;
+  MJ?: string;
+  BGQX?: string;
+  WJRQ?: string;
+  YS?: number;
   ext_fields?: Record<string, unknown>;
 }
 
 export interface ArchiveUpdate {
-  title?: string;
-  creator?: string;
-  year?: number;
-  security_level?: string;
-  retention_period?: string;
-  doc_date?: string;
-  pages?: number;
+  TM?: string;
+  RZZ?: string;
+  ND?: number;
+  MJ?: string;
+  BGQX?: string;
+  WJRQ?: string;
+  YS?: number;
   status?: string;
   ext_fields?: Record<string, unknown>;
-  archive_no?: string;
+  DH?: string;
 }
 
 export interface ArchiveListResult {
@@ -216,9 +307,9 @@ export interface ArchiveListParams {
   fonds_id?: string;
   catalog_id?: string;
   category_id?: string;
-  year?: number;
+  ND?: number;
   keyword?: string;
-  security_level?: string;
+  MJ?: string;
   status?: string;
   page?: number;
   page_size?: number;
@@ -226,12 +317,12 @@ export interface ArchiveListParams {
 
 export const ArchiveAPI = {
   list: (params: ArchiveListParams) =>
-    http.get<ApiResponse<ArchiveListResult>>("/archive/records", { params }),
-  get: (id: string) => http.get<ApiResponse<Archive>>(`/archive/records/${id}`),
-  create: (data: ArchiveCreate) => http.post<ApiResponse<Archive>>("/archive/records", data),
+    http.get<ApiResponse<ArchiveListResult>, ApiResponse<ArchiveListResult>>("/archive/records", { params }),
+  get: (id: string) => http.get<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`),
+  create: (data: ArchiveCreate) => http.post<ApiResponse<Archive>, ApiResponse<Archive>>("/archive/records", data),
   update: (id: string, data: ArchiveUpdate) =>
-    http.put<ApiResponse<Archive>>(`/archive/records/${id}`, data),
-  remove: (id: string) => http.delete<ApiResponse<null>>(`/archive/records/${id}`),
-  overrideNo: (id: string, archive_no: string) =>
-    http.patch<ApiResponse<Archive>>(`/archive/records/${id}/override-no`, { archive_no }),
+    http.put<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`, data),
+  remove: (id: string) => http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/records/${id}`),
+  overrideNo: (id: string, DH: string) =>
+    http.patch<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}/override-no`, { DH }),
 };

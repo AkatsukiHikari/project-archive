@@ -7,7 +7,7 @@
     />
 
     <!-- 筛选栏 -->
-    <div class="pro-card flex flex-wrap gap-3 items-end">
+    <div class="pro-card p-4 flex flex-wrap gap-3 items-end">
       <div class="flex flex-col gap-1">
         <span class="text-xs text-gray-500">全宗</span>
         <NSelect
@@ -42,12 +42,12 @@
       </div>
       <div class="flex flex-col gap-1">
         <span class="text-xs text-gray-500">年度</span>
-        <NInputNumber v-model:value="filter.year" placeholder="年度" style="width: 100px" :min="1900" :max="2099" />
+        <NInputNumber v-model:value="filter.ND" placeholder="年度" style="width: 100px" :min="1900" :max="2099" />
       </div>
       <div class="flex flex-col gap-1">
         <span class="text-xs text-gray-500">密级</span>
         <NSelect
-          v-model:value="filter.security_level"
+          v-model:value="filter.MJ"
           :options="securityOptions"
           placeholder="全部"
           style="width: 130px"
@@ -107,34 +107,34 @@
         <NFormItem path="category_id" label="门类">
           <NSelect v-model:value="formData.category_id" :options="categoryOptions" placeholder="选择门类" />
         </NFormItem>
-        <NFormItem path="title" label="题名">
-          <NInput v-model:value="formData.title" placeholder="档案题名（必填）" />
+        <NFormItem path="TM" label="题名">
+          <NInput v-model:value="formData.TM" placeholder="档案题名（必填）" />
         </NFormItem>
-        <NFormItem path="fonds_code" label="全宗号">
-          <NInput v-model:value="formData.fonds_code" placeholder="如 J001" />
+        <NFormItem path="QZH" label="全宗号">
+          <NInput v-model:value="formData.QZH" placeholder="如 J001" />
         </NFormItem>
         <div class="grid grid-cols-2 gap-x-4">
-          <NFormItem path="creator" label="责任者">
-            <NInput v-model:value="formData.creator" placeholder="可选" />
+          <NFormItem path="RZZ" label="责任者">
+            <NInput v-model:value="formData.RZZ" placeholder="可选" />
           </NFormItem>
-          <NFormItem path="year" label="年度">
-            <NInputNumber v-model:value="formData.year" placeholder="年度" class="w-full" />
+          <NFormItem path="ND" label="年度">
+            <NInputNumber v-model:value="formData.ND" placeholder="年度" class="w-full" />
           </NFormItem>
-          <NFormItem path="security_level" label="密级">
-            <NSelect v-model:value="formData.security_level" :options="securityOptions" class="w-full" />
+          <NFormItem path="MJ" label="密级">
+            <NSelect v-model:value="formData.MJ" :options="securityOptions" class="w-full" />
           </NFormItem>
-          <NFormItem path="retention_period" label="保管期限">
-            <NSelect v-model:value="formData.retention_period" :options="retentionOptions" class="w-full" />
+          <NFormItem path="BGQX" label="保管期限">
+            <NSelect v-model:value="formData.BGQX" :options="retentionOptions" class="w-full" />
           </NFormItem>
-          <NFormItem path="doc_date" label="文件日期">
-            <NInput v-model:value="formData.doc_date" placeholder="YYYY-MM-DD" />
+          <NFormItem path="WJRQ" label="文件日期">
+            <NInput v-model:value="formData.WJRQ" placeholder="YYYY-MM-DD" />
           </NFormItem>
-          <NFormItem path="pages" label="页数">
-            <NInputNumber v-model:value="formData.pages" placeholder="可选" class="w-full" />
+          <NFormItem path="YS" label="页数">
+            <NInputNumber v-model:value="formData.YS" placeholder="可选" class="w-full" />
           </NFormItem>
         </div>
         <NFormItem label="档号">
-          <NInput v-model:value="formData.archive_no" placeholder="留空则自动生成（需配置档号规则）" />
+          <NInput v-model:value="formData.DH" placeholder="留空则自动生成（需配置档号规则）" />
         </NFormItem>
       </NForm>
     </CrudModal>
@@ -144,15 +144,15 @@
 <script setup lang="tsx">
 import { ref, computed, onMounted, reactive } from "vue";
 import {
-  NButton, NInput, NInputNumber, NSelect, NForm, NFormItem, NTag, NSpace,
+  NButton, NInput, NInputNumber, NSelect, NForm, NFormItem, NTag,
   useMessage, useDialog,
 } from "naive-ui";
-import type { FormInst, DataTableColumns } from "naive-ui";
+import type { FormInst } from "naive-ui";
 import { FondsAPI, CatalogAPI, CategoryAPI, ArchiveAPI } from "@/api/repository";
 import type { Fonds, Catalog, ArchiveCategory, Archive, ArchiveCreate, ArchiveUpdate } from "@/api/repository";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
-import ProTable from "@/components/ui/ProTable.vue";
-import CrudModal from "@/components/ui/CrudModal.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { ProTable } from "@/components/ui";
+import { CrudModal } from "@/components/ui";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 
@@ -184,9 +184,9 @@ const securityOptions = [
   { label: "秘密", value: "secret" },
 ];
 const statusOptions = [
-  { label: "在用", value: "active" },
-  { label: "受限", value: "restricted" },
-  { label: "销毁", value: "destroyed" },
+  { label: "草稿", value: "draft" },
+  { label: "待审", value: "pending_review" },
+  { label: "退回", value: "rejected" },
 ];
 const retentionOptions = [
   { label: "永久", value: "permanent" },
@@ -201,16 +201,16 @@ const securityType: Record<string, "default" | "info" | "warning" | "error"> = {
   public: "default", internal: "info", confidential: "warning", secret: "error",
 };
 const statusLabel: Record<string, string> = {
-  active: "在用", restricted: "受限", destroyed: "销毁",
+  draft: "草稿", pending_review: "待审", rejected: "退回",
 };
 
 const filter = reactive({
   fonds_id: null as string | null,
   catalog_id: null as string | null,
   category_id: null as string | null,
-  year: null as number | null,
+  ND: null as number | null,
   keyword: "",
-  security_level: null as string | null,
+  MJ: null as string | null,
   status: null as string | null,
   page: 1,
   page_size: 20,
@@ -221,14 +221,14 @@ async function onFondsChange(id: string | null) {
   catalogList.value = [];
   if (id) {
     const res = await CatalogAPI.list(id);
-    catalogList.value = res.data.data;
+    catalogList.value = res.data;
   }
 }
 
 function resetFilter() {
   Object.assign(filter, {
     fonds_id: null, catalog_id: null, category_id: null,
-    year: null, keyword: "", security_level: null, status: null, page: 1,
+    ND: null, keyword: "", MJ: null, status: null, page: 1,
   });
   catalogList.value = [];
   loadArchives();
@@ -249,19 +249,19 @@ const archiveList = ref<Archive[]>([]);
 const total = ref(0);
 const loading = ref(false);
 
-const columns: DataTableColumns<Archive> = [
-  { title: "档号", key: "archive_no", width: 140, ellipsis: { tooltip: true } },
-  { title: "题名", key: "title", ellipsis: { tooltip: true } },
-  { title: "责任者", key: "creator", width: 120, ellipsis: true },
-  { title: "年度", key: "year", width: 70 },
-  { title: "全宗号", key: "fonds_code", width: 90 },
+const columns = [
+  { title: "档号", key: "DH", width: 140, ellipsis: { tooltip: true } },
+  { title: "题名", key: "TM", ellipsis: { tooltip: true } },
+  { title: "责任者", key: "RZZ", width: 120, ellipsis: true },
+  { title: "年度", key: "ND", width: 70 },
+  { title: "全宗号", key: "QZH", width: 90 },
   {
     title: "密级",
-    key: "security_level",
+    key: "MJ",
     width: 80,
-    render: (row) => (
-      <NTag type={securityType[row.security_level] ?? "default"} size="small">
-        {securityLabel[row.security_level] ?? row.security_level}
+    render: (row: Archive) => (
+      <NTag type={securityType[row.MJ] ?? "default"} size="small">
+        {securityLabel[row.MJ] ?? row.MJ}
       </NTag>
     ),
   },
@@ -269,17 +269,17 @@ const columns: DataTableColumns<Archive> = [
     title: "状态",
     key: "status",
     width: 80,
-    render: (row) => <span>{statusLabel[row.status] ?? row.status}</span>,
+    render: (row: Archive) => <span>{statusLabel[row.status] ?? row.status}</span>,
   },
   {
     title: "操作",
     key: "actions",
-    width: 140,
-    render: (row) => (
-      <NSpace size="small">
+    width: 120,
+    render: (row: Archive) => (
+      <div class="flex items-center gap-1 flex-nowrap">
         <NButton size="small" onClick={() => openModal(row)}>编辑</NButton>
         <NButton size="small" type="error" onClick={() => confirmDelete(row)}>删除</NButton>
-      </NSpace>
+      </div>
     ),
   },
 ];
@@ -294,15 +294,15 @@ const emptyForm = () => ({
   fonds_id: filter.fonds_id ?? "",
   catalog_id: filter.catalog_id ?? "",
   category_id: null as string | null,
-  title: "",
-  fonds_code: "",
-  creator: "",
-  year: null as number | null,
-  doc_date: "",
-  pages: null as number | null,
-  security_level: "public",
-  retention_period: "permanent",
-  archive_no: "",
+  TM: "",
+  QZH: "",
+  RZZ: "",
+  ND: null as number | null,
+  WJRQ: "",
+  YS: null as number | null,
+  MJ: "public",
+  BGQX: "permanent",
+  DH: "",
 });
 
 const formData = reactive(emptyForm());
@@ -310,8 +310,8 @@ const formData = reactive(emptyForm());
 const rules = {
   fonds_id: [{ required: true, message: "请选择全宗", trigger: "change" }],
   catalog_id: [{ required: true, message: "请选择目录", trigger: "change" }],
-  title: [{ required: true, message: "请输入题名", trigger: "blur" }],
-  fonds_code: [{ required: true, message: "请输入全宗号", trigger: "blur" }],
+  TM: [{ required: true, message: "请输入题名", trigger: "blur" }],
+  QZH: [{ required: true, message: "请输入全宗号", trigger: "blur" }],
 };
 
 async function onFormFondsChange(id: string | null) {
@@ -319,9 +319,9 @@ async function onFormFondsChange(id: string | null) {
   formCatalogs.value = [];
   if (id) {
     const selectedFonds = fondsList.value.find((f) => f.id === id);
-    if (selectedFonds) formData.fonds_code = selectedFonds.fonds_code;
+    if (selectedFonds) formData.QZH = selectedFonds.fonds_code;
     const res = await CatalogAPI.list(id);
-    formCatalogs.value = res.data.data;
+    formCatalogs.value = res.data;
   }
 }
 
@@ -333,15 +333,15 @@ function openModal(row: Archive | null) {
       fonds_id: row.fonds_id,
       catalog_id: row.catalog_id,
       category_id: row.category_id,
-      title: row.title,
-      fonds_code: row.fonds_code,
-      creator: row.creator ?? "",
-      year: row.year ?? null,
-      doc_date: row.doc_date ?? "",
-      pages: row.pages ?? null,
-      security_level: row.security_level,
-      retention_period: row.retention_period,
-      archive_no: row.archive_no ?? "",
+      TM: row.TM,
+      QZH: row.QZH,
+      RZZ: row.RZZ ?? "",
+      ND: row.ND ?? null,
+      WJRQ: row.WJRQ ?? "",
+      YS: row.YS ?? null,
+      MJ: row.MJ,
+      BGQX: row.BGQX,
+      DH: row.DH ?? "",
     });
   } else {
     isEdit.value = false;
@@ -362,14 +362,14 @@ async function submitForm() {
   try {
     if (isEdit.value && editId.value) {
       const payload: ArchiveUpdate = {
-        title: formData.title,
-        creator: formData.creator || undefined,
-        year: formData.year ?? undefined,
-        doc_date: formData.doc_date || undefined,
-        pages: formData.pages ?? undefined,
-        security_level: formData.security_level,
-        retention_period: formData.retention_period,
-        archive_no: formData.archive_no || undefined,
+        TM: formData.TM,
+        RZZ: formData.RZZ || undefined,
+        ND: formData.ND ?? undefined,
+        WJRQ: formData.WJRQ || undefined,
+        YS: formData.YS ?? undefined,
+        MJ: formData.MJ,
+        BGQX: formData.BGQX,
+        DH: formData.DH || undefined,
       };
       await ArchiveAPI.update(editId.value, payload);
       message.success("已更新");
@@ -378,15 +378,15 @@ async function submitForm() {
         fonds_id: formData.fonds_id,
         catalog_id: formData.catalog_id,
         category_id: formData.category_id!,
-        title: formData.title,
-        fonds_code: formData.fonds_code,
-        creator: formData.creator || undefined,
-        year: formData.year ?? undefined,
-        doc_date: formData.doc_date || undefined,
-        pages: formData.pages ?? undefined,
-        security_level: formData.security_level,
-        retention_period: formData.retention_period,
-        archive_no: formData.archive_no || undefined,
+        TM: formData.TM,
+        QZH: formData.QZH,
+        RZZ: formData.RZZ || undefined,
+        ND: formData.ND ?? undefined,
+        WJRQ: formData.WJRQ || undefined,
+        YS: formData.YS ?? undefined,
+        MJ: formData.MJ,
+        BGQX: formData.BGQX,
+        DH: formData.DH || undefined,
       };
       await ArchiveAPI.create(payload);
       message.success("已创建");
@@ -401,7 +401,7 @@ async function submitForm() {
 function confirmDelete(row: Archive) {
   dialog.warning({
     title: "删除确认",
-    content: `确定删除「${row.title}」？（软删除）`,
+    content: `确定删除「${row.TM}」？（软删除）`,
     positiveText: "删除",
     negativeText: "取消",
     onPositiveClick: async () => {
@@ -419,16 +419,16 @@ async function loadArchives() {
       ...(filter.fonds_id ? { fonds_id: filter.fonds_id } : {}),
       ...(filter.catalog_id ? { catalog_id: filter.catalog_id } : {}),
       ...(filter.category_id ? { category_id: filter.category_id } : {}),
-      ...(filter.year ? { year: filter.year } : {}),
+      ...(filter.ND ? { ND: filter.ND } : {}),
       ...(filter.keyword ? { keyword: filter.keyword } : {}),
-      ...(filter.security_level ? { security_level: filter.security_level } : {}),
+      ...(filter.MJ ? { MJ: filter.MJ } : {}),
       ...(filter.status ? { status: filter.status } : {}),
       page: filter.page,
       page_size: filter.page_size,
     };
     const res = await ArchiveAPI.list(params);
-    archiveList.value = res.data.data.items;
-    total.value = res.data.data.total;
+    archiveList.value = res.data.items;
+    total.value = res.data.total;
   } finally {
     loading.value = false;
   }
@@ -436,8 +436,8 @@ async function loadArchives() {
 
 async function loadRefData() {
   const [fondsRes, catRes] = await Promise.all([FondsAPI.list(), CategoryAPI.list()]);
-  fondsList.value = fondsRes.data.data;
-  categoryList.value = catRes.data.data;
+  fondsList.value = fondsRes.data;
+  categoryList.value = catRes.data;
 }
 
 onMounted(() => {

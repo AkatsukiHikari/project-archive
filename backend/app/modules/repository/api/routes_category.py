@@ -7,7 +7,7 @@ from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
 from app.modules.repository.services.category_service import CategoryService
 from app.modules.repository.schemas.category import (
-    CategoryCreate, CategoryUpdate, CategoryRead, FieldDefinition,
+    CategoryCreate, CategoryUpdate, CategoryRead, FieldDefinition, FormLayout,
 )
 from app.common.response import success, ResponseModel
 
@@ -102,3 +102,40 @@ async def update_category_schema(
     category = await svc.update_schema(category_id, serialized)
     await db.commit()
     return success([FieldDefinition.model_validate(f) for f in category.field_schema])
+
+
+@router.get("/{category_id}/layout", response_model=ResponseModel[FormLayout | None])
+async def get_category_layout(
+    category_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """读取门类的表单排版定义。"""
+    svc = CategoryService(db)
+    category = await svc.get(category_id)
+    if not category.form_layout:
+        return success(None)
+    return success(FormLayout.model_validate(category.form_layout))
+
+
+@router.put("/{category_id}/layout", response_model=ResponseModel[FormLayout])
+async def update_category_layout(
+    category_id: uuid.UUID,
+    layout: FormLayout,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """保存门类的表单排版定义。"""
+    svc = CategoryService(db)
+    from sqlalchemy import select
+    from app.modules.repository.models.category import ArchiveCategory as CategoryModel
+    result = await db.execute(
+        select(CategoryModel).where(
+            CategoryModel.id == category_id,
+            CategoryModel.is_deleted.is_(False),
+        )
+    )
+    cat = result.scalar_one()
+    cat.form_layout = layout.model_dump()
+    await db.commit()
+    return success(FormLayout.model_validate(cat.form_layout))

@@ -151,9 +151,9 @@ import { NButton, NInput, NTree, NForm, NFormItem, useMessage, useDialog } from 
 import type { FormInst, TreeOption } from "naive-ui";
 import { RoleAPI, MenuAPI, type Role, type MenuTree } from "@/api/iam";
 import { useAdminStore } from "@/stores/admin";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
-import AdminTenantBar from "@/components/admin/TenantBar.vue";
-import CrudModal from "@/components/ui/CrudModal.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { AdminTenantBar } from "@/components/admin";
+import { CrudModal } from "@/components/ui";
 
 definePageMeta({ layout: "admin", middleware: "auth" });
 

@@ -52,3 +52,11 @@ body[theme-mode="dark"] {
   --semi-color-shadow: oklch(var(--bc) / 0.05) !important;
   --semi-color-overlay-bg: oklch(var(--b1) / 0.8) !important;
 }
+
+/* ── 全局通用卡片容器 ───────────────────────────────────────── */
+.pro-card {
+  background: var(--semi-color-bg-0);
+  border: 1px solid var(--semi-color-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}

@@ -7,8 +7,8 @@ class SegmentDef(BaseModel):
     """规则段定义"""
     type: Literal["field", "literal", "sequence", "date_part"]
 
-    # type=field: 取档案规范化字段值
-    field: Optional[str] = None        # fonds_code | year | catalog_no | volume_no | item_no | creator
+    # type=field: 取档案 DA/T 规范化字段（拼音缩写，MLH/AJH/JH 已删除）
+    field: Optional[str] = None        # QZH | ND | RZZ
 
     # type=literal: 固定字符串
     value: Optional[str] = None
@@ -17,8 +17,8 @@ class SegmentDef(BaseModel):
     padding: int = 4                   # 补零位数，如 4 → "0023"
     scope: Literal["catalog", "catalog_year", "fonds"] = "catalog_year"
 
-    # type=date_part: 从 doc_date 提取日期部分
-    date_field: str = "doc_date"       # 来源字段
+    # type=date_part: 从 WJRQ 提取日期部分
+    date_field: str = "WJRQ"          # 来源字段（默认文件日期）
     date_format: str = "%Y"            # strftime 格式，如 "%Y%m%d"
 
     @model_validator(mode="after")
@@ -77,16 +77,13 @@ class NoRuleRead(BaseModel):
 
 
 class PreviewRequest(BaseModel):
-    """预览档号时提供的档案字段样本"""
-    fonds_code: str = Field(default="J001", max_length=50)
-    year: Optional[int] = Field(default=2024)
-    catalog_no: Optional[str] = Field(default="1", max_length=50)
-    volume_no: Optional[str] = None
-    item_no: Optional[str] = None
-    creator: Optional[str] = None
-    doc_date: Optional[str] = Field(default="2024-01-01", description="YYYY-MM-DD")
+    """预览档号时提供的档案字段样本（拼音缩写，MLH/AJH/JH 已删除）"""
+    QZH: str = Field(default="J001", max_length=50)
+    ND: Optional[int] = Field(default=2024)
+    RZZ: Optional[str] = None
+    WJRQ: Optional[str] = Field(default="2024-01-01", description="YYYY-MM-DD")
 
 
 class PreviewResponse(BaseModel):
-    archive_no: str
+    DH: str
     segments: list[str]              # 各段生成值，便于前端展示

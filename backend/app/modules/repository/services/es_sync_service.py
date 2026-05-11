@@ -15,7 +15,7 @@ from typing import Sequence
 from elasticsearch import AsyncElasticsearch, helpers
 
 from app.infra.search.es_client import get_es_client, ARCHIVE_INDEX
-from app.modules.repository.models.archive import Archive
+from app.modules.repository.models.archive import ArchiveStaging
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,9 @@ logger = logging.getLogger(__name__)
 _SENSITIVE_KEYWORDS = ("id_no", "id_card", "phone", "mobile", "cert_no")
 
 
-def _build_doc(archive: Archive) -> dict:
+def _build_doc(archive: ArchiveStaging) -> dict:
     """将 Archive ORM 对象转换为 ES 文档。隐私字段自动脱敏。"""
     ext = archive.ext_fields or {}
-    # 隐私门类：ext_fields 中包含敏感关键词的字段脱敏
     sanitized_ext: dict = {}
     for k, v in ext.items():
         if any(kw in k.lower() for kw in _SENSITIVE_KEYWORDS):
@@ -36,16 +35,15 @@ def _build_doc(archive: Archive) -> dict:
 
     return {
         "id": str(archive.id),
-        "archive_no": archive.archive_no,
-        "fonds_code": archive.fonds_code,
+        "DH": archive.DH,
+        "QZH": archive.QZH,
         "catalog_id": str(archive.catalog_id) if archive.catalog_id else None,
-        "year": archive.year,
-        "title": archive.title,
-        "creator": archive.creator,
-        "security_level": archive.security_level,
-        "retention_period": archive.retention_period,
-        "doc_date": archive.doc_date.isoformat() if archive.doc_date else None,
-        "level": archive.level,
+        "ND": archive.ND,
+        "TM": archive.TM,
+        "RZZ": archive.RZZ,
+        "MJ": archive.MJ,
+        "BGQX": archive.BGQX,
+        "WJRQ": archive.WJRQ,
         "status": archive.status,
         "ext_fields": sanitized_ext,
         "tenant_id": str(archive.tenant_id) if archive.tenant_id else None,
@@ -53,7 +51,7 @@ def _build_doc(archive: Archive) -> dict:
     }
 
 
-async def sync_one(archive: Archive) -> None:
+async def sync_one(archive: ArchiveStaging) -> None:
     """索引单条档案（新增或覆盖）。失败只记日志，不抛异常。"""
     client: AsyncElasticsearch = get_es_client()
     try:
@@ -71,7 +69,7 @@ async def delete_one(archive_id: str) -> None:
         logger.warning("ES delete_one 失败 id=%s: %s", archive_id, exc)
 
 
-async def bulk_sync(archives: Sequence[Archive]) -> int:
+async def bulk_sync(archives: Sequence[ArchiveStaging]) -> int:
     """
     批量索引，返回成功写入条数。
     用于批量导入每批完成后调用。

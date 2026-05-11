@@ -81,11 +81,11 @@ def test_segment_def_field_missing_field_raises():
 
 def test_preview_request():
     req = PreviewRequest(
-        fonds_code="J001",
-        year=2024,
-        catalog_no="1",
+        QZH="J001",
+        ND=2024,
     )
-    assert req.fonds_code == "J001"
+    assert req.QZH == "J001"
+    assert req.ND == 2024
 
 
 # --- Task 3: NoRuleRepository tests ---
@@ -114,7 +114,7 @@ async def test_no_rule_repo_list_empty(mock_no_rule_repo):
 from sqlalchemy.orm.instrumentation import manager_of_class
 from app.modules.repository.services.no_rule_engine import ArchiveNoEngine
 from app.modules.repository.models.no_rule import ArchiveNoRule
-from app.modules.repository.models.archive import Archive
+from app.modules.repository.models.archive import ArchiveStaging
 
 
 def _sa_new(cls):
@@ -134,20 +134,16 @@ def _make_rule(template: dict) -> ArchiveNoRule:
     return rule
 
 
-def _make_archive(**kwargs) -> Archive:
-    arch = _sa_new(Archive)
+def _make_archive(**kwargs) -> ArchiveStaging:
+    arch = _sa_new(ArchiveStaging)
     arch.fonds_id = uuid.uuid4()
     arch.catalog_id = uuid.uuid4()
     arch.category_id = uuid.uuid4()
-    arch.fonds_code = kwargs.get("fonds_code", "J001")
-    arch.year = kwargs.get("year", 2024)
-    arch.catalog_no = kwargs.get("catalog_no", "1")
-    arch.volume_no = kwargs.get("volume_no", None)
-    arch.item_no = kwargs.get("item_no", None)
-    arch.creator = kwargs.get("creator", None)
-    arch.doc_date = kwargs.get("doc_date", "2024-06-15")
-    arch.level = "item"
-    arch.title = "test"
+    arch.QZH = kwargs.get("QZH", "J001")
+    arch.ND = kwargs.get("ND", 2024)
+    arch.RZZ = kwargs.get("RZZ", None)
+    arch.WJRQ = kwargs.get("WJRQ", "2024-06-15")
+    arch.TM = "test"
     return arch
 
 
@@ -159,11 +155,11 @@ async def test_engine_field_literal_segments():
     rule = _make_rule({
         "separator": "-",
         "segments": [
-            {"type": "field", "field": "fonds_code"},
+            {"type": "field", "field": "QZH"},
             {"type": "literal", "value": "WS"},
         ],
     })
-    archive = _make_archive(fonds_code="J001")
+    archive = _make_archive(QZH="J001")
     result = await engine.generate(rule, archive, preview=True)
     assert result == "J001-WS"
 
@@ -176,10 +172,10 @@ async def test_engine_date_part_year():
     rule = _make_rule({
         "separator": "-",
         "segments": [
-            {"type": "date_part", "date_field": "doc_date", "date_format": "%Y"},
+            {"type": "date_part", "date_field": "WJRQ", "date_format": "%Y"},
         ],
     })
-    archive = _make_archive(doc_date="2024-06-15")
+    archive = _make_archive(WJRQ="2024-06-15")
     result = await engine.generate(rule, archive, preview=True)
     assert result == "2024"
 
@@ -192,11 +188,11 @@ async def test_engine_sequence_preview_uses_zeros():
     rule = _make_rule({
         "separator": "-",
         "segments": [
-            {"type": "field", "field": "fonds_code"},
+            {"type": "field", "field": "QZH"},
             {"type": "sequence", "padding": 4, "scope": "catalog_year"},
         ],
     })
-    archive = _make_archive(fonds_code="J001")
+    archive = _make_archive(QZH="J001")
     result = await engine.generate(rule, archive, preview=True)
     assert result == "J001-0000"
     db.execute.assert_not_called()   # preview 不碰 DB
@@ -214,11 +210,11 @@ async def test_engine_sequence_real_increments():
     rule = _make_rule({
         "separator": "-",
         "segments": [
-            {"type": "field", "field": "fonds_code"},
+            {"type": "field", "field": "QZH"},
             {"type": "sequence", "padding": 4, "scope": "catalog_year"},
         ],
     })
-    archive = _make_archive(fonds_code="J001", year=2024)
+    archive = _make_archive(QZH="J001", ND=2024)
     result = await engine.generate(rule, archive, preview=False)
     assert result == "J001-0001"
     mock_seq_repo.increment.assert_called_once()
@@ -239,7 +235,7 @@ async def test_engine_sequence_existing_row_increments():
             {"type": "sequence", "padding": 4, "scope": "catalog_year"},
         ],
     })
-    archive = _make_archive(year=2024)
+    archive = _make_archive(ND=2024)
     result = await engine.generate(rule, archive, preview=False)
     assert result == "0023"
 

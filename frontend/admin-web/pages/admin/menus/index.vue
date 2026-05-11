@@ -59,10 +59,10 @@ import {
 import type { FormInst } from "naive-ui";
 import { TrashIcon, PencilIcon, PlusIcon } from "@heroicons/vue/24/outline";
 import { MenuAPI, type MenuTree, type Menu } from "@/api/iam";
-import AdminPageHeader from "@/components/admin/PageHeader.vue";
-import ProTable from "@/components/ui/ProTable.vue";
-import CrudModal from "@/components/ui/CrudModal.vue";
-import IconPicker from "@/components/ui/IconPicker.vue";
+import { AdminPageHeader } from "@/components/admin";
+import { ProTable } from "@/components/ui";
+import { CrudModal } from "@/components/ui";
+import { IconPicker } from "@/components/ui";
 
 definePageMeta({ layout: "admin", middleware: "auth" });
 

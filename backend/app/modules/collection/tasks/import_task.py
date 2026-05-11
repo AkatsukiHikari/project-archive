@@ -74,7 +74,7 @@ async def _execute_import_async(task_id_str: str) -> dict:
                 for m in (task.mapping_snapshot or [])
             }
 
-            # 获取全宗号（用于构建 Archive.fonds_code）
+            # 获取全宗号（用于构建 Archive.QZH）
             fonds_result = await db.execute(
                 select(Fonds).where(Fonds.id == task.fonds_id)
             )
@@ -118,7 +118,7 @@ async def _execute_import_async(task_id_str: str) -> dict:
                 # 生成档号
                 if active_rule:
                     try:
-                        archive.archive_no = await no_rule_engine.generate(active_rule, archive)
+                        archive.DH = await no_rule_engine.generate(active_rule, archive)
                     except Exception as exc:
                         logger.warning("档号生成失败 row=%d: %s", i, exc)
 
@@ -190,7 +190,7 @@ async def _flush_batch(db, archives: list, _existing_failed: list) -> tuple[int,
                 success += 1
             except Exception as row_exc:
                 failed += 1
-                failed_rows.append({"title": archive.title, "reason": str(row_exc)})
+                failed_rows.append({"TM": archive.TM, "reason": str(row_exc)})
                 await db.rollback()
 
     return success, failed, failed_rows

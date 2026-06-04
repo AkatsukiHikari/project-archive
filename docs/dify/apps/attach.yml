@@ -1,0 +1,101 @@
+app:
+  description: 读取新材料，匹配候选档案，产出挂接 patch 草案（写类，走审核队列）
+  icon: link
+  icon_background: '#DCFCE7'
+  icon_type: emoji
+  mode: chat
+  name: 档案自动挂接
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: false
+    max_iteration: 10
+    strategy: react
+    tools: []
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions: []
+    allowed_file_types: []
+    allowed_file_upload_methods: []
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      stop: []
+      temperature: 0.2
+    mode: chat
+    name: qwen2.5:7b
+    provider: langgenius/ollama/ollama
+  more_like_this:
+    enabled: false
+  opening_statement: 把新材料的题名、责任者、年度、内容片段告诉我，我帮你匹配到既有档案或目录，并生成挂接 Patch 草案。
+  pre_prompt: "你是 SAMS 档案自动挂接助手。\n任务：根据用户描述的新材料，结合 {{citations}}（已检索的候选档案元数据），推断最佳挂接目标。\n\
+    输出：\n  ① 推荐挂接到的目录 / 档案（含档号 / 题名）；\n  ② 推断依据（年度、责任者、关键词等匹配项）；\n  ③ 置信度（低/中/高），高置信才能进\
+    \ auto 闸门。\n强调：本能力产出的是 staging patch，不直接落库；最终由人工审核队列处理。"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config: {}
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - 把这份 2024 年市档案馆财务月报挂接到合适的目录
+  - 新材料：人事任免决定 张三 2024-06，匹配候选档案
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+  - paragraph:
+      label: 检索证据 (citations)
+      variable: citations
+      required: false
+      default: ''
+  - text-input:
+      label: 场景代码 (scenario_code)
+      variable: scenario_code
+      required: false
+      default: ''
+  - text-input:
+      label: 模型档位 (model_tier)
+      variable: model_tier
+      required: false
+      default: ''
+version: 0.6.0

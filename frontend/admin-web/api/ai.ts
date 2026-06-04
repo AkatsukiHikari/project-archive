@@ -10,15 +10,125 @@
  * （EventSource 不支持 POST 请求和自定义 Header）
  */
 
+import { service as http } from "@/utils/axios/service";
 import { useUserStore } from "@/stores/user";
 
-const API_BASE = "/api/v1/ai";
+interface ApiResponse<T> {
+  code: number;
+  data: T;
+  message: string;
+}
+
+const API_BASE = "/ai";
 
 export interface ChatChunk {
   event: string;
   answer?: string;
   conversation_id?: string;
   message?: string; // 错误消息
+  scenario_code?: string;
+  model_tier?: string;
+  workflow_version?: string;
+  gate?: string;
+}
+
+export type ModelTier = "快" | "准" | "思考";
+
+export interface ScenarioInfo {
+  code: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  default_model_tier: ModelTier;
+  gate: string | null;
+  citation_required: boolean;
+}
+
+export interface ScenarioListResponse {
+  scenarios: ScenarioInfo[];
+  default_model_tier: ModelTier;
+}
+
+export async function listScenarios(): Promise<ScenarioListResponse> {
+  const res = await http.get<
+    ApiResponse<ScenarioListResponse>,
+    ApiResponse<ScenarioListResponse>
+  >(`${API_BASE}/scenarios`);
+  return res.data;
+}
+
+// ──────────────────────────────────────────────────────────────
+// AI 会话历史
+// ──────────────────────────────────────────────────────────────
+
+export interface SessionItem {
+  id: string;
+  title: string;
+  last_scenario_code: string | null;
+  last_model_tier: string | null;
+  message_count: number;
+  dify_conversation_id: string | null;
+  update_time: string;
+  create_time: string;
+}
+
+export interface SessionListResponse {
+  total: number;
+  items: SessionItem[];
+}
+
+export async function listSessions(
+  params: { page?: number; size?: number } = {},
+): Promise<SessionListResponse> {
+  const res = await http.get<ApiResponse<SessionListResponse>, ApiResponse<SessionListResponse>>(
+    `${API_BASE}/sessions`,
+    { params },
+  );
+  return res.data;
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  await http.delete(`${API_BASE}/sessions/${sessionId}`);
+}
+
+// ──────────────────────────────────────────────────────────────
+// 知识库管理
+// ──────────────────────────────────────────────────────────────
+
+export interface KBStatusItem {
+  kb_type: "meta" | "rules" | "ocr";
+  db_count: number;
+  es_count: number | null;
+  synced: boolean;
+  last_synced_at: string | null;
+  note: string | null;
+}
+
+export interface KBStatusResponse {
+  items: KBStatusItem[];
+}
+
+export interface KBRebuildResponse {
+  kb_type: string;
+  scanned: number;
+  synced: number;
+  failed: number;
+  duration_ms: number;
+}
+
+export async function getKBStatus(): Promise<KBStatusResponse> {
+  const res = await http.get<ApiResponse<KBStatusResponse>, ApiResponse<KBStatusResponse>>(
+    `${API_BASE}/kb/status`,
+  );
+  return res.data;
+}
+
+export async function rebuildKB(kb_type: "meta", batch_size = 200): Promise<KBRebuildResponse> {
+  const res = await http.post<
+    ApiResponse<KBRebuildResponse>,
+    ApiResponse<KBRebuildResponse>
+  >(`${API_BASE}/kb/rebuild`, { kb_type, batch_size });
+  return res.data;
 }
 
 /**

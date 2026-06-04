@@ -48,38 +48,48 @@ class DifyService:
         query: str,
         user_id: str,
         conversation_id: str | None = None,
+        scenario_code: str = "qa",
+        model_tier: str | None = None,
+        api_key: str | None = None,
+        inputs: dict | None = None,
     ) -> AsyncGenerator[str, None]:
         """
         调用 Dify 流式聊天 API，返回 SSE 事件流。
-
-        这是一个异步生成器（async generator）：
-        - 用 `yield` 而不是 `return`
-        - 调用方用 `async for chunk in service.stream_chat(...)` 逐块消费
-        - 每个 yield 出去的字符串都是一条 SSE 事件行
 
         Args:
             query: 用户问题
             user_id: 当前用户ID（用于 Dify 的用户隔离）
             conversation_id: 多轮对话的会话ID，首次为 None
+            scenario_code: 当前会话所属能力，注入到 Dify ``inputs``，主 Chatflow 路由用
+            model_tier: 用户选择的模型档位（快/准/思考），注入到 Dify ``inputs``
+            api_key: 覆盖默认 DIFY_API_KEY（不同 App 可能有不同 key；为空则用全局）
+            inputs: 额外注入到 Dify ``inputs`` 的字段（context_archive_ids 等）
 
         Yields:
-            SSE 格式的字符串，如 'data: {"event":"message","answer":"你好"}\n\n'
+            SSE 格式的字符串，如 'data: {"event":"message","answer":"你好"}\\n\\n'
         """
-        if not settings.DIFY_API_KEY:
+        effective_key = api_key or settings.DIFY_API_KEY
+        if not effective_key:
             yield 'data: {"event":"error","message":"AI服务未配置，请联系管理员设置 DIFY_API_KEY"}\n\n'
             return
+
+        merged_inputs: dict = {"scenario_code": scenario_code}
+        if model_tier:
+            merged_inputs["model_tier"] = model_tier
+        if inputs:
+            merged_inputs.update(inputs)
 
         payload: dict = {
             "query": query,
             "user": user_id,
             "response_mode": "streaming",  # 流式模式
-            "inputs": {},
+            "inputs": merged_inputs,
         }
         if conversation_id:
             payload["conversation_id"] = conversation_id
 
         headers = {
-            "Authorization": f"Bearer {settings.DIFY_API_KEY}",
+            "Authorization": f"Bearer {effective_key}",
             "Content-Type": "application/json",
         }
 

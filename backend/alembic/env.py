@@ -25,6 +25,12 @@ from app.modules.repository.models.archive import Catalog, Archive  # noqa: F401
 from app.modules.repository.models.no_rule_seq import ArchiveNoSeq  # noqa: F401
 from app.modules.collection.models.import_task import ImportTask  # noqa: F401
 from app.modules.collection.models.mapping_template import FieldMappingTemplate  # noqa: F401
+from app.modules.ai.models.ai_scenario import AIScenario  # noqa: F401
+from app.modules.ai.models.ai_session import AISession  # noqa: F401
+from app.modules.ai_patch.models.ai_patch import AIPatch  # noqa: F401
+from app.modules.ai_eval.models.golden_set import GoldenSetItem  # noqa: F401
+from app.modules.ai_eval.models.eval_run import EvalRun, EvalRunItem  # noqa: F401
+from app.modules.ai_eval.models.annotation import Annotation  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

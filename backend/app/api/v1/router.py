@@ -42,6 +42,12 @@ v1_router.include_router(preservation_routes.router, prefix="/preservation/detec
 v1_router.include_router(collection_routes.router, prefix="/collection/sip", tags=["collection"])
 v1_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 v1_router.include_router(ai_routes.router, prefix="/ai", tags=["ai"])
+from app.modules.ai_patch.api.routes_patch import router as ai_patch_router
+from app.modules.ai_eval.api.routes_eval import router as ai_eval_router
+from app.modules.ai.api.routes_kb import router as ai_kb_router
+v1_router.include_router(ai_patch_router, prefix="/ai/patches", tags=["ai-patch"])
+v1_router.include_router(ai_eval_router, prefix="/ai/eval", tags=["ai-eval"])
+v1_router.include_router(ai_kb_router, prefix="/ai/kb", tags=["ai-kb"])
 v1_router.include_router(repository_routes.router, prefix="/repository", tags=["repository"])
 v1_router.include_router(archive_category_router)
 v1_router.include_router(archive_router)

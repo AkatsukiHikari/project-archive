@@ -1,5 +1,15 @@
 {
   "enabledPlugins": {
     "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": ["Bash(rm -rf:*)", "Bash(git push:*)"]
   }
 }

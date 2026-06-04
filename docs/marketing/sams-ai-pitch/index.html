@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>坤爵 · 智能档案管理系统 · AI 能力推介</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #06080F;
+    color: #E5E7EB;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
+  }
+  .page {
+    width: 210mm; height: 297mm;
+    padding: 14mm 16mm;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    background: #06080F;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .glow-tl {
+    background-image:
+      radial-gradient(circle at 0% 0%, rgba(34,211,238,0.15), transparent 50%),
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 28px 28px, 28px 28px;
+  }
+  .glow-br {
+    background-image:
+      radial-gradient(circle at 100% 100%, rgba(236,72,153,0.12), transparent 55%),
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 28px 28px, 28px 28px;
+  }
+  .glow-center {
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(139,92,246,0.15), transparent 60%),
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 28px 28px, 28px 28px;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 50%, #ec4899 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .gradient-text-soft {
+    background: linear-gradient(135deg, #67e8f9 0%, #c4b5fd 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+
+  .glass {
+    background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+  }
+  .glass-strong {
+    background: linear-gradient(160deg, rgba(139,92,246,0.10), rgba(34,211,238,0.04));
+    border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 14px;
+  }
+  .glass-soft {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+  }
+
+  .page-header {
+    position: absolute; top: 8mm; left: 16mm; right: 16mm;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9pt; color: rgba(229,231,235,0.55);
+    letter-spacing: 0.06em;
+  }
+  .page-header .brand { font-weight: 700; color: #c4b5fd; }
+  .page-footer {
+    position: absolute; bottom: 8mm; left: 16mm; right: 16mm;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 8pt; color: rgba(229,231,235,0.35);
+    letter-spacing: 0.08em;
+  }
+  .page-footer .num { font-weight: 700; color: rgba(196,181,253,0.7); }
+
+  .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; }
+  h1, h2, h3, h4, p { margin: 0; }
+  h1 { font-size: 42pt; font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; }
+  h2 { font-size: 26pt; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+  h3 { font-size: 14pt; font-weight: 700; line-height: 1.3; }
+  h4 { font-size: 10pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(196,181,253,0.85); }
+  .lead { font-size: 13pt; line-height: 1.55; color: rgba(229,231,235,0.85); }
+  .body-text { font-size: 10.5pt; line-height: 1.65; color: rgba(229,231,235,0.78); }
+  .body-text-sm { font-size: 9.5pt; line-height: 1.6; color: rgba(229,231,235,0.7); }
+  .micro { font-size: 8pt; line-height: 1.5; color: rgba(229,231,235,0.5); letter-spacing: 0.04em; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 8.5pt; font-weight: 600; letter-spacing: 0.04em;
+  }
+  .chip-green { background: rgba(52,211,153,0.12); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.3); }
+  .chip-amber { background: rgba(251,191,36,0.12); color: #fcd34d; border: 1px solid rgba(251,191,36,0.3); }
+  .chip-rose  { background: rgba(244,63,94,0.12); color: #fda4af; border: 1px solid rgba(244,63,94,0.3); }
+  .chip-violet{ background: rgba(139,92,246,0.14); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.32); }
+  .chip-cyan  { background: rgba(34,211,238,0.12); color: #67e8f9; border: 1px solid rgba(34,211,238,0.3); }
+  .chip-slate { background: rgba(148,163,184,0.10); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.22); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+
+  .stat-num { font-size: 28pt; font-weight: 900; line-height: 1; letter-spacing: -0.02em; }
+  .num-marker {
+    font-size: 88pt; font-weight: 900; line-height: 0.9;
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgba(196,181,253,0.4);
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 11pt;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+    color: white;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 8.5pt; font-weight: 600;
+    background: rgba(139,92,246,0.10);
+    border: 1px solid rgba(139,92,246,0.22);
+    color: #c4b5fd;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  th, td { padding: 8px 10px; text-align: left; }
+  th { font-weight: 700; color: rgba(196,181,253,0.85); border-bottom: 1px solid rgba(139,92,246,0.3); font-size: 9pt; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(229,231,235,0.82); }
+  tr:last-child td { border-bottom: none; }
+
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .flex-row { flex-direction: row; }
+  .items-center { align-items: center; }
+  .items-start { align-items: flex-start; }
+  .items-end { align-items: flex-end; }
+  .justify-between { justify-content: space-between; }
+  .justify-center { justify-content: center; }
+  .gap-1 { gap: 4px; } .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-5 { gap: 20px; } .gap-6 { gap: 24px; } .gap-8 { gap: 32px; }
+  .grid { display: grid; }
+  .grid-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .mt-1 { margin-top: 4px; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 16px; } .mt-6 { margin-top: 24px; } .mt-8 { margin-top: 32px; } .mt-auto { margin-top: auto; }
+  .mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 16px; } .mb-6 { margin-bottom: 24px; } .mb-8 { margin-bottom: 32px; }
+  .p-3 { padding: 12px; } .p-4 { padding: 16px; } .p-5 { padding: 20px; } .p-6 { padding: 24px; }
+  .px-3 { padding-left: 12px; padding-right: 12px; } .px-4 { padding-left: 16px; padding-right: 16px; }
+  .py-2 { padding-top: 8px; padding-bottom: 8px; } .py-3 { padding-top: 12px; padding-bottom: 12px; }
+  .w-full { width: 100%; } .h-full { height: 100%; }
+  .flex-1 { flex: 1; }
+  .text-center { text-align: center; }
+  .text-right { text-align: right; }
+  .rounded-lg { border-radius: 10px; }
+  .rounded-xl { border-radius: 14px; }
+  .rounded-2xl { border-radius: 20px; }
+  .relative { position: relative; }
+  .absolute { position: absolute; }
+  .overflow-hidden { overflow: hidden; }
+  .opacity-50 { opacity: 0.5; } .opacity-70 { opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+  PAGE 1 · 封面
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="content justify-between">
+    <div class="flex items-center gap-3">
+      <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16pt;color:white;">坤</div>
+      <div>
+        <div style="font-size:15pt;font-weight:800;letter-spacing:0.04em;">坤爵</div>
+        <div class="micro" style="margin-top:-2px;">智能档案管理系统</div>
+      </div>
+    </div>
+
+    <div style="margin-top:60mm;">
+      <div class="chip chip-violet mb-4"><span class="dot"></span>AI · 智能档案管理</div>
+      <h1 class="gradient-text" style="font-size:54pt;">让档案<br>会说话</h1>
+      <div class="mt-6" style="height:3px;width:80mm;background:linear-gradient(90deg,#22d3ee,#8b5cf6,#ec4899);border-radius:2px;"></div>
+      <p class="lead mt-6" style="max-width:130mm;font-size:14pt;">
+        基于大模型的智能档案管理系统 ——<br>
+        让 <span style="color:#67e8f9;font-weight:600;">问答</span>、<span style="color:#c4b5fd;font-weight:600;">检索</span>、<span style="color:#fda4af;font-weight:600;">编目</span>、<span style="color:#6ee7b7;font-weight:600;">挂接</span>、<span style="color:#fcd34d;font-weight:600;">综述</span> 都在自然语言中完成。
+      </p>
+    </div>
+
+    <div class="flex justify-between items-end" style="margin-top:auto;">
+      <div>
+        <div class="micro">遵循 DA/T 国家档案行业标准</div>
+        <div class="micro mt-1">适用机关 · 国企 · 高校 · 医院 · 科研院所</div>
+      </div>
+      <div class="text-right">
+        <div class="micro">产品推介 · v1.0</div>
+        <div class="micro mt-1">2026.05</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 2 · 致客户:三个真问题
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>致客户</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>开篇</h4>
+    <h2 class="mt-3" style="max-width:160mm;">档案数字化做了这么多年,<br>有<span class="gradient-text">三件事</span>始终没解决。</h2>
+
+    <div class="grid grid-3 mt-8" style="gap:18px;">
+      <div class="glass p-5" style="display:flex;flex-direction:column;height:130mm;">
+        <div class="num-marker">01</div>
+        <h3 class="mt-4" style="color:#67e8f9;">入库太慢</h3>
+        <p class="body-text mt-3">扫描件堆成山,著录员一个字段一个字段敲;一份卷宗 20+ 字段,著录一卷 15 分钟起,几十万卷压在那里"等人手"。</p>
+        <div class="mt-auto pill" style="align-self:flex-start;">业务痛点 · 效率</div>
+      </div>
+      <div class="glass p-5" style="display:flex;flex-direction:column;height:130mm;">
+        <div class="num-marker">02</div>
+        <h3 class="mt-4" style="color:#c4b5fd;">检索太死</h3>
+        <p class="body-text mt-3">关键词不对、不知道填哪个字段,就什么都搜不到。要查"2018 年那次环评相关材料",得先猜档号、猜全宗、猜文种,普通利用者根本不会用。</p>
+        <div class="mt-auto pill" style="align-self:flex-start;">业务痛点 · 利用</div>
+      </div>
+      <div class="glass p-5" style="display:flex;flex-direction:column;height:130mm;">
+        <div class="num-marker">03</div>
+        <h3 class="mt-4" style="color:#fda4af;">价值睡着了</h3>
+        <p class="body-text mt-3">档案躺在库里,跨年度、跨全宗、跨载体的关联从来无人梳理;领导想要一份"某专题十年综述",照样靠人手翻阅 + 整理。</p>
+        <div class="mt-auto pill" style="align-self:flex-start;">业务痛点 · 价值</div>
+      </div>
+    </div>
+
+    <div class="glass-strong p-5 mt-6" style="display:flex;align-items:center;gap:20px;">
+      <div style="font-size:36pt;line-height:1;">✨</div>
+      <div style="flex:1;">
+        <div class="lead" style="color:#E5E7EB;font-weight:600;">坤爵用 <span class="gradient-text">AI 智能助手</span> 重写这三件事:</div>
+        <div class="body-text mt-2">说话就能问、说话就能查、说话就能拿到一份带原文出处的专题综述。</div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>坤爵智能档案管理系统</span>
+    <span><span class="num">02</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 3 · 坤爵一图全景
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>产品全景</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>产品定位</h4>
+    <h2 class="mt-3">一个 <span class="gradient-text">合规标准</span> 的档案业务平台,<br>叠加一层 <span class="gradient-text">会做事的 AI 助手</span>。</h2>
+    <p class="lead mt-4" style="max-width:170mm;">从档案收进来 → 在库里管好 → 让人方便用,全链路标准化、数字化;在标准业务能力之上,叠加一层基于大模型的 AI 智能助手 —— 这是坤爵与传统档案系统最大的不同。</p>
+
+    <div class="grid grid-3 mt-6" style="gap:12px;">
+      <div class="glass-soft p-4"><div class="chip chip-cyan mb-2"><span class="dot"></span>收</div><h3>档案收集</h3><p class="body-text-sm mt-2">扫描件 / 业务系统 / 移交单批量入库 · 进馆质检</p></div>
+      <div class="glass-soft p-4"><div class="chip chip-cyan mb-2"><span class="dot"></span>管</div><h3>档案保管</h3><p class="body-text-sm mt-2">全宗 / 案卷 / 文件三级管理 · 库房定位 · 永不真删</p></div>
+      <div class="glass-soft p-4"><div class="chip chip-cyan mb-2"><span class="dot"></span>用</div><h3>档案利用</h3><p class="body-text-sm mt-2">检索 / 借阅 / 水印 / 利用审批 / 公共服务窗口</p></div>
+      <div class="glass-soft p-4"><div class="chip chip-amber mb-2"><span class="dot"></span>查</div><h3>四性检测</h3><p class="body-text-sm mt-2">真实性 / 完整性 / 可用性 / 安全性 在线检测</p></div>
+      <div class="glass-soft p-4"><div class="chip chip-slate mb-2"><span class="dot"></span>身份</div><h3>统一身份与权限</h3><p class="body-text-sm mt-2">单点登录 / 多级机构 / 角色权限 / 密级管控</p></div>
+      <div class="glass-soft p-4"><div class="chip chip-slate mb-2"><span class="dot"></span>底座</div><h3>审计 · 通知 · 调度</h3><p class="body-text-sm mt-2">全操作可追溯 · 任务自动调度 · 多通道通知</p></div>
+    </div>
+
+    <div class="glass-strong p-5 mt-5" style="display:flex;flex-direction:column;">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-weight:900;color:white;">AI</div>
+          <h3 class="gradient-text-soft" style="font-size:16pt;">AI 智能助手层 · 贯穿全部业务</h3>
+        </div>
+        <span class="chip chip-violet"><span class="dot"></span>本次重点</span>
+      </div>
+      <p class="body-text mt-3">9 项 AI 能力垂直贯穿"收 / 管 / 用 / 查"四大场景,分四期渐进交付。所有 AI 行为受三道保险:每条答案带可点引用 · 写入档案必须人工审核 · 上线必须先过质量门禁。</p>
+      <div class="flex gap-2 mt-3" style="flex-wrap:wrap;">
+        <span class="chip chip-green"><span class="dot"></span>智能问答</span>
+        <span class="chip chip-green"><span class="dot"></span>自然语言检索</span>
+        <span class="chip chip-green"><span class="dot"></span>知识库管理</span>
+        <span class="chip chip-amber"><span class="dot"></span>自动挂接</span>
+        <span class="chip chip-amber"><span class="dot"></span>自动编目</span>
+        <span class="chip chip-amber"><span class="dot"></span>摘要综述</span>
+        <span class="chip chip-rose"><span class="dot"></span>四性建议</span>
+        <span class="chip chip-rose"><span class="dot"></span>拟稿</span>
+        <span class="chip chip-rose"><span class="dot"></span>关联分析</span>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>坤爵智能档案管理系统</span>
+    <span><span class="num">03</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 4 · 产品矩阵与部署形态(客户视角)
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>产品矩阵与部署</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>产品矩阵</h4>
+    <h2 class="mt-3">三种<span class="gradient-text">交付形态</span>,<br>覆盖从单位自用到行业云的不同需求。</h2>
+
+    <div class="grid grid-3 mt-6" style="gap:14px;">
+      <div class="glass p-5">
+        <div class="chip chip-cyan mb-3"><span class="dot"></span>标准版</div>
+        <h3>面向单一机构</h3>
+        <p class="body-text-sm mt-3">完整档案业务 + 全部 AI 能力 · 适合单一机关、企业、医院、高校;一次性部署,本地或政务云均可。</p>
+        <div class="mt-4">
+          <div class="body-text-sm"><b style="color:#67e8f9;">典型规模:</b> 50-500 万卷</div>
+          <div class="body-text-sm"><b style="color:#67e8f9;">实施周期:</b> 3-6 个月</div>
+        </div>
+      </div>
+      <div class="glass p-5">
+        <div class="chip chip-violet mb-3"><span class="dot"></span>多机构版</div>
+        <h3>面向集团 / 多分支</h3>
+        <p class="body-text-sm mt-3">主管单位 + 下属若干分支的多机构隔离;统一 AI 知识库与权限管控,数据按机构物理隔离。</p>
+        <div class="mt-4">
+          <div class="body-text-sm"><b style="color:#c4b5fd;">典型规模:</b> 3-30 个机构</div>
+          <div class="body-text-sm"><b style="color:#c4b5fd;">实施周期:</b> 4-8 个月</div>
+        </div>
+      </div>
+      <div class="glass p-5">
+        <div class="chip chip-rose mb-3"><span class="dot"></span>行业云版</div>
+        <h3>面向行业主管单位</h3>
+        <p class="body-text-sm mt-3">行业档案统一管理 + 下属机构 SaaS 接入;每机构独立租户、独立 AI 知识库,主管侧统一汇总监管。</p>
+        <div class="mt-4">
+          <div class="body-text-sm"><b style="color:#fda4af;">典型规模:</b> 30+ 机构</div>
+          <div class="body-text-sm"><b style="color:#fda4af;">实施周期:</b> 6-12 个月</div>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="mt-8">部署形态</h4>
+    <div class="grid grid-4 mt-3" style="gap:10px;">
+      <div class="glass-soft p-3"><h4 style="font-size:9pt;color:#67e8f9;">本地化部署</h4><p class="body-text-sm mt-2">机房整套部署,数据不出单位;支持物理隔离网络环境。</p></div>
+      <div class="glass-soft p-3"><h4 style="font-size:9pt;color:#67e8f9;">政务云部署</h4><p class="body-text-sm mt-2">已适配主流政务云,信创环境一键迁移。</p></div>
+      <div class="glass-soft p-3"><h4 style="font-size:9pt;color:#67e8f9;">混合云</h4><p class="body-text-sm mt-2">业务数据本地,AI 大模型走政务云推理服务。</p></div>
+      <div class="glass-soft p-3"><h4 style="font-size:9pt;color:#67e8f9;">全离线部署</h4><p class="body-text-sm mt-2">含 AI 模型本地化推理;适合涉密单位。</p></div>
+    </div>
+
+    <h4 class="mt-6">适用单位类型</h4>
+    <div class="flex gap-2 mt-3" style="flex-wrap:wrap;">
+      <span class="chip chip-slate">党政机关</span>
+      <span class="chip chip-slate">国有企业</span>
+      <span class="chip chip-slate">事业单位</span>
+      <span class="chip chip-slate">高等院校</span>
+      <span class="chip chip-slate">公立医院</span>
+      <span class="chip chip-slate">科研院所</span>
+      <span class="chip chip-slate">综合档案馆</span>
+      <span class="chip chip-slate">行业档案馆</span>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>产品矩阵 · 部署形态 · 适用单位</span>
+    <span><span class="num">04</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 5 · AI 能改变什么 · 9 大场景一览
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>AI 能力一览</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>AI 能力 · 总览</h4>
+    <h2 class="mt-3">9 项 AI 能力 ·<br>按 <span class="gradient-text">价值递增</span> 与 <span class="gradient-text">风险递增</span> 组织</h2>
+    <p class="lead mt-3" style="max-width:170mm;">从最低门槛的问答开始,逐步开放写入档案的能力;高风险能力永远以"建议态"出现,不自动写入档案。</p>
+
+    <table class="mt-5">
+      <thead>
+        <tr><th style="width:30px;">#</th><th>能力</th><th style="width:60px;">难度</th><th style="width:50px;">性质</th><th>真实可期效果</th><th style="width:90px;">上线形态</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b style="color:#67e8f9;">①</b></td><td><b>智能问答</b></td><td><span class="chip chip-green">🟢 低</span></td><td>读</td><td>命中率 ≥ 85% · 强制带可点引用</td><td><span class="chip chip-violet">完整</span></td></tr>
+        <tr><td><b style="color:#67e8f9;">②</b></td><td><b>自然语言检索</b></td><td><span class="chip chip-green">🟢 低</span></td><td>读</td><td>意图准确率 ≥ 85%</td><td><span class="chip chip-violet">完整</span></td></tr>
+        <tr><td><b style="color:#67e8f9;">③</b></td><td><b>知识库交互管理</b></td><td><span class="chip chip-green">🟢 低</span></td><td>读+写</td><td>对话式维护知识库 / 状态查询</td><td><span class="chip chip-violet">完整</span></td></tr>
+        <tr><td><b style="color:#fcd34d;">④</b></td><td><b>档案自动挂接</b></td><td><span class="chip chip-amber">🟡 中</span></td><td>写</td><td>类目级 ≥ 90%,父档级靠人工把关</td><td><span class="chip chip-cyan">建议 + 审核</span></td></tr>
+        <tr><td><b style="color:#fcd34d;">⑤</b></td><td><b>AI 自动编目</b></td><td><span class="chip chip-amber">🟡 中</span></td><td>写</td><td>软字段 70-85%,硬字段交规则引擎</td><td><span class="chip chip-cyan">建议 + 审核</span></td></tr>
+        <tr><td><b style="color:#fcd34d;">⑥</b></td><td><b>档案摘要 / 综述</b></td><td><span class="chip chip-amber">🟡 中</span></td><td>读</td><td>强制带原文出处,无证据则拒答</td><td><span class="chip chip-violet">完整</span></td></tr>
+        <tr><td><b style="color:#fda4af;">⑦</b></td><td><b>四性检测辅助</b></td><td><span class="chip chip-rose">🔴 高</span></td><td>读</td><td>标红风险点,不做最终判定</td><td><span class="chip chip-rose">建议态</span></td></tr>
+        <tr><td><b style="color:#fda4af;">⑧</b></td><td><b>审稿 / 拟稿</b></td><td><span class="chip chip-rose">🔴 高</span></td><td>读</td><td>草稿不替代正式签发</td><td><span class="chip chip-rose">建议态</span></td></tr>
+        <tr><td><b style="color:#fda4af;">⑨</b></td><td><b>跨档案关联分析</b></td><td><span class="chip chip-rose">🔴 高</span></td><td>读</td><td>关联建议卡片,纯辅助</td><td><span class="chip chip-rose">建议态</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="glass p-4 mt-5" style="display:flex;gap:14px;align-items:center;">
+      <div style="font-size:18pt;">🛡️</div>
+      <div class="body-text-sm" style="flex:1;">
+        <b style="color:#fda4af;">风险底线</b> · 🔴 三项能力永不自动写入档案,只在界面中作为"AI 建议卡片"呈现;需要采纳时由工作人员手动确认或走正式审批流程。
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>AI 能力 · 总览</span>
+    <span><span class="num">05</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 6 · 业务价值速览
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>业务价值</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>对谁有价值</h4>
+    <h2 class="mt-3">对档案员、利用者、单位领导<br><span class="gradient-text">价值各不相同</span></h2>
+
+    <div class="grid grid-3 mt-6" style="gap:14px;">
+      <div class="glass p-5">
+        <div class="chip chip-cyan mb-3"><span class="dot"></span>档案员</div>
+        <h3>从"敲键盘的人"<br>变成"做决定的人"</h3>
+        <div class="mt-4 flex flex-col gap-3">
+          <div class="flex items-start gap-2"><span style="color:#22d3ee;">▸</span><div class="body-text-sm">著录效率 <b style="color:#67e8f9;">提升 5-8 倍</b></div></div>
+          <div class="flex items-start gap-2"><span style="color:#22d3ee;">▸</span><div class="body-text-sm">手工挂接卷宗减少 <b style="color:#67e8f9;">≥ 80%</b></div></div>
+          <div class="flex items-start gap-2"><span style="color:#22d3ee;">▸</span><div class="body-text-sm">四性问题被 AI 提前发现,返工率下降</div></div>
+        </div>
+      </div>
+      <div class="glass p-5">
+        <div class="chip chip-violet mb-3"><span class="dot"></span>利用者</div>
+        <h3>从"猜字段"<br>变成"说人话"</h3>
+        <div class="mt-4 flex flex-col gap-3">
+          <div class="flex items-start gap-2"><span style="color:#8b5cf6;">▸</span><div class="body-text-sm">自然语言一句话找档,<b style="color:#c4b5fd;">零培训上手</b></div></div>
+          <div class="flex items-start gap-2"><span style="color:#8b5cf6;">▸</span><div class="body-text-sm">每条答案带原文出处,<b style="color:#c4b5fd;">敢用、好用</b></div></div>
+          <div class="flex items-start gap-2"><span style="color:#8b5cf6;">▸</span><div class="body-text-sm">摘要 / 综述秒级出稿,人工撰写时间归零</div></div>
+        </div>
+      </div>
+      <div class="glass p-5">
+        <div class="chip chip-rose mb-3"><span class="dot"></span>单位领导</div>
+        <h3>从"档案是负担"<br>变成"档案是资产"</h3>
+        <div class="mt-4 flex flex-col gap-3">
+          <div class="flex items-start gap-2"><span style="color:#f43f5e;">▸</span><div class="body-text-sm">人均利用次数提升 → <b style="color:#fda4af;">价值显化</b></div></div>
+          <div class="flex items-start gap-2"><span style="color:#f43f5e;">▸</span><div class="body-text-sm">合规风险有 AI 兜底,操作全程可追溯</div></div>
+          <div class="flex items-start gap-2"><span style="color:#f43f5e;">▸</span><div class="body-text-sm">"AI + 档案"成为本单位数字化亮点工程</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="mt-8">典型场景</h4>
+    <div class="grid grid-2 mt-3" style="gap:12px;">
+      <div class="glass-soft p-4">
+        <div class="body-text-sm"><b style="color:#67e8f9;">场景 A · 利用者日常</b></div>
+        <p class="body-text-sm mt-2" style="font-style:italic;color:rgba(229,231,235,0.7);">"帮我找一下 2020 年环评相关的所有材料,按时间排序。"<br>→ AI 自动转检索条件,直接出列表 + 引用,5 秒。</p>
+      </div>
+      <div class="glass-soft p-4">
+        <div class="body-text-sm"><b style="color:#fcd34d;">场景 B · 著录员批量</b></div>
+        <p class="body-text-sm mt-2" style="font-style:italic;color:rgba(229,231,235,0.7);">扫描件入库 → AI 自动识别文字 + 抽取字段 + 生成档号 → 著录员只审核驳回低置信项。</p>
+      </div>
+      <div class="glass-soft p-4">
+        <div class="body-text-sm"><b style="color:#c4b5fd;">场景 C · 专题综述</b></div>
+        <p class="body-text-sm mt-2" style="font-style:italic;color:rgba(229,231,235,0.7);">"给我整理一份 XX 工程十年文件综述。"<br>→ AI 拉相关档案 → 分段引用生成 → 人工微调即可签发。</p>
+      </div>
+      <div class="glass-soft p-4">
+        <div class="body-text-sm"><b style="color:#fda4af;">场景 D · 风险扫描</b></div>
+        <p class="body-text-sm mt-2" style="font-style:italic;color:rgba(229,231,235,0.7);">AI 对入库档案做四性检测建议:真实性疑点、完整性缺失、可用性破损,标红待人工裁定。</p>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>业务价值速览</span>
+    <span><span class="num">06</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 7 · 九讲分隔页
+============================================================ -->
+<section class="page grid-bg glow-center">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>AI 九讲</span>
+  </div>
+  <div class="content justify-center items-start">
+    <div style="max-width:170mm;">
+      <div class="chip chip-violet mb-4"><span class="dot"></span>第二部分</div>
+      <h1 class="gradient-text" style="font-size:60pt;">AI 九讲</h1>
+      <p class="lead mt-6" style="font-size:15pt;">把 9 项 AI 能力一一拆开,讲清楚 ——<br>它在哪里出现、能解决什么、靠不靠谱、何时上线。</p>
+
+      <div class="grid grid-3 mt-8" style="gap:10px;">
+        <div class="pill" style="justify-content:center;">① 智能问答</div>
+        <div class="pill" style="justify-content:center;">② 自然语言检索</div>
+        <div class="pill" style="justify-content:center;">③ 知识库管理</div>
+        <div class="pill" style="justify-content:center;">④ 自动挂接</div>
+        <div class="pill" style="justify-content:center;">⑤ 自动编目</div>
+        <div class="pill" style="justify-content:center;">⑥ 摘要 / 综述</div>
+        <div class="pill" style="justify-content:center;">⑦ 四性建议</div>
+        <div class="pill" style="justify-content:center;">⑧ 拟稿</div>
+        <div class="pill" style="justify-content:center;">⑨ 关联分析</div>
+      </div>
+
+      <div class="mt-8" style="height:3px;width:80mm;background:linear-gradient(90deg,#22d3ee,#8b5cf6,#ec4899);border-radius:2px;"></div>
+      <p class="body-text-sm mt-4" style="color:rgba(229,231,235,0.55);">每讲固定结构 · 价值主张 · 真实效果 · 界面示意 · 用户旁白 · 上线节奏</p>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>坤爵智能档案管理系统</span>
+    <span><span class="num">07</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 8 · 能力 ① 智能问答
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ① · 智能问答</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-green">🟢 难度 · 低</span>
+          <span class="chip chip-violet">读类</span>
+          <span class="chip chip-cyan">第 1-2 期上线</span>
+          <span class="chip chip-slate">完整形态</span>
+        </div>
+        <h2><span style="color:#67e8f9;">①</span> 智能问答</h2>
+        <p class="lead mt-3" style="max-width:170mm;">用户自然语言提问,AI 在档案库里找证据 → 生成答案 → 每条答案都附可点击的档案原文出处。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">85%+</div>
+        <div class="micro mt-1">问答命中率目标</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">界面示意 · AI 助手主页</div>
+      <div style="background:#0a0e1a;border-radius:10px;padding:14px;border:1px solid rgba(139,92,246,0.2);">
+        <div style="background:rgba(139,92,246,0.06);border-radius:8px;padding:10px 12px;">
+          <div class="body-text-sm" style="color:#c4b5fd;">👤 用户:2020 年 5 月我们机关给市政府发过几份关于环评的报告?</div>
+        </div>
+        <div style="background:linear-gradient(135deg,rgba(34,211,238,0.08),rgba(139,92,246,0.04));border-radius:8px;padding:10px 12px;margin-top:8px;">
+          <div class="body-text-sm" style="color:#67e8f9;">🤖 坤爵 AI · 共 3 份,按收文日期排列:</div>
+          <div class="body-text-sm mt-2" style="color:#E5E7EB;line-height:1.7;">
+            ① <b>《关于 XX 项目环境影响评价报告的请示》</b>(2020-05-08)<br>
+            ② <b>《XX 工业园区环评补充说明》</b>(2020-05-17)<br>
+            ③ <b>《市政府关于 XX 环评的批复函》</b>(2020-05-23)
+          </div>
+          <div class="flex gap-2 mt-3" style="flex-wrap:wrap;">
+            <span class="chip chip-cyan" style="font-size:7.5pt;">📄 引用 · 档号 ZF-2020-008</span>
+            <span class="chip chip-cyan" style="font-size:7.5pt;">📄 引用 · 档号 ZF-2020-017</span>
+            <span class="chip chip-cyan" style="font-size:7.5pt;">📄 引用 · 档号 ZF-2020-023</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-3 mt-5" style="gap:12px;">
+      <div class="glass-soft p-4"><h4 style="color:#67e8f9;">真实效果</h4><p class="body-text-sm mt-2">命中率 ≥ 85%;无证据则拒答,绝不胡说;每条引用可点跳档案详情。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#67e8f9;">谁用</h4><p class="body-text-sm mt-2">档案利用者、查询窗口工作人员、领导日常问询;零培训上手。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#67e8f9;">何时上线</h4><p class="body-text-sm mt-2">第 1 期演示版起步;第 2 期升级到完整场景化问答 + 标准题库门禁。</p></div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #22d3ee;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>使用边界</b> · 问答精度依赖知识库覆盖率,新入库档案需完成一次同步后才能被检索到;涉及多步推理的复杂问题建议分步骤提问。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ① · 智能问答</span>
+    <span><span class="num">08</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 9 · 能力 ② 自然语言检索
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ② · 自然语言检索</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-green">🟢 难度 · 低</span>
+          <span class="chip chip-violet">读类</span>
+          <span class="chip chip-cyan">第 2 期上线</span>
+          <span class="chip chip-slate">完整形态</span>
+        </div>
+        <h2><span style="color:#67e8f9;">②</span> 自然语言检索</h2>
+        <p class="lead mt-3" style="max-width:170mm;">用户说"找一找 XXX",AI 自动翻译为档案检索条件,结果直接落到熟悉的档案列表界面,不另起页面。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">85%+</div>
+        <div class="micro mt-1">意图准确率目标</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">流程示意 · 自然语言 → 标准检索</div>
+      <div class="grid" style="grid-template-columns:1fr 30px 1fr 30px 1fr;align-items:center;gap:8px;">
+        <div class="glass-soft p-3" style="text-align:center;">
+          <div class="micro">用户输入</div>
+          <div class="body-text-sm mt-1" style="color:#c4b5fd;">"今年第二季度发到上级的<br>请示类文件"</div>
+        </div>
+        <div style="text-align:center;color:#8b5cf6;font-size:18pt;">→</div>
+        <div class="glass-soft p-3" style="text-align:center;">
+          <div class="micro">AI 解析意图</div>
+          <div class="body-text-sm mt-1" style="color:#67e8f9;line-height:1.7;">
+            年度:2026 · 季度:Q2<br>
+            文种:请示 · 收发:上行
+          </div>
+        </div>
+        <div style="text-align:center;color:#8b5cf6;font-size:18pt;">→</div>
+        <div class="glass-soft p-3" style="text-align:center;">
+          <div class="micro">直接出结果</div>
+          <div class="body-text-sm mt-1" style="color:#6ee7b7;">命中熟悉的<br>档案列表界面</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-3 mt-5" style="gap:12px;">
+      <div class="glass-soft p-4"><h4 style="color:#67e8f9;">真实效果</h4><p class="body-text-sm mt-2">意图准确率 ≥ 85%;识别失败时反问澄清,绝不乱搜;结果可保存为"我的快查模板"。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#67e8f9;">DA/T 字段全覆盖</h4><p class="body-text-sm mt-2">支持档号、全宗号、题名、年度、密级、保管期限等全套国标字段的自然语言映射。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#67e8f9;">权限即结果</h4><p class="body-text-sm mt-2">检索时自动按用户密级 / 机构 / 类目权限过滤,绝不越权返回。</p></div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #22d3ee;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>识别能力边界</b> · 支持时间词("去年"/"近三年")、模糊量词("几份"/"全部")、复合条件("X 类且 Y 级");识别失败时系统反问澄清,绝不基于猜测返回结果。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ② · 自然语言检索</span>
+    <span><span class="num">09</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 10 · 能力 ③ 知识库管理
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ③ · 知识库交互管理</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-green">🟢 难度 · 低</span>
+          <span class="chip chip-violet">读+写</span>
+          <span class="chip chip-cyan">第 1-3 期上线</span>
+          <span class="chip chip-slate">完整形态(写操作需审核)</span>
+        </div>
+        <h2><span style="color:#67e8f9;">③</span> 知识库交互管理</h2>
+        <p class="lead mt-3" style="max-width:170mm;">对话式管理 AI 知识库:哪些档案已入库、要不要重建、新增文档怎么入库 —— 全部在聊天框里搞定。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">3 层</div>
+        <div class="micro mt-1">档案元数据 / 全文 / 业务规则</div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 mt-6" style="gap:14px;">
+      <div class="glass p-4">
+        <h4>读类 · 状态查询</h4>
+        <div class="mt-3 flex flex-col gap-2">
+          <div class="body-text-sm">▸ "知识库现在覆盖了哪些全宗?"</div>
+          <div class="body-text-sm">▸ "上次索引重建是什么时候?"</div>
+          <div class="body-text-sm">▸ "XX 类目下还有多少没入库?"</div>
+        </div>
+      </div>
+      <div class="glass p-4">
+        <h4>写类 · 动作触发</h4>
+        <div class="mt-3 flex flex-col gap-2">
+          <div class="body-text-sm">▸ "重新索引 XX 全宗"</div>
+          <div class="body-text-sm">▸ "把这份制度加进规则库"</div>
+          <div class="body-text-sm">▸ "切换 OCR 识别策略"</div>
+        </div>
+        <div class="micro mt-3" style="color:#fda4af;">所有写操作进入"待审核区",通过后才执行</div>
+      </div>
+    </div>
+
+    <div class="glass mt-5 p-5">
+      <div class="micro mb-3">知识库三层结构</div>
+      <div class="grid grid-3" style="gap:10px;">
+        <div class="glass-soft p-3" style="border-left:3px solid #22d3ee;">
+          <div class="chip chip-cyan" style="font-size:7.5pt;">第一层</div>
+          <h3 class="mt-2">档案元数据</h3>
+          <p class="body-text-sm mt-2">所有档案的著录字段,第 1 期即接入;新档案实时同步进知识库。</p>
+        </div>
+        <div class="glass-soft p-3" style="border-left:3px solid #fcd34d;">
+          <div class="chip chip-amber" style="font-size:7.5pt;">第二层</div>
+          <h3 class="mt-2">档案全文</h3>
+          <p class="body-text-sm mt-2">第 3 期接入文本型 PDF/DOCX,扫描件分批支持;支撑摘要与精确问答。</p>
+        </div>
+        <div class="glass-soft p-3" style="border-left:3px solid #c4b5fd;">
+          <div class="chip chip-violet" style="font-size:7.5pt;">第三层</div>
+          <h3 class="mt-2">业务规则</h3>
+          <p class="body-text-sm mt-2">国家档案标准、本单位档案管理制度;让 AI 答合规问题有依据。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #22d3ee;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>权限范围</b> · 知识库写类操作仅档案管理员角色可触发,且必经审核;读类状态查询所有授权用户可用。索引重建运行期间检索功能不中断,采用双库切换策略。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ③ · 知识库交互管理</span>
+    <span><span class="num">10</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 11 · 能力 ④ 档案自动挂接
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ④ · 档案自动挂接</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-amber">🟡 难度 · 中</span>
+          <span class="chip chip-cyan">写类</span>
+          <span class="chip chip-cyan">第 3 期上线</span>
+          <span class="chip chip-rose">建议 + 人工审核</span>
+        </div>
+        <h2><span style="color:#fcd34d;">④</span> 档案自动挂接</h2>
+        <p class="lead mt-3" style="max-width:170mm;">新入库文件 AI 自动判断:挂哪个全宗 / 类目 / 父档案?所有判定进入"待审核区",审核通过才正式入档。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">90%+</div>
+        <div class="micro mt-1">类目级准确率目标</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">挂接流程 · AI 判定 → 人工审核 → 入档</div>
+      <div class="flex items-center gap-2">
+        <div class="glass-soft p-3" style="flex:1;text-align:center;"><div class="micro">入库文件</div><div class="body-text-sm mt-1">📄 新增 PDF</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;"><div class="micro">AI 判定</div><div class="body-text-sm mt-1" style="color:#67e8f9;">全宗 / 类目 / 父档</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;"><div class="micro">生成草案</div><div class="body-text-sm mt-1" style="color:#fcd34d;">待审核区</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;"><div class="micro">人工审核</div><div class="body-text-sm mt-1" style="color:#6ee7b7;">通过 / 驳回</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;"><div class="micro">正式入档</div><div class="body-text-sm mt-1" style="color:#c4b5fd;">归位入库</div></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 mt-5" style="gap:12px;">
+      <div class="glass-soft p-4">
+        <h4 style="color:#fcd34d;">三档审核策略</h4>
+        <table class="mt-2" style="font-size:9pt;">
+          <tr><td><span class="chip chip-green" style="font-size:7.5pt;">直通</span></td><td>AI 草案直接入档,适合超高置信批量场景</td></tr>
+          <tr><td><span class="chip chip-amber" style="font-size:7.5pt;">排队审核</span></td><td>逐条 / 批量过人;默认策略</td></tr>
+          <tr><td><span class="chip chip-rose" style="font-size:7.5pt;">双人复核</span></td><td>必须二审签字,高风险类目</td></tr>
+        </table>
+      </div>
+      <div class="glass-soft p-4">
+        <h4 style="color:#fcd34d;">驳回不浪费</h4>
+        <p class="body-text-sm mt-2">用户驳回的草案自动进入"待标注池",转化为下一轮 AI 模型的训练数据。</p>
+        <div class="pill mt-3" style="font-size:7.5pt;">驳回是最便宜的数据来源</div>
+      </div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #fcd34d;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>准确率前提</b> · 类目级 90%+ 准确率基于本机构知识库已稳定运行的前提;新机构上线初期(冷启动 2-4 周)准确率会偏低,需通过人工审核反馈逐步提升。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ④ · 档案自动挂接</span>
+    <span><span class="num">11</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 12 · 能力 ⑤ AI 自动编目
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ⑤ · AI 自动编目</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-amber">🟡 难度 · 中</span>
+          <span class="chip chip-cyan">写类</span>
+          <span class="chip chip-cyan">第 3 期上线</span>
+          <span class="chip chip-rose">建议 + 人工审核</span>
+        </div>
+        <h2><span style="color:#fcd34d;">⑤</span> AI 自动编目</h2>
+        <p class="lead mt-3" style="max-width:170mm;">文字识别取全文 → AI 抽软字段(题名 / 责任者 / 摘要…)→ 规则引擎生硬字段(档号 / 分类号)→ 拼成完整著录条目。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">5-8x</div>
+        <div class="micro mt-1">著录效率提升</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">软字段 vs 硬字段 · 分工示意</div>
+      <div class="grid grid-2" style="gap:12px;">
+        <div style="background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.2);border-radius:10px;padding:14px;">
+          <div class="chip chip-cyan" style="font-size:7.5pt;">软字段 · 交 AI</div>
+          <div class="body-text-sm mt-3" style="line-height:2;">
+            <b style="color:#67e8f9;">题名 · 责任者</b><br>
+            <b style="color:#67e8f9;">摘要 · 主题词</b><br>
+            <b style="color:#67e8f9;">文种 · 业务名称</b>
+          </div>
+          <div class="micro mt-3">准确率 70-85%(参考)· 允许人工微调</div>
+        </div>
+        <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:14px;">
+          <div class="chip chip-violet" style="font-size:7.5pt;">硬字段 · 交规则引擎</div>
+          <div class="body-text-sm mt-3" style="line-height:2;">
+            <b style="color:#c4b5fd;">档号 · 全宗号</b><br>
+            <b style="color:#c4b5fd;">年度 · 保管期限</b><br>
+            <b style="color:#c4b5fd;">密级 · 分类号</b>
+          </div>
+          <div class="micro mt-3">100% 准确 · 走档号规则引擎</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-3 mt-5" style="gap:12px;">
+      <div class="glass-soft p-4"><h4 style="color:#fcd34d;">为什么这样分</h4><p class="body-text-sm mt-2">硬字段错一个法律风险大;AI 不碰,交给可解释规则。软字段允许 70% 抽对,人工只审 30% 边界。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#fcd34d;">置信度排序</h4><p class="body-text-sm mt-2">低置信抽取自动置顶审核队列,审核员优先处理"AI 拿不准"的条目。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#fcd34d;">国标全合规</h4><p class="body-text-sm mt-2">著录字段命名严格遵循国家档案行业标准;接 OA / 业务系统时按规范字段名映射。</p></div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #fcd34d;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>硬字段必须走规则引擎</b> · 档号、分类号、保管期限、年度等具有法律效力的硬字段由可解释规则引擎生成,AI 不参与;若客户档号规则尚未配置,系统会阻断自动编目流程,提示先完成规则定义。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ⑤ · AI 自动编目</span>
+    <span><span class="num">12</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 13 · 能力 ⑥ 摘要 / 综述
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ⑥ · 档案摘要 / 综述</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-amber">🟡 难度 · 中</span>
+          <span class="chip chip-violet">读类</span>
+          <span class="chip chip-cyan">第 2 期上线</span>
+          <span class="chip chip-slate">完整形态 · 强制带出处</span>
+        </div>
+        <h2><span style="color:#fcd34d;">⑥</span> 档案摘要 / 综述</h2>
+        <p class="lead mt-3" style="max-width:170mm;">单档案出"内容摘要",多档案出"专题综述";每段文字都带可点引用,无证据则拒答。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">100%</div>
+        <div class="micro mt-1">段段带出处</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">综述输出示意 · 每段带原文出处</div>
+      <div style="background:#0a0e1a;border-radius:10px;padding:14px;">
+        <h3 style="color:#c4b5fd;">XX 工程十年文件综述(草稿)</h3>
+        <p class="body-text-sm mt-3" style="line-height:1.8;">
+          XX 工程立项于 2015 年 3 月,初期规划阶段历时 18 个月
+          <span class="chip chip-cyan" style="font-size:7pt;padding:2px 6px;">📄 ZF-2015-021</span>
+          <span class="chip chip-cyan" style="font-size:7pt;padding:2px 6px;">📄 ZF-2016-108</span>。
+          施工阶段历经三次设计变更,主因为周边环境保护要求升级
+          <span class="chip chip-cyan" style="font-size:7pt;padding:2px 6px;">📄 ZF-2018-045</span>
+          <span class="chip chip-cyan" style="font-size:7pt;padding:2px 6px;">📄 ZF-2019-112</span>。
+          2024 年通过竣工验收,2025 年正式投入使用
+          <span class="chip chip-cyan" style="font-size:7pt;padding:2px 6px;">📄 ZF-2024-201</span>。
+        </p>
+        <div class="micro mt-3" style="color:#fda4af;">⚠ 系统会强制校验引用档案是否在用户权限内,越权引用整段答案替换为"出处校验失败"。</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3 mt-5" style="gap:12px;">
+      <div class="glass-soft p-4"><h4 style="color:#fcd34d;">单档案摘要</h4><p class="body-text-sm mt-2">长文档一键 200 字摘要;支持指定视角(法律要点 / 技术要点 / 时间线)。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#fcd34d;">专题综述</h4><p class="body-text-sm mt-2">"XX 工程十年综述"、"某领域政策演进史";AI 拉相关档案 → 分段引用 → 输出草稿。</p></div>
+      <div class="glass-soft p-4"><h4 style="color:#fcd34d;">无证据拒答</h4><p class="body-text-sm mt-2">检索不到证据时明确说"无相关材料",不胡编;杜绝幻觉风险。</p></div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #fcd34d;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>使用定位</b> · 综述输出为内部参考稿,不可直接作为对外发文;摘要质量与档案全文索引覆盖度强相关,扫描件需先完成文字识别才能纳入摘要范围。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ⑥ · 档案摘要 / 综述</span>
+    <span><span class="num">13</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 14 · 能力 ⑦ 四性检测辅助
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ⑦ · 四性检测辅助</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-rose">🔴 难度 · 高</span>
+          <span class="chip chip-violet">读类</span>
+          <span class="chip chip-cyan">第 4 期上线</span>
+          <span class="chip chip-rose">建议态 · 永不自动定性</span>
+        </div>
+        <h2><span style="color:#fda4af;">⑦</span> 四性检测辅助</h2>
+        <p class="lead mt-3" style="max-width:170mm;">AI 在档案详情页提供"真实 / 完整 / 可用 / 安全"四性风险提示,只标红不下判,最终结论交档案专家。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">建议</div>
+        <div class="micro mt-1">永不自动定性</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">四性维度 · AI 风险提示示例</div>
+      <div class="grid grid-4" style="gap:10px;">
+        <div class="glass-soft p-3"><div class="chip chip-rose" style="font-size:7.5pt;">真实性</div><h4 class="mt-2" style="font-size:9pt;color:#fda4af;">Authenticity</h4><p class="body-text-sm mt-2">签章不匹配 / 元数据时间冲突 / 来源链断裂</p></div>
+        <div class="glass-soft p-3"><div class="chip chip-rose" style="font-size:7.5pt;">完整性</div><h4 class="mt-2" style="font-size:9pt;color:#fda4af;">Integrity</h4><p class="body-text-sm mt-2">附件缺失 / 哈希不一致 / 索引断号</p></div>
+        <div class="glass-soft p-3"><div class="chip chip-rose" style="font-size:7.5pt;">可用性</div><h4 class="mt-2" style="font-size:9pt;color:#fda4af;">Availability</h4><p class="body-text-sm mt-2">格式过期 / 字符乱码 / 图像破损</p></div>
+        <div class="glass-soft p-3"><div class="chip chip-rose" style="font-size:7.5pt;">安全性</div><h4 class="mt-2" style="font-size:9pt;color:#fda4af;">Security</h4><p class="body-text-sm mt-2">密级与内容冲突 / 敏感信息遗漏标注</p></div>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-5 p-5">
+      <div class="flex items-start gap-3">
+        <div style="font-size:24pt;">🛡️</div>
+        <div>
+          <h3 style="color:#fda4af;">为什么是"建议态"而非"自动判定"</h3>
+          <p class="body-text mt-2">四性检测涉及法律效力定性,错判后果严重;AI 只做"风险信号收集器",把可疑点标出来,最终判定权永远在档案专家手里。这是合规底线,也是产品哲学。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #f43f5e;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>法律效力声明</b> · AI 风险提示不具有任何法律或行政效力,仅作为档案专家判定的参考线索;四性最终判定结论必须由有资质的档案工作人员签字确认,落入正式四性检测记录。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ⑦ · 四性检测辅助</span>
+    <span><span class="num">14</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 15 · 能力 ⑧ 拟稿
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ⑧ · 审稿 / 拟稿</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-rose">🔴 难度 · 高</span>
+          <span class="chip chip-violet">读类</span>
+          <span class="chip chip-cyan">第 4 期上线</span>
+          <span class="chip chip-rose">建议态 · 不替代签发</span>
+        </div>
+        <h2><span style="color:#fda4af;">⑧</span> 审稿 / 拟稿</h2>
+        <p class="lead mt-3" style="max-width:170mm;">AI 起草:鉴定意见、销毁建议、利用报告等档案业务文书;草稿入"我的草稿夹",永不替代正式签发。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">草稿</div>
+        <div class="micro mt-1">人工修订后签发</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">拟稿场景 · 三类典型文书</div>
+      <div class="grid grid-3" style="gap:12px;">
+        <div class="glass-soft p-4" style="border-top:3px solid #f43f5e;">
+          <h3 style="color:#fda4af;">鉴定意见</h3>
+          <p class="body-text-sm mt-2">基于档案内容 + 鉴定规则,起草"是否进馆 / 保管期限 / 密级"的鉴定意见草稿。</p>
+        </div>
+        <div class="glass-soft p-4" style="border-top:3px solid #f43f5e;">
+          <h3 style="color:#fda4af;">销毁建议</h3>
+          <p class="body-text-sm mt-2">到期档案逐卷生成销毁理由说明草稿;有据可查,审批留痕。</p>
+        </div>
+        <div class="glass-soft p-4" style="border-top:3px solid #f43f5e;">
+          <h3 style="color:#fda4af;">利用报告</h3>
+          <p class="body-text-sm mt-2">月度 / 季度档案利用情况报告草稿;数据 + 文字描述一并出。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-5 p-5">
+      <div class="flex items-start gap-3">
+        <div style="font-size:24pt;">✍️</div>
+        <div>
+          <h3 style="color:#fda4af;">边界:草稿 ≠ 签发</h3>
+          <p class="body-text mt-2">所有 AI 草稿落到"我的草稿夹",必须由有权限的工作人员修订后,走原有签发流程;系统在签发环节有明显"AI 草稿来源"标记,可追溯,可审计。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #f43f5e;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>签发限制</b> · 草稿不可直接对外发布,必须经原签发流程审批;关键文书(鉴定意见、销毁建议)在签发界面会强制保留"AI 草稿来源"标识,签发人需勾选"已人工核稿"才能提交。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ⑧ · 审稿 / 拟稿</span>
+    <span><span class="num">15</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 16 · 能力 ⑨ 跨档案关联分析
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>能力 ⑨ · 跨档案关联分析</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="chip chip-rose">🔴 难度 · 高</span>
+          <span class="chip chip-violet">读类</span>
+          <span class="chip chip-cyan">第 4 期上线</span>
+          <span class="chip chip-rose">建议态 · 卡片化展示</span>
+        </div>
+        <h2><span style="color:#fda4af;">⑨</span> 跨档案关联分析</h2>
+        <p class="lead mt-3" style="max-width:170mm;">在档案详情页提示"可能相关的档案":同人 / 同事件 / 同项目的跨年度、跨全宗、跨载体关联,纯辅助。</p>
+      </div>
+      <div class="text-right" style="min-width:55mm;">
+        <div class="stat-num gradient-text-soft">辅助</div>
+        <div class="micro mt-1">人物消歧不完美</div>
+      </div>
+    </div>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">关联建议示例 · 档案详情页右侧栏</div>
+      <div style="background:#0a0e1a;border-radius:10px;padding:14px;">
+        <h3 style="color:#c4b5fd;">📄 当前档案:某市 XX 项目立项请示(2018)</h3>
+        <div class="micro mt-3" style="color:rgba(229,231,235,0.5);">AI 建议关联:</div>
+        <div class="glass-soft p-3 mt-2">
+          <div class="flex items-center justify-between">
+            <div class="body-text-sm">▸ 《XX 项目可行性研究报告》(2017)</div>
+            <span class="chip chip-violet" style="font-size:7.5pt;">置信 92%</span>
+          </div>
+          <div class="micro mt-1" style="color:rgba(229,231,235,0.5);">同项目名 + 前置时间窗</div>
+        </div>
+        <div class="glass-soft p-3 mt-2">
+          <div class="flex items-center justify-between">
+            <div class="body-text-sm">▸ 《XX 项目环评批复》(2018)</div>
+            <span class="chip chip-violet" style="font-size:7.5pt;">置信 87%</span>
+          </div>
+          <div class="micro mt-1" style="color:rgba(229,231,235,0.5);">同项目名 + 同年度审批流</div>
+        </div>
+        <div class="glass-soft p-3 mt-2">
+          <div class="flex items-center justify-between">
+            <div class="body-text-sm">▸ 《XX 项目竣工验收报告》(2024)</div>
+            <span class="chip chip-violet" style="font-size:7.5pt;">置信 79%</span>
+          </div>
+          <div class="micro mt-1" style="color:rgba(229,231,235,0.5);">同项目名 + 项目终态文件</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-5 p-4">
+      <div class="flex items-start gap-3">
+        <div style="font-size:20pt;">🔗</div>
+        <div>
+          <p class="body-text">让档案不再是"一份份孤立的文件",而是"一张张可被穿起来的故事网"。AI 给线索,人来判定真伪。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass mt-auto p-4" style="border-left:3px solid #f43f5e;">
+      <div class="flex items-start gap-3">
+        <div style="font-size:14pt;line-height:1;">⚠️</div>
+        <div class="body-text-sm" style="color:rgba(229,231,235,0.85);">
+          <b>局限性说明</b> · 重名实体、机构改名、项目代号变更等场景关联准确率较低;关联仅作为线索提示,采纳前需人工核实文件来源、时间、责任主体三项基本对齐。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>能力 ⑨ · 跨档案关联分析</span>
+    <span><span class="num">16</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 17 · 为什么靠谱 · 分隔页
+============================================================ -->
+<section class="page grid-bg glow-center">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>为什么靠谱</span>
+  </div>
+  <div class="content justify-center items-start">
+    <div style="max-width:170mm;">
+      <div class="chip chip-cyan mb-4"><span class="dot"></span>第三部分</div>
+      <h1 class="gradient-text" style="font-size:60pt;">为什么<br>它靠谱</h1>
+      <p class="lead mt-6" style="font-size:15pt;">AI 不能只看着新鲜,得经得起单位信息中心的"为什么"——<br>这一节回答 <b style="color:#67e8f9;">架构</b>、<b style="color:#c4b5fd;">流程</b>、<b style="color:#fda4af;">安全</b>、<b style="color:#6ee7b7;">质量</b> 四个问题。</p>
+
+      <div class="grid grid-2 mt-8" style="gap:14px;">
+        <div class="glass-soft p-4"><div class="chip chip-cyan" style="font-size:7.5pt;">第 18 页</div><h3 class="mt-2">双层架构</h3><div class="body-text-sm mt-2">AI 与档案业务的关系</div></div>
+        <div class="glass-soft p-4"><div class="chip chip-cyan" style="font-size:7.5pt;">第 19 页</div><h3 class="mt-2">三档审核策略</h3><div class="body-text-sm mt-2">AI 写入档案的安全机制</div></div>
+        <div class="glass-soft p-4"><div class="chip chip-cyan" style="font-size:7.5pt;">第 20 页</div><h3 class="mt-2">引用强制 + 拒答</h3><div class="body-text-sm mt-2">AI 不会胡说的三道关</div></div>
+        <div class="glass-soft p-4"><div class="chip chip-cyan" style="font-size:7.5pt;">第 21 页</div><h3 class="mt-2">质量评测体系</h3><div class="body-text-sm mt-2">让 AI 准确率可量化、可监控</div></div>
+        <div class="glass-soft p-4" style="grid-column:span 2;"><div class="chip chip-cyan" style="font-size:7.5pt;">第 22 页</div><h3 class="mt-2">五重安全防线</h3><div class="body-text-sm mt-2">权限 / 密级 / 机构隔离 / 操作可追溯</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>坤爵智能档案管理系统</span>
+    <span><span class="num">17</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 18 · 双层架构(客户能懂版)
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>双层架构</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>系统架构</h4>
+    <h2 class="mt-3"><span class="gradient-text">智能层 + 业务层</span> 双层解耦,<br>AI 升级不影响档案系统稳定。</h2>
+    <p class="lead mt-3" style="max-width:170mm;">坤爵把 AI 智能能力与档案业务系统分成上下两层。AI 模型升级或更换,不影响下层档案业务的稳定运行;反之业务模块迭代,也不打断 AI 体验。</p>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">双层架构示意</div>
+      <div style="background:#0a0e1a;border-radius:10px;padding:18px;">
+        <!-- 智能层 -->
+        <div style="background:linear-gradient(135deg,rgba(34,211,238,0.10),rgba(139,92,246,0.06));border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:14px;">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#22d3ee,#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11pt;color:white;">AI</div>
+              <h3 style="color:#c4b5fd;">智能层 · AI 助手能力</h3>
+            </div>
+            <span class="chip chip-violet" style="font-size:7.5pt;">可独立升级</span>
+          </div>
+          <div class="grid grid-3" style="gap:8px;">
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#67e8f9;">对话问答</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#67e8f9;">智能编目</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#67e8f9;">摘要综述</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#67e8f9;">自动挂接</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#67e8f9;">四性建议</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#67e8f9;">关联分析</div></div>
+          </div>
+        </div>
+
+        <!-- 中间通道 -->
+        <div style="text-align:center;padding:10px 0;color:rgba(196,181,253,0.7);">
+          <div style="font-size:14pt;">↕</div>
+          <div class="micro mt-1">受控通道 · 身份 / 权限 / 审计强制贯通</div>
+          <div style="font-size:14pt;margin-top:4px;">↕</div>
+        </div>
+
+        <!-- 业务层 -->
+        <div style="background:rgba(110,231,183,0.06);border:1px solid rgba(110,231,183,0.25);border-radius:10px;padding:14px;">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6ee7b7,#22d3ee);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11pt;color:#06080F;">档</div>
+              <h3 style="color:#6ee7b7;">业务层 · 档案管理平台</h3>
+            </div>
+            <span class="chip chip-green" style="font-size:7.5pt;">稳定运行</span>
+          </div>
+          <div class="grid grid-3" style="gap:8px;">
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#6ee7b7;">档案收集</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#6ee7b7;">档案保管</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#6ee7b7;">档案利用</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#6ee7b7;">四性检测</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#6ee7b7;">身份与权限</div></div>
+            <div class="glass-soft p-2" style="text-align:center;"><div class="body-text-sm" style="color:#6ee7b7;">审计 · 调度</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-3 mt-5" style="gap:12px;">
+      <div class="glass-soft p-3"><h4 style="color:#67e8f9;font-size:9pt;">解耦的好处</h4><p class="body-text-sm mt-2">AI 模型换品牌 / 升版本,档案业务零感知;档案业务迭代,AI 体验不中断。</p></div>
+      <div class="glass-soft p-3"><h4 style="color:#67e8f9;font-size:9pt;">数据安全的好处</h4><p class="body-text-sm mt-2">AI 不直连档案库,所有数据访问由业务层把关 → 权限、密级、机构隔离一道不少。</p></div>
+      <div class="glass-soft p-3"><h4 style="color:#67e8f9;font-size:9pt;">合规的好处</h4><p class="body-text-sm mt-2">AI 行为全部走业务层"过一遍",审计、留痕、追溯与原档案系统标准一致。</p></div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>双层架构 · 智能层 + 业务层</span>
+    <span><span class="num">18</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 19 · 三档审核策略
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>三档审核策略</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>人工审核机制</h4>
+    <h2 class="mt-3">AI 写入档案,<span class="gradient-text">先草案,后审核</span> ——<br>没有"自动盖章"这种事。</h2>
+    <p class="lead mt-3" style="max-width:170mm;">所有 AI 写操作产出"草案",落到待审核区;管理员在审核界面字段级对比,通过后才正式写入档案。</p>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">三档审核策略 · 按机构、按能力分别配置</div>
+      <div class="grid grid-3" style="gap:12px;">
+        <div class="glass-soft p-4" style="border-top:3px solid #6ee7b7;">
+          <div class="chip chip-green">直通</div>
+          <h3 class="mt-3">AI 直接写入</h3>
+          <p class="body-text-sm mt-2">草案直接入档,适合超高置信批量场景;仅对低风险类目开放。</p>
+          <div class="micro mt-3" style="color:#6ee7b7;">配置策略:谨慎使用</div>
+        </div>
+        <div class="glass-soft p-4" style="border-top:3px solid #fcd34d;">
+          <div class="chip chip-amber">排队审核</div>
+          <h3 class="mt-3">逐条 / 批量过人</h3>
+          <p class="body-text-sm mt-2">草案进审核队列,管理员逐条 / 批量审核;字段级对比;通过 / 驳回 / 部分修改。</p>
+          <div class="micro mt-3" style="color:#fcd34d;">系统默认策略</div>
+        </div>
+        <div class="glass-soft p-4" style="border-top:3px solid #f43f5e;">
+          <div class="chip chip-rose">双人复核</div>
+          <h3 class="mt-3">必须二审签字</h3>
+          <p class="body-text-sm mt-2">置顶高风险标记,必须有"二审签字"才能落档;关键档案类目使用。</p>
+          <div class="micro mt-3" style="color:#fda4af;">批量任务 / 重建索引默认</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-5 p-5">
+      <div class="flex items-start gap-3">
+        <div style="font-size:24pt;">⚖️</div>
+        <div>
+          <h3>审核员的舒适体验</h3>
+          <ul class="body-text mt-2" style="padding-left:18px;line-height:1.8;">
+            <li>按 <b style="color:#c4b5fd;">AI 置信度倒序</b> 排队,低置信置顶,审核精力分配最优</li>
+            <li>字段级对比:左边原值、右边 AI 建议,一眼对比</li>
+            <li>批量勾选、一键通过 / 驳回;支持"部分通过"(只采纳某些字段)</li>
+            <li>驳回必须填理由,理由自动入"待标注池"反哺 AI 模型</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>三档审核策略 · 人工把关 AI 写入</span>
+    <span><span class="num">19</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 20 · 引用强制 + 拒答
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>引用强制 · 不胡说</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>不胡说的机制</h4>
+    <h2 class="mt-3">AI 答案,<span class="gradient-text">段段带引用</span>;<br>无证据,就拒答。</h2>
+    <p class="lead mt-3" style="max-width:170mm;">大模型最大的风险是"幻觉编造";坤爵用三道关把它锁死:AI 输出前必查、系统二次校验、界面最后兜底。</p>
+
+    <div class="grid grid-3 mt-6" style="gap:12px;">
+      <div class="glass p-5">
+        <div class="step-num">1</div>
+        <h3 class="mt-3">AI 输出前必查</h3>
+        <p class="body-text-sm mt-3">AI 在生成答案的最后一步,系统强制检查"是否有引用档案",没有就直接拒绝输出。</p>
+      </div>
+      <div class="glass p-5">
+        <div class="step-num">2</div>
+        <h3 class="mt-3">系统二次校验</h3>
+        <p class="body-text-sm mt-3">业务层再校验每条引用档案是否在用户的权限范围内(密级 / 机构 / 类目);越权引用整段答案替换为"出处校验失败"。</p>
+      </div>
+      <div class="glass p-5">
+        <div class="step-num">3</div>
+        <h3 class="mt-3">界面最后兜底</h3>
+        <p class="body-text-sm mt-3">没有引用标签的 AI 答案,界面自动置灰并标"未引证",从视觉上让用户知道这条不该信。</p>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-6 p-5">
+      <h3>"无证据则拒答"是什么意思</h3>
+      <div class="grid grid-2 mt-4" style="gap:12px;">
+        <div class="glass-soft p-3">
+          <div class="chip chip-rose" style="font-size:7.5pt;">什么时候拒答</div>
+          <ul class="body-text-sm mt-2" style="padding-left:18px;line-height:1.7;">
+            <li>知识库没有相关档案</li>
+            <li>检索到但全部被权限过滤</li>
+            <li>档案与问题相关度太低</li>
+          </ul>
+        </div>
+        <div class="glass-soft p-3">
+          <div class="chip chip-green" style="font-size:7.5pt;">拒答示例</div>
+          <p class="body-text-sm mt-2" style="font-style:italic;color:rgba(229,231,235,0.85);">"未找到 2015 年 5 月 XX 项目相关档案。请确认时间或扩大查询范围;或与档案室确认该档案是否已归档。"</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="micro mt-auto" style="color:rgba(229,231,235,0.4);">这套机制保证:AI 给出的每一句话都"有据可查",绝不编造档案不存在的内容。</div>
+  </div>
+  <div class="page-footer">
+    <span>引用强制 + 拒答策略</span>
+    <span><span class="num">20</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 21 · 质量评测体系
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>质量评测体系</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>AI 质量怎么保证</h4>
+    <h2 class="mt-3">AI 能力升级,<span class="gradient-text">先过标准题库</span>;<br>不达标,自动回滚。</h2>
+    <p class="lead mt-3" style="max-width:170mm;">AI 的质量必须可量化、可监控、可回归。坤爵为每项 AI 能力建独立标准题库,所有 AI 升级动作必须先过题库测试。</p>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-3">质量闭环 · 建题库 → 设阈值 → 灰度放量 → 监控回滚</div>
+      <div class="flex items-center gap-2">
+        <div class="glass-soft p-3" style="flex:1;text-align:center;border-top:3px solid #22d3ee;"><h4 style="color:#67e8f9;font-size:9pt;">建标准题库</h4><div class="body-text-sm mt-1">每能力 100-200+ 道</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;border-top:3px solid #c4b5fd;"><h4 style="color:#c4b5fd;font-size:9pt;">设准确率阈值</h4><div class="body-text-sm mt-1">未达标阻断上线</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;border-top:3px solid #fcd34d;"><h4 style="color:#fcd34d;font-size:9pt;">灰度放量</h4><div class="body-text-sm mt-1">逐机构逐步开放</div></div>
+        <span style="color:#8b5cf6;font-size:14pt;">→</span>
+        <div class="glass-soft p-3" style="flex:1;text-align:center;border-top:3px solid #f43f5e;"><h4 style="color:#fda4af;font-size:9pt;">监控回滚</h4><div class="body-text-sm mt-1">质量回归即降版</div></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 mt-5" style="gap:14px;">
+      <div class="glass p-4">
+        <h4 style="color:#67e8f9;">质量指标</h4>
+        <table class="mt-2" style="font-size:9pt;">
+          <tr><td><b>问答命中率</b></td><td>智能问答 / 检索</td></tr>
+          <tr><td><b>意图准确率</b></td><td>自然语言检索意图识别</td></tr>
+          <tr><td><b>抽取准确率</b></td><td>自动编目软字段抽取</td></tr>
+          <tr><td><b>引用覆盖率</b></td><td>每段答案是否都带出处</td></tr>
+          <tr><td><b>用户接受率</b></td><td>建议态能力的质量信号</td></tr>
+        </table>
+      </div>
+      <div class="glass p-4">
+        <h4 style="color:#c4b5fd;">数据来源</h4>
+        <ul class="body-text-sm mt-2" style="padding-left:18px;line-height:1.9;">
+          <li>启动期人工标注种子数据</li>
+          <li><b style="color:#fda4af;">驳回学习池</b> · 用户驳回的草案自动入池</li>
+          <li>专家标注界面 · 批量造数据</li>
+          <li>真实问答日志(脱敏)· 周期审核入题库</li>
+        </ul>
+        <div class="micro mt-3" style="color:#fda4af;">驳回 ≠ 浪费 → 驳回是最便宜的数据来源</div>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-5 p-4">
+      <div class="body-text"><b>质量评测中心</b> 给单位 IT 看趋势、给标注员录数据 —— 让 AI 质量像考核指标一样,日常被看见。</div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>质量评测体系 · 标准题库门禁</span>
+    <span><span class="num">21</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 22 · 五重安全防线
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>五重安全防线</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>安全与合规</h4>
+    <h2 class="mt-3"><span class="gradient-text">五重安全防线</span> · AI 一道都绕不过</h2>
+    <p class="lead mt-3" style="max-width:170mm;">AI 引入不能成为权限、合规的"绕道";所有原有权限、密级、机构、审计约束在 AI 调用链上一条不少。</p>
+
+    <div class="grid grid-2 mt-6" style="gap:12px;">
+      <div class="glass p-4"><div class="step-num">1</div><h4 class="mt-3" style="color:#67e8f9;font-size:10pt;">身份从不信任 AI 层</h4><p class="body-text-sm mt-2">用户身份 / 所属机构 / 密级 由业务层从登录凭证取出,注入到 AI 调用上下文;AI 层拿不到也无法篡改。</p></div>
+      <div class="glass p-4"><div class="step-num">2</div><h4 class="mt-3" style="color:#67e8f9;font-size:10pt;">写入档案必走审核</h4><p class="body-text-sm mt-2">AI 不直接写入档案,先出草案、走审核,通过才入档;系统强制约束,任何"绕开审核"的代码路径都不存在。</p></div>
+      <div class="glass p-4"><div class="step-num">3</div><h4 class="mt-3" style="color:#67e8f9;font-size:10pt;">检索强制权限过滤</h4><p class="body-text-sm mt-2">AI 不直连档案库,所有数据访问由业务层把关,自动按用户密级 / 机构 / 类目权限过滤;AI 越权请求被拦截。</p></div>
+      <div class="glass p-4"><div class="step-num">4</div><h4 class="mt-3" style="color:#67e8f9;font-size:10pt;">每个 AI 输出带引用</h4><p class="body-text-sm mt-2">无证据则拒答;引用档案权限越界,整段答案替换为"出处校验失败",绝不泄露用户无权访问的内容。</p></div>
+      <div class="glass p-4" style="grid-column:span 2;"><div class="step-num">5</div><h4 class="mt-3" style="color:#67e8f9;font-size:10pt;">质量门禁是上线红线</h4><p class="body-text-sm mt-2">每个 AI 能力必须有标准题库 + 准确率阈值;AI 升级必须先过题库;用户驳回的草案自动进入"待标注池"反哺题库。</p></div>
+    </div>
+
+    <div class="glass mt-5 p-4">
+      <h4>典型攻击面与防御</h4>
+      <table class="mt-3">
+        <thead><tr><th style="width:45%;">攻击场景</th><th>系统防御</th></tr></thead>
+        <tbody>
+          <tr><td>有人冒充用户身份让 AI 干活</td><td>AI 调业务的每次请求都有短时效身份令牌,过期即拒</td></tr>
+          <tr><td>用户问"导出别机构档案"</td><td>检索时强制按本机构过滤,AI 传入的机构参数被忽略</td></tr>
+          <tr><td>低密级用户问绝密内容</td><td>引用校验自动拦截:超用户密级的档案不会出现在答案中</td></tr>
+          <tr><td>有人诱导 AI 调高权限操作</td><td>AI 调用的所有业务接口都走原权限体系,AI 没权限根本调不动</td></tr>
+          <tr><td>审核草案被后台篡改</td><td>每份草案带数字指纹,通过审核时校验未被篡改</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>安全 · 五重防线</span>
+    <span><span class="num">22</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 23 · 落地路线图
+============================================================ -->
+<section class="page grid-bg glow-br">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>落地路线图</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>实施路线图</h4>
+    <h2 class="mt-3"><span class="gradient-text">分四期交付</span>,每期都有可演示成果</h2>
+    <p class="lead mt-3" style="max-width:170mm;">不做"半年憋大招",每期 8-12 周节奏交付一波可用能力 + 一次客户验收演示。</p>
+
+    <div class="glass mt-6 p-5">
+      <div class="micro mb-4">交付时间轴 · 每期里程碑 + 上线门禁</div>
+      <div class="grid" style="grid-template-columns:120px 1fr;gap:20px;row-gap:16px;align-items:start;">
+        <div>
+          <div class="chip chip-green" style="font-size:9pt;">第 1 期 · 地基</div>
+          <div class="micro mt-2">8-10 周</div>
+        </div>
+        <div class="glass-soft p-4" style="border-left:3px solid #6ee7b7;">
+          <h3 style="color:#6ee7b7;">夯实地基 · 让客户"看见 AI 存在"</h3>
+          <p class="body-text-sm mt-2">AI 助手主页 · 档案元数据知识库 · 业务规则知识库 · 操作审计 · 评测体系骨架;客户能进 AI 主页问问题,9 个能力 Tab 全可见(未实装显占位卡)。</p>
+          <div class="micro mt-2" style="color:#fcd34d;">上线门禁:AI 助手可用 + 30 道种子题命中率 ≥ 80%</div>
+        </div>
+
+        <div>
+          <div class="chip chip-cyan" style="font-size:9pt;">第 2 期 · 读能力</div>
+          <div class="micro mt-2">10-12 周</div>
+        </div>
+        <div class="glass-soft p-4" style="border-left:3px solid #22d3ee;">
+          <h3 style="color:#67e8f9;">读能力期 · 答案带原文出处</h3>
+          <p class="body-text-sm mt-2">智能问答升级 · 自然语言检索 · 摘要综述 · 知识库读类操作;多场景切换体验固化,模型档位选择上线;标准题库扩到每能力 100+ 道。</p>
+          <div class="micro mt-2" style="color:#fcd34d;">上线门禁:问答命中率 ≥ 85% · 检索意图 ≥ 85% · 摘要引用 100%</div>
+        </div>
+
+        <div>
+          <div class="chip chip-amber" style="font-size:9pt;">第 3 期 · 写能力</div>
+          <div class="micro mt-2">12-16 周</div>
+        </div>
+        <div class="glass-soft p-4" style="border-left:3px solid #fcd34d;">
+          <h3 style="color:#fcd34d;">写能力期 · 项目最大卖点</h3>
+          <p class="body-text-sm mt-2">待审核区 + 审核界面 · 档案自动挂接 · 自动编目 · 知识库写类操作 · 档案全文索引(文本型);标准题库扩到每写能力 200+ 道,驳回学习池启动。</p>
+          <div class="micro mt-2" style="color:#fcd34d;">上线门禁:自动挂接类目级 ≥ 90% · 编目软字段 ≥ 80%</div>
+        </div>
+
+        <div>
+          <div class="chip chip-rose" style="font-size:9pt;">第 4 期 · 建议态</div>
+          <div class="micro mt-2">8-12 周</div>
+        </div>
+        <div class="glass-soft p-4" style="border-left:3px solid #f43f5e;">
+          <h3 style="color:#fda4af;">建议态期 · 红色高风险能力</h3>
+          <p class="body-text-sm mt-2">四性建议 · 拟稿 · 跨档案关联;永不自动落档,卡片化展示;引入"专家打分"评测机制。</p>
+          <div class="micro mt-2" style="color:#fcd34d;">上线门禁:用户接受率 ≥ 30%(参考值)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-strong mt-5 p-4">
+      <div class="flex items-start gap-3">
+        <div style="font-size:20pt;">🚦</div>
+        <div class="body-text-sm">每期结束有一次正式客户验收演示,确认后才进入下一期;期内允许回头补丁,但不允许"已通过验收的功能再回炉"。</div>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <span>实施路线图 · 第 1 → 第 4 期</span>
+    <span><span class="num">23</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 24 · 对接与合规
+============================================================ -->
+<section class="page grid-bg glow-tl">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>对接 · 合规</span>
+  </div>
+  <div class="content" style="padding-top:14mm;">
+    <h4>对接与合规</h4>
+    <h2 class="mt-3"><span class="gradient-text">既有系统</span> 怎么对接,<br><span class="gradient-text">合规要求</span> 怎么满足</h2>
+
+    <div class="grid grid-2 mt-6" style="gap:14px;">
+      <div class="glass p-5">
+        <h3>系统对接能力</h3>
+        <div class="mt-3 flex flex-col gap-3">
+          <div class="flex items-start gap-2"><span class="chip chip-cyan" style="font-size:7.5pt;min-width:60px;text-align:center;">身份</span><div class="body-text-sm">支持单位现有统一身份认证(单点登录) · 多种主流认证协议适配</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-cyan" style="font-size:7.5pt;min-width:60px;text-align:center;">业务</span><div class="body-text-sm">OA 公文进档 · 业务系统归档接口 · 移交单批量导入 · 扫描件批量入库</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-cyan" style="font-size:7.5pt;min-width:60px;text-align:center;">存储</span><div class="body-text-sm">本地盘 · 单位 NAS · 主流对象存储 · 政务云存储;一键切换</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-cyan" style="font-size:7.5pt;min-width:60px;text-align:center;">数据库</span><div class="body-text-sm">主流开源数据库 + 国产化数据库(达梦 / 人大金仓 / OceanBase)适配</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-cyan" style="font-size:7.5pt;min-width:60px;text-align:center;">AI 模型</span><div class="body-text-sm">通义千问 · 文心一言 · 智谱 GLM · DeepSeek · 多家国产模型自由切换</div></div>
+        </div>
+      </div>
+      <div class="glass p-5">
+        <h3>合规与标准</h3>
+        <div class="mt-3 flex flex-col gap-3">
+          <div class="flex items-start gap-2"><span class="chip chip-violet" style="font-size:7.5pt;min-width:60px;text-align:center;">DA/T</span><div class="body-text-sm">字段命名 · 著录规范 · 鉴定规则 · 销毁流程全合规国家档案标准</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-violet" style="font-size:7.5pt;min-width:60px;text-align:center;">密级</span><div class="body-text-sm">机密 / 秘密 / 内部 / 公开 四级密级 + 用户密级匹配</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-violet" style="font-size:7.5pt;min-width:60px;text-align:center;">审计</span><div class="body-text-sm">全链路审计入库,AI 行为完整记录 · 何时 / 何人 / 何能力 / 何模型</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-violet" style="font-size:7.5pt;min-width:60px;text-align:center;">软删除</span><div class="body-text-sm">所有档案数据软删除,从不物理删除,符合档案永久保管要求</div></div>
+          <div class="flex items-start gap-2"><span class="chip chip-violet" style="font-size:7.5pt;min-width:60px;text-align:center;">信创</span><div class="body-text-sm">支持完全离线部署 · 信创环境适配 · 涉密单位可全栈本地化</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="mt-6">AI 模型档位说明</h4>
+    <div class="grid grid-3 mt-3" style="gap:12px;">
+      <div class="glass-soft p-3" style="border-top:3px solid #6ee7b7;">
+        <h4 style="font-size:9pt;color:#6ee7b7;">轻型档</h4>
+        <div class="body-text-sm mt-2">简单问答、检索改写、轻量摘要;响应快、成本低。</div>
+      </div>
+      <div class="glass-soft p-3" style="border-top:3px solid #fcd34d;">
+        <h4 style="font-size:9pt;color:#fcd34d;">标准档</h4>
+        <div class="body-text-sm mt-2">编目抽取、四性建议、复杂综述;质量与速度平衡;系统默认。</div>
+      </div>
+      <div class="glass-soft p-3" style="border-top:3px solid #fda4af;">
+        <h4 style="font-size:9pt;color:#fda4af;">深思档</h4>
+        <div class="body-text-sm mt-2">跨档案关联、拟稿、需深度推理场景;响应稍慢但质量最高。</div>
+      </div>
+    </div>
+    <div class="micro mt-3" style="color:rgba(229,231,235,0.5);">用户界面只看到"轻型 / 标准 / 深思"三档,实际后台模型由管理员配置,换模型不动前端、不打断用户使用。</div>
+  </div>
+  <div class="page-footer">
+    <span>系统对接 · 合规标准 · 模型档位</span>
+    <span><span class="num">24</span> / 25</span>
+  </div>
+</section>
+
+<!-- ============================================================
+  PAGE 25 · 联系页
+============================================================ -->
+<section class="page grid-bg glow-center">
+  <div class="page-header">
+    <span class="brand">坤爵 · 智能档案管理系统</span>
+    <span>联系我们</span>
+  </div>
+  <div class="content justify-between" style="padding-top:14mm;">
+    <div>
+      <h4>下一步</h4>
+      <h1 class="gradient-text mt-3" style="font-size:54pt;">让我们<br>聊一聊</h1>
+      <p class="lead mt-6" style="max-width:160mm;font-size:14pt;">
+        每个单位的档案体量、合规要求、对接边界都不同;<br>欢迎安排一次 60 分钟的需求对齐,我们带<br><b style="color:#67e8f9;">第 1 期演示环境 + 定制化路线建议</b> 上门。
+      </p>
+    </div>
+
+    <div class="grid grid-2" style="gap:14px;">
+      <div class="glass p-5">
+        <h4>商务对接</h4>
+        <div class="mt-3 body-text" style="line-height:2;">
+          📧 <span style="color:rgba(229,231,235,0.55);">[ 商务邮箱 ]</span><br>
+          📱 <span style="color:rgba(229,231,235,0.55);">[ 商务电话 ]</span><br>
+          🌐 <span style="color:rgba(229,231,235,0.55);">[ 官方网站 ]</span>
+        </div>
+      </div>
+      <div class="glass p-5">
+        <h4>技术对接</h4>
+        <div class="mt-3 body-text" style="line-height:2;">
+          🔧 <span style="color:rgba(229,231,235,0.55);">[ 技术邮箱 ]</span><br>
+          📚 <span style="color:rgba(229,231,235,0.55);">[ 文档站点 ]</span><br>
+          💬 <span style="color:rgba(229,231,235,0.55);">[ 技术支持 ]</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="glass-strong p-5">
+        <div class="flex items-center justify-between">
+          <div style="flex:1;">
+            <h3 class="gradient-text-soft">三步走 · 启动评估</h3>
+            <div class="grid grid-3 mt-3" style="gap:10px;">
+              <div class="flex items-center gap-2"><span class="step-num">1</span><div class="body-text-sm">需求对齐<br><span class="micro">60 min</span></div></div>
+              <div class="flex items-center gap-2"><span class="step-num">2</span><div class="body-text-sm">演示环境试用<br><span class="micro">1-2 周</span></div></div>
+              <div class="flex items-center gap-2"><span class="step-num">3</span><div class="body-text-sm">实施方案确认<br><span class="micro">1-3 天</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mt-5">
+        <div class="flex items-center gap-3">
+          <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#22d3ee,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14pt;color:white;">坤</div>
+          <div>
+            <div style="font-weight:800;letter-spacing:0.04em;">坤爵</div>
+            <div class="micro">智能档案管理系统</div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="micro">本文档遵循 DA/T 国家档案行业标准</div>
+          <div class="micro mt-1">v1.0 · 2026.05 · 通用产品推介</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

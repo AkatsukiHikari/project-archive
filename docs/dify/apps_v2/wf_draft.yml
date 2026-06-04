@@ -1,0 +1,199 @@
+app:
+  description: 鉴定意见 / 销毁建议 / 利用报告草稿
+  icon: lower_left_fountain_pen
+  icon_background: '#DBEAFE'
+  icon_type: emoji
+  mode: workflow
+  name: wf-draft
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - id: edge_node_start_node_http
+      source: node_start
+      sourceHandle: source
+      target: node_http
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: http-request
+    - id: edge_node_http_node_llm
+      source: node_http
+      sourceHandle: source
+      target: node_llm
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_node_llm_node_end
+      source: node_llm
+      sourceHandle: source
+      target: node_end
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+    nodes:
+    - id: node_start
+      type: custom
+      data:
+        type: start
+        title: Start
+        desc: ''
+        variables:
+        - label: query
+          variable: query
+          type: text-input
+          required: true
+          max_length: 4096
+          options: []
+        - label: tenant_id
+          variable: tenant_id
+          type: text-input
+          required: false
+          max_length: 64
+          options: []
+        - label: user_token
+          variable: user_token
+          type: text-input
+          required: false
+          max_length: 1024
+          options: []
+      position:
+        x: 80
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_http
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 draft 能力
+        desc: 回调 SAMS 后端 /v1/ai/internal/capability/draft
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/capability/draft
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"query": "{{#node_start.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 380
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_llm
+      type: custom
+      data:
+        type: llm
+        title: 答案格式化
+        desc: 用 LLM 把后端 JSON 结果改写为人类可读答案
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:0.5b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案拟稿助手。\n基于 {{#http.body#}} 数据生成正式公文草稿：\n  ① 标题（公文规范）② 正文（分条款、引用准确）③\
+            \ 落款建议\n强调：草稿不替代正式签发。"
+        - role: user
+          text: '用户问题：{{#node_start.query#}}
+
+
+            后端结果：{{#node_http.body#}}'
+        memory: null
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 680
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_end
+      type: custom
+      data:
+        type: end
+        title: End
+        desc: ''
+        outputs:
+        - value_selector:
+          - node_llm
+          - text
+          value_type: string
+          variable: answer
+        - value_selector:
+          - node_http
+          - body
+          value_type: string
+          variable: raw
+      position:
+        x: 980
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

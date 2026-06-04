@@ -91,6 +91,55 @@ class Settings(BaseSettings):
     DIFY_BASE_URL: str = "http://localhost/v1"
     DIFY_API_KEY: str = ""
 
+    # 旧方案（9 个独立 chatbot；保留作为兜底，不删）
+    DIFY_API_KEY_QA: str = ""
+    DIFY_API_KEY_SEARCH: str = ""
+    DIFY_API_KEY_SUMMARY: str = ""
+    DIFY_API_KEY_ATTACH: str = ""
+    DIFY_API_KEY_CATALOG: str = ""
+    DIFY_API_KEY_FOURNAT: str = ""
+    DIFY_API_KEY_DRAFT: str = ""
+    DIFY_API_KEY_RELATE: str = ""
+    DIFY_API_KEY_KB_MANAGE: str = ""
+
+    # A' 方案：1 主 Chatflow + 8 子 Workflow
+    DIFY_MASTER_API_KEY: str = ""
+    DIFY_WF_API_KEY_QA: str = ""
+    DIFY_WF_API_KEY_SEARCH: str = ""
+    DIFY_WF_API_KEY_SUMMARY: str = ""
+    DIFY_WF_API_KEY_ATTACH: str = ""
+    DIFY_WF_API_KEY_CATALOG: str = ""
+    DIFY_WF_API_KEY_FOURNAT: str = ""
+    DIFY_WF_API_KEY_DRAFT: str = ""
+    DIFY_WF_API_KEY_RELATE: str = ""
+    DIFY_WF_API_KEY_KB_MANAGE: str = ""
+
+    def dify_api_key_for(self, scenario_code: str) -> str:
+        """按场景拿 API Key；优先用旧 chatbot 的 key（向后兼容）。"""
+        attr = f"DIFY_API_KEY_{scenario_code.upper()}"
+        return getattr(self, attr, "") or self.DIFY_API_KEY
+
+    def dify_wf_api_key_for(self, scenario_code: str) -> str:
+        """A' 方案：按 scenario_code 拿子 Workflow 的 API Key。"""
+        attr = f"DIFY_WF_API_KEY_{scenario_code.upper()}"
+        return getattr(self, attr, "")
+
+    # ── AI Agent 系统（P1 引入；见 docs/superpowers/specs/2026-05-11-archive-ai-agent-design.md） ──
+    # 启用的能力码列表，逗号分隔；9 个场景全部开启
+    AI_ENABLED_CAPABILITIES: str = "qa,search,summary,attach,catalog,fournat,draft,relate,kb_manage"
+    # 默认模型档位：快 / 准 / 思考
+    AI_DEFAULT_MODEL_TIER: str = "准"
+    # Tool 回调短 token 有效期（秒），用于 Dify → 后端工具调用的身份验证
+    AI_USER_TOKEN_TTL_SECONDS: int = 300
+    # Patch 默认闸门：auto / review / manual
+    AI_PATCH_DEFAULT_GATE: str = "review"
+    # 是否强制引用（无 evidence 拒答）
+    AI_CITATION_REQUIRED: bool = True
+    # 评测回归是否阻断 Workflow 升级（true=回退到上一版本）
+    AI_EVAL_BLOCK_ON_REGRESSION: bool = True
+    # AI Tool 服务令牌（Dify 回调后端的双向认证用）
+    AI_SERVICE_TOKEN: str = ""
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 
 

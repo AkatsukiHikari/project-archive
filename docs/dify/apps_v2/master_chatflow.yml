@@ -1,0 +1,285 @@
+app:
+  description: 档案智能体主入口：意图分类 → 能力分发 → 答案合成
+  icon: robot_face
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: advanced-chat
+  name: 档案智能体（主入口）
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: 你好！我是 SAMS 档案智能体。我会先分析你的问题属于哪个档案业务场景，然后调用对应能力为你处理。
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 永久保管期限的档案有哪些？
+    - 查 2024 年的财务凭证
+    - 为 2024 年人事档案生成专题综述
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - id: edge_node_start_node_http
+      source: node_start
+      sourceHandle: source
+      target: node_http
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: http-request
+    - id: edge_node_http_node_answer
+      source: node_http
+      sourceHandle: source
+      target: node_answer
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: answer
+    nodes:
+    - id: node_start
+      type: custom
+      data:
+        type: start
+        title: Start
+        desc: ''
+        variables:
+        - label: scenario_hint
+          variable: scenario_hint
+          type: text-input
+          required: false
+          max_length: 32
+          options: []
+        - label: citations_json
+          variable: citations_json
+          type: paragraph
+          required: false
+          max_length: 16384
+          options: []
+        - label: tenant_id
+          variable: tenant_id
+          type: text-input
+          required: false
+          max_length: 64
+          options: []
+        - label: user_token
+          variable: user_token
+          type: text-input
+          required: false
+          max_length: 1024
+          options: []
+      position:
+        x: 80
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_classifier
+      type: custom
+      data:
+        type: question-classifier
+        title: 意图分类
+        desc: 10 选 1 把用户问题归到对应能力
+        query_variable_selector:
+        - sys
+        - query
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:0.5b
+          mode: chat
+          completion_params:
+            temperature: 0.1
+        classes:
+        - id: qa
+          name: 问答（基于档案知识库的检索增强问答）
+        - id: search
+          name: 检索（自然语言查询转结构化检索，定位档案）
+        - id: summary
+          name: 综述（按主题/全宗/类目生成专题综述）
+        - id: attach
+          name: 挂接（新材料匹配档案，产出挂接 patch）
+        - id: catalog
+          name: 编目（从档案文本抽取元数据生成编目 patch）
+        - id: fournat
+          name: 四性（真实性/完整性/可用性/安全性 风险提示）
+        - id: draft
+          name: 拟稿（鉴定意见 / 销毁建议 / 利用报告草稿）
+        - id: relate
+          name: 关联（找语义/时间/责任者相关的其他档案）
+        - id: kb_manage
+          name: 知识库（查询索引状态、触发重建）
+        instruction: "根据用户的提问内容，从以下 9 个档案业务场景中选择最匹配的一个：\n  问答: 基于档案知识库的检索增强问答\n  检索:\
+          \ 自然语言查询转结构化检索，定位档案\n  综述: 按主题/全宗/类目生成专题综述\n  挂接: 新材料匹配档案，产出挂接 patch\n \
+          \ 编目: 从档案文本抽取元数据生成编目 patch\n  四性: 真实性/完整性/可用性/安全性 风险提示\n  拟稿: 鉴定意见 / 销毁建议\
+          \ / 利用报告草稿\n  关联: 找语义/时间/责任者相关的其他档案\n  知识库: 查询索引状态、触发重建\n\n参考示例：\n- 「永久保管期限是多久」\
+          \ → 问答\n- 「档号是如何组成的」 → 问答\n- 「四性检测包含哪些」 → 问答\n- 「查 2024 年的财务凭证」 → 检索\n-\
+          \ 「找市档案馆人事任免文件」 → 检索\n- 「数字化建设相关档案」 → 检索\n- 「2024 年度财务工作综述」 → 综述\n- 「近三年数字化建设进展」\
+          \ → 综述\n- 「永久保管档案管理要点」 → 综述\n- 「把这份新材料挂接到合适的目录」 → 挂接\n- 「为这份文件找归属档案」 → 挂接\n\
+          - 「新材料归类到哪个目录」 → 挂接\n- 「从这段文字抽取档案字段」 → 编目\n- 「自动编目这份文件」 → 编目\n- 「提取题名责任者年度」\
+          \ → 编目\n- 「做四性检测」 → 四性\n- 「档案的真实性如何评估」 → 四性\n- 「归档前的可用性风险」 → 四性\n- 「拟一份销毁建议」\
+          \ → 拟稿\n- 「写一份利用工作报告」 → 拟稿\n- 「起草档案鉴定意见」 → 拟稿\n- 「找跟这份档案相关的其他档案」 → 关联\n\
+          - 「档案的关联分析」 → 关联\n- 「类似主题的档案有哪些」 → 关联\n- 「知识库现在有多少档案」 → 知识库\n- 「如何重建索引」\
+          \ → 知识库\n- 「L4 业务规则有哪些类别」 → 知识库\n\n判断要点：包含『查/找』倾向于检索；『综述/汇总』倾向于综述；『新材料/挂接』倾向于挂接；『字段/抽取』倾向于编目；『真实性/完整性』倾向于四性；『拟/起草/写一份』倾向于拟稿；『相关/关联』倾向于关联；『索引/重建/知识库』倾向于知识库管理；其余一般问答归入『问答』。"
+        instructions: "根据用户的提问内容，从以下 9 个档案业务场景中选择最匹配的一个：\n  问答: 基于档案知识库的检索增强问答\n \
+          \ 检索: 自然语言查询转结构化检索，定位档案\n  综述: 按主题/全宗/类目生成专题综述\n  挂接: 新材料匹配档案，产出挂接 patch\n\
+          \  编目: 从档案文本抽取元数据生成编目 patch\n  四性: 真实性/完整性/可用性/安全性 风险提示\n  拟稿: 鉴定意见 / 销毁建议\
+          \ / 利用报告草稿\n  关联: 找语义/时间/责任者相关的其他档案\n  知识库: 查询索引状态、触发重建\n\n参考示例：\n- 「永久保管期限是多久」\
+          \ → 问答\n- 「档号是如何组成的」 → 问答\n- 「四性检测包含哪些」 → 问答\n- 「查 2024 年的财务凭证」 → 检索\n-\
+          \ 「找市档案馆人事任免文件」 → 检索\n- 「数字化建设相关档案」 → 检索\n- 「2024 年度财务工作综述」 → 综述\n- 「近三年数字化建设进展」\
+          \ → 综述\n- 「永久保管档案管理要点」 → 综述\n- 「把这份新材料挂接到合适的目录」 → 挂接\n- 「为这份文件找归属档案」 → 挂接\n\
+          - 「新材料归类到哪个目录」 → 挂接\n- 「从这段文字抽取档案字段」 → 编目\n- 「自动编目这份文件」 → 编目\n- 「提取题名责任者年度」\
+          \ → 编目\n- 「做四性检测」 → 四性\n- 「档案的真实性如何评估」 → 四性\n- 「归档前的可用性风险」 → 四性\n- 「拟一份销毁建议」\
+          \ → 拟稿\n- 「写一份利用工作报告」 → 拟稿\n- 「起草档案鉴定意见」 → 拟稿\n- 「找跟这份档案相关的其他档案」 → 关联\n\
+          - 「档案的关联分析」 → 关联\n- 「类似主题的档案有哪些」 → 关联\n- 「知识库现在有多少档案」 → 知识库\n- 「如何重建索引」\
+          \ → 知识库\n- 「L4 业务规则有哪些类别」 → 知识库\n\n判断要点：包含『查/找』倾向于检索；『综述/汇总』倾向于综述；『新材料/挂接』倾向于挂接；『字段/抽取』倾向于编目；『真实性/完整性』倾向于四性；『拟/起草/写一份』倾向于拟稿；『相关/关联』倾向于关联；『索引/重建/知识库』倾向于知识库管理；其余一般问答归入『问答』。"
+        topics: []
+        vision:
+          enabled: false
+      position:
+        x: 380
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_http
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 dispatch
+        desc: 按分类结果路由到后端能力 service
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "{{#node_start.scenario_hint#}}", "fallback_tool_name":
+              "qa", "arguments": {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 680
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_llm
+      type: custom
+      data:
+        type: llm
+        title: 答案格式化
+        desc: 把 dispatch 的 JSON 包装成用户可读答案
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:0.5b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+        prompt_template:
+        - role: system
+          text: '你是 SAMS 档案库回答助手。
+
+
+            用户问题：{{#sys.query#}}
+
+
+            档案库返回（JSON 格式）：{{#node_http.body#}}
+
+
+            【任务】
+
+            上述 JSON 中 data.result.answer 字段已经是档案库的标准答复文本。
+
+            请直接以该字段的内容作为基础，用 Markdown 格式重新排版后输出：
+
+            - 列表项用 1. 2. 3. 编号
+
+            - 档号用反引号包裹，如 `Q001-HJ-2024-C-00001`
+
+            - 重要词用 **加粗**
+
+
+            【严禁】
+
+            - 不要编造 answer 字段以外的档案、年份、档号
+
+            - 不要写任何 URL、链接、『点击查看』『访问』之类跳转语
+
+            - 不要说『前端』『后端』『系统』『JSON』『字段』等技术词
+
+            - 不要写『根据...』『以下是...』『检索结果显示...』开头
+
+            - 若 answer 字段为空字符串或不存在，直接回复『未在档案库中找到相关内容，请尝试补充关键词、年份或全宗号。』'
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 980
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    - id: node_answer
+      type: custom
+      data:
+        type: answer
+        title: Answer
+        desc: ''
+        answer: '{{#node_http.body#}}'
+        variables: []
+      position:
+        x: 1280
+        y: 200
+      sourcePosition: right
+      targetPosition: left
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.6

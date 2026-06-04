@@ -12,7 +12,15 @@ class AuditRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_all(self, tenant_id: Optional[uuid.UUID] = None, user_id: Optional[uuid.UUID] = None, skip: int = 0, limit: int = 100) -> List[AuditLog]:
+    async def get_all(
+        self,
+        tenant_id: Optional[uuid.UUID] = None,
+        user_id: Optional[uuid.UUID] = None,
+        action: Optional[str] = None,
+        module: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> List[AuditLog]:
         pass
 
     @abstractmethod
@@ -28,13 +36,25 @@ class SQLAlchemyAuditRepository(AuditRepository):
         result = await self.db.execute(select(AuditLog).where(AuditLog.id == log_id))
         return result.scalars().first()
 
-    async def get_all(self, tenant_id: Optional[uuid.UUID] = None, user_id: Optional[uuid.UUID] = None, skip: int = 0, limit: int = 100) -> List[AuditLog]:
+    async def get_all(
+        self,
+        tenant_id: Optional[uuid.UUID] = None,
+        user_id: Optional[uuid.UUID] = None,
+        action: Optional[str] = None,
+        module: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> List[AuditLog]:
         stmt = select(AuditLog)
         if tenant_id:
             stmt = stmt.where(AuditLog.tenant_id == tenant_id)
         if user_id:
             stmt = stmt.where(AuditLog.user_id == user_id)
-        
+        if action:
+            stmt = stmt.where(AuditLog.action == action)
+        if module:
+            stmt = stmt.where(AuditLog.module == module)
+
         result = await self.db.execute(stmt.order_by(AuditLog.create_time.desc()).offset(skip).limit(limit))
         return list(result.scalars().all())
 

@@ -1,0 +1,101 @@
+app:
+  description: 给定档案，找语义/时间/责任者相关的其他档案（建议态）
+  icon: link
+  icon_background: '#F3E8FF'
+  icon_type: emoji
+  mode: chat
+  name: 跨档案关联
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: false
+    max_iteration: 10
+    strategy: react
+    tools: []
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions: []
+    allowed_file_types: []
+    allowed_file_upload_methods: []
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      stop: []
+      temperature: 0.3
+    mode: chat
+    name: qwen2.5:7b
+    provider: langgenius/ollama/ollama
+  more_like_this:
+    enabled: false
+  opening_statement: 给我一个档号或主题，我从档案库找出可能相关的其他档案（建议态，仅供参考）。
+  pre_prompt: "你是 SAMS 跨档案关联助手。\n任务：基于 {{citations}}（已检索到的相关档案）为用户呈现关联建议。\n输出：\n \
+    \ ① 相关档案列表（题名 · 档号 · 关联理由：时间/责任者/主题）；\n  ② 置信度（实体消歧可能存在歧义）；\n  ③ 推荐进一步检索的关键词。\n\
+    强调：关联是建议而非结论，用户需自行核实。"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config: {}
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - 找跟 J001-WS-2024-Y-00007「全市档案系统升级改造方案」相关的档案
+  - 市档案馆数字化建设相关档案的关联图
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+  - paragraph:
+      label: 检索证据 (citations)
+      variable: citations
+      required: false
+      default: ''
+  - text-input:
+      label: 场景代码 (scenario_code)
+      variable: scenario_code
+      required: false
+      default: ''
+  - text-input:
+      label: 模型档位 (model_tier)
+      variable: model_tier
+      required: false
+      default: ''
+version: 0.6.0

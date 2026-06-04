@@ -162,6 +162,9 @@ MENU_TREE = [
         "children": [
             {"code": "ai:chat",      "name": "AI 对话助手", "type": "MENU", "path": "/ai",           "icon": "heroicons:chat-bubble-left-ellipsis", "sort_order": 1},
             {"code": "ai:knowledge", "name": "知识库管理",  "type": "MENU", "path": "/ai/knowledge", "icon": "heroicons:book-open",                "sort_order": 2},
+            {"code": "ai:patches",   "name": "AI 审核队列", "type": "MENU", "path": "/admin/ai/patches", "icon": "heroicons:queue-list",            "sort_order": 3},
+            {"code": "ai:eval",      "name": "AI 评测中心", "type": "MENU", "path": "/admin/ai/eval",    "icon": "heroicons:chart-bar",             "sort_order": 4},
+            {"code": "ai:audit",     "name": "AI 操作审计", "type": "MENU", "path": "/admin/ai/audit",   "icon": "heroicons:document-magnifying-glass", "sort_order": 5},
         ],
     },
 ]

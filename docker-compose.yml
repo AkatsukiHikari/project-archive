@@ -59,6 +59,8 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - bootstrap.memory_lock=false
+    mem_limit: 3g
     ports:
       - "9200:9200"
     volumes:

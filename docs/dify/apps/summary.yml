@@ -1,0 +1,102 @@
+app:
+  description: 按主题、全宗、类目生成专题综述，每段强制带引用
+  icon: memo
+  icon_background: '#FCE7F3'
+  icon_type: emoji
+  mode: chat
+  name: 档案专题综述
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: false
+    max_iteration: 10
+    strategy: react
+    tools: []
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions: []
+    allowed_file_types: []
+    allowed_file_upload_methods: []
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      stop: []
+      temperature: 0.4
+    mode: chat
+    name: qwen2.5:7b
+    provider: langgenius/ollama/ollama
+  more_like_this:
+    enabled: false
+  opening_statement: 给我一个主题或时间范围，我会基于档案库为你生成专题综述。每段都会标注引用出处。
+  pre_prompt: "你是 SAMS 档案专题综述助手。\n任务：基于 {{citations}}（业务规则 + 档案元数据）为用户生成一份结构化的专题综述。\n\
+    输出结构：\n  一、概述（背景与覆盖范围）\n  二、关键档案与规则（分条列出，每条带出处）\n  三、结论与建议\n禁止编造引用之外的信息。若 citations\
+    \ 不足以支撑综述，明确指出缺口。"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config: {}
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - 2024 年度财务工作综述
+  - 近三年市档案馆数字化建设进展
+  - 永久保管档案的管理要点综述
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+  - paragraph:
+      label: 检索证据 (citations)
+      variable: citations
+      required: false
+      default: ''
+  - text-input:
+      label: 场景代码 (scenario_code)
+      variable: scenario_code
+      required: false
+      default: ''
+  - text-input:
+      label: 模型档位 (model_tier)
+      variable: model_tier
+      required: false
+      default: ''
+version: 0.6.0

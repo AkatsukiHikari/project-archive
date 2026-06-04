@@ -23,6 +23,8 @@ router = APIRouter()
 async def list_audit_logs(
     tenant_id: Optional[uuid.UUID] = Query(None, description="按租户过滤"),
     user_id: Optional[uuid.UUID] = Query(None, description="按用户过滤"),
+    action: Optional[str] = Query(None, description="按动作码过滤，如 ai_chat_query"),
+    module: Optional[str] = Query(None, description="按模块过滤，如 ai / iam"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
@@ -32,6 +34,8 @@ async def list_audit_logs(
     logs = await audit_service.get_audit_logs(
         tenant_id=tenant_id,
         user_id=user_id,
+        action=action,
+        module=module,
         skip=skip,
         limit=limit,
     )

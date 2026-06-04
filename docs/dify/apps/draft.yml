@@ -1,0 +1,100 @@
+app:
+  description: 鉴定意见 / 销毁建议 / 利用报告草稿生成（建议态，落草稿夹）
+  icon: lower_left_fountain_pen
+  icon_background: '#DBEAFE'
+  icon_type: emoji
+  mode: chat
+  name: 拟稿助手
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: false
+    max_iteration: 10
+    strategy: react
+    tools: []
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions: []
+    allowed_file_types: []
+    allowed_file_upload_methods: []
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      stop: []
+      temperature: 0.5
+    mode: chat
+    name: qwen2.5:7b
+    provider: langgenius/ollama/ollama
+  more_like_this:
+    enabled: false
+  opening_statement: 告诉我要拟的稿件类型（鉴定意见 / 销毁建议 / 利用报告 …）和涉及的档案，我生成草稿供你修改。
+  pre_prompt: "你是 SAMS 档案拟稿助手。\n任务：基于 {{citations}}（档案元数据 + 业务规则）生成正式公文草稿。\n输出包括：\n\
+    \  ① 标题（符合公文规范）\n  ② 正文（分条款、引用准确）\n  ③ 落款建议\n**草稿不替代正式签发**，用户应复制到正式表单走审批。"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config: {}
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - 给一份『2020 年短期保管档案销毁建议』草稿
+  - 拟一份『市档案馆 2024 年度档案利用工作报告』
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+  - paragraph:
+      label: 检索证据 (citations)
+      variable: citations
+      required: false
+      default: ''
+  - text-input:
+      label: 场景代码 (scenario_code)
+      variable: scenario_code
+      required: false
+      default: ''
+  - text-input:
+      label: 模型档位 (model_tier)
+      variable: model_tier
+      required: false
+      default: ''
+version: 0.6.0

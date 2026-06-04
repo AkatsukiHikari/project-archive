@@ -12,13 +12,22 @@ class AuditService:
         return await self.audit_repo.get_by_id(log_id)
 
     async def get_audit_logs(
-        self, 
-        tenant_id: Optional[uuid.UUID] = None, 
-        user_id: Optional[uuid.UUID] = None, 
-        skip: int = 0, 
-        limit: int = 100
+        self,
+        tenant_id: Optional[uuid.UUID] = None,
+        user_id: Optional[uuid.UUID] = None,
+        action: Optional[str] = None,
+        module: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
     ) -> List[AuditLog]:
-        return await self.audit_repo.get_all(tenant_id=tenant_id, user_id=user_id, skip=skip, limit=limit)
+        return await self.audit_repo.get_all(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            action=action,
+            module=module,
+            skip=skip,
+            limit=limit,
+        )
 
     async def create_audit_log(self, log_in: schemas.AuditLogCreate) -> AuditLog:
         return await self.audit_repo.create(log_in)

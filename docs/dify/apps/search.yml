@@ -1,0 +1,102 @@
+app:
+  description: 把自然语言查询转成结构化 ES 检索条件，返回命中档案列表
+  icon: mag
+  icon_background: '#FEF3C7'
+  icon_type: emoji
+  mode: chat
+  name: 自然语言检索
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/ollama:0.1.3@66e156c4f612964c131c49168882e78c2cdfe366879506b97ad855b23c5d6d98
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: false
+    max_iteration: 10
+    strategy: react
+    tools: []
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions: []
+    allowed_file_types: []
+    allowed_file_upload_methods: []
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      stop: []
+      temperature: 0.2
+    mode: chat
+    name: qwen2.5:7b
+    provider: langgenius/ollama/ollama
+  more_like_this:
+    enabled: false
+  opening_statement: 告诉我你要找什么档案，例如「2024 年的财务凭证」或「市档案馆人事任免文件」，我帮你直接定位到列表。
+  pre_prompt: "你是 SAMS 自然语言检索助手。\n任务：理解用户的自然语言查询，转化成结构化检索意图。\n输出格式：\n  ① 推断的检索意图（关键词\
+    \ / 年度 / 密级 / 全宗号 / 责任者 …）\n  ② 基于 {{citations}}（已检索到的档案元数据）列出命中档案\n  ③ 每条档案输出『题名\
+    \ · 档号 · 年度 · 全宗号』\n若 citations 为空，提示用户细化条件（时间、机关、关键词）。"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config: {}
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - 查 2024 年财务凭证
+  - 找市档案馆 2023 年的人事任免文件
+  - 数字化建设相关的档案
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+  - paragraph:
+      label: 检索证据 (citations)
+      variable: citations
+      required: false
+      default: ''
+  - text-input:
+      label: 场景代码 (scenario_code)
+      variable: scenario_code
+      required: false
+      default: ''
+  - text-input:
+      label: 模型档位 (model_tier)
+      variable: model_tier
+      required: false
+      default: ''
+version: 0.6.0

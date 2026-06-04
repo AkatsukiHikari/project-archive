@@ -18,6 +18,8 @@ export const AuditAPI = {
   list: (params?: {
     tenant_id?: string;
     user_id?: string;
+    action?: string;
+    module?: string;
     skip?: number;
     limit?: number;
   }) => http.get<any, { data: AuditLog[] }>("/audits", { params }),

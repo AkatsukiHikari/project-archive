@@ -122,3 +122,189 @@ export const ImportAPI = {
   removeTemplate: (id: string) =>
     http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/import/mapping-templates/${id}`),
 };
+
+// ─── 归档移交 / 接收登记 / 收集台账 ───────────────────────────────────────────
+
+export type TransferStatus = "draft" | "submitted" | "received" | "accepted" | "returned";
+
+export interface TransferPlan {
+  id: string;
+  year: number;
+  source_unit: string;
+  source_org_id?: string | null;
+  fonds_id: string;
+  category_id: string;
+  planned_count: number;
+  due_date?: string | null;
+  status: string;
+  notes?: string | null;
+  create_time: string;
+}
+
+export interface TransferPlanCreate {
+  year: number;
+  source_unit: string;
+  fonds_id: string;
+  category_id: string;
+  planned_count?: number;
+  due_date?: string | null;
+  notes?: string | null;
+}
+
+export interface TransferEntryIn {
+  TM: string;
+  RZZ?: string | null;
+  ND?: number | null;
+  WJRQ?: string | null;
+  YS?: number | null;
+  MJ?: string | null;
+  BGQX?: string | null;
+  ext_fields?: Record<string, unknown> | null;
+}
+
+export interface TransferEntryOut extends TransferEntryIn {
+  id: string;
+  row_no: number;
+  precheck_status: string;
+  precheck_issues?: string[] | null;
+  staging_id?: string | null;
+}
+
+export interface TransferBatch {
+  id: string;
+  transfer_no: string;
+  plan_id?: string | null;
+  source_unit: string;
+  fonds_id: string;
+  category_id: string;
+  catalog_id?: string | null;
+  year: number;
+  handover_person: string;
+  handover_date?: string | null;
+  expected_count: number;
+  status: TransferStatus;
+  submitted_at?: string | null;
+  received_at?: string | null;
+  accepted_at?: string | null;
+  handler_id?: string | null;
+  precheck_score?: number | null;
+  precheck_passed?: boolean | null;
+  precheck_detail?: PrecheckDetail | null;
+  return_reason?: string | null;
+  notes?: string | null;
+  create_time: string;
+}
+
+export interface TransferBatchDetail extends TransferBatch {
+  entries: TransferEntryOut[];
+}
+
+export interface TransferBatchCreate {
+  source_unit: string;
+  fonds_id: string;
+  category_id: string;
+  catalog_id?: string | null;
+  year: number;
+  handover_person: string;
+  handover_date?: string | null;
+  plan_id?: string | null;
+  notes?: string | null;
+  entries: TransferEntryIn[];
+}
+
+export interface PrecheckDimension {
+  key: string;
+  label: string;
+  score: number;
+  weight: number;
+  issues: string[];
+}
+
+export interface PrecheckDetail {
+  score: number;
+  passed: boolean;
+  threshold: number;
+  total: number;
+  ok: number;
+  warning: number;
+  error: number;
+  dimensions: PrecheckDimension[];
+}
+
+export interface PrecheckEntryResult {
+  row_no: number;
+  status: "ok" | "warning" | "error";
+  issues: string[];
+}
+
+export interface PrecheckResponse extends PrecheckDetail {
+  entries: PrecheckEntryResult[];
+}
+
+export interface LedgerRow {
+  year: number;
+  source_unit: string;
+  fonds_id?: string | null;
+  category_id?: string | null;
+  planned_count: number;
+  accepted_count: number;
+  submitted_count: number;
+  batch_total: number;
+  completion_rate: number;
+  overdue: boolean;
+  due_date?: string | null;
+}
+
+export interface LedgerSummary {
+  year?: number | null;
+  total_planned: number;
+  total_accepted: number;
+  total_submitted: number;
+  overall_completion_rate: number;
+  overdue_units: number;
+  rows: LedgerRow[];
+}
+
+const BASE = "/collection/transfer";
+
+export const TransferAPI = {
+  // 归档计划
+  listPlans: (year?: number) =>
+    http.get<ApiResponse<TransferPlan[]>, ApiResponse<TransferPlan[]>>(`${BASE}/plans`, {
+      params: year ? { year } : {},
+    }),
+  createPlan: (body: TransferPlanCreate) =>
+    http.post<ApiResponse<TransferPlan>, ApiResponse<TransferPlan>>(`${BASE}/plans`, body),
+  updatePlan: (id: string, body: Partial<TransferPlanCreate> & { status?: string }) =>
+    http.put<ApiResponse<TransferPlan>, ApiResponse<TransferPlan>>(`${BASE}/plans/${id}`, body),
+
+  // 移交单
+  listBatches: (params?: { status?: TransferStatus; year?: number }) =>
+    http.get<ApiResponse<TransferBatch[]>, ApiResponse<TransferBatch[]>>(`${BASE}/batches`, {
+      params: params ?? {},
+    }),
+  createBatch: (body: TransferBatchCreate) =>
+    http.post<ApiResponse<TransferBatch>, ApiResponse<TransferBatch>>(`${BASE}/batches`, body),
+  getBatch: (id: string) =>
+    http.get<ApiResponse<TransferBatchDetail>, ApiResponse<TransferBatchDetail>>(`${BASE}/batches/${id}`),
+  replaceEntries: (id: string, entries: TransferEntryIn[]) =>
+    http.put<ApiResponse<TransferBatch>, ApiResponse<TransferBatch>>(`${BASE}/batches/${id}/entries`, { entries }),
+  submitBatch: (id: string) =>
+    http.post<ApiResponse<TransferBatch>, ApiResponse<TransferBatch>>(`${BASE}/batches/${id}/submit`, {}),
+  previewPrecheck: (id: string) =>
+    http.post<ApiResponse<PrecheckResponse>, ApiResponse<PrecheckResponse>>(`${BASE}/batches/${id}/precheck-preview`, {}),
+
+  // 接收登记
+  receivePrecheck: (id: string) =>
+    http.post<ApiResponse<PrecheckResponse>, ApiResponse<PrecheckResponse>>(`${BASE}/receive/${id}/precheck`, {}),
+  accept: (id: string, body: { catalog_id?: string | null; force?: boolean }) =>
+    http.post<ApiResponse<TransferBatch>, ApiResponse<TransferBatch>>(`${BASE}/receive/${id}/accept`, body),
+  returnBatch: (id: string, return_reason: string) =>
+    http.post<ApiResponse<TransferBatch>, ApiResponse<TransferBatch>>(`${BASE}/receive/${id}/return`, { return_reason }),
+
+  // 收集台账
+  ledger: (year?: number) =>
+    http.get<ApiResponse<LedgerSummary>, ApiResponse<LedgerSummary>>(`${BASE}/ledger`, {
+      params: year ? { year } : {},
+    }),
+};

@@ -315,10 +315,26 @@ export interface ArchiveListParams {
   page_size?: number;
 }
 
+export interface ArchiveAttachment {
+  id: string;
+  archive_id: string;
+  is_primary: boolean;
+  original_name: string;
+  storage_key: string;
+  storage_bucket: string;
+  file_size?: number | null;
+  file_format?: string | null;
+  page_count?: number | null;
+  sort_order: number;
+  url: string | null;
+}
+
 export const ArchiveAPI = {
   list: (params: ArchiveListParams) =>
     http.get<ApiResponse<ArchiveListResult>, ApiResponse<ArchiveListResult>>("/archive/records", { params }),
   get: (id: string) => http.get<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`),
+  attachments: (id: string) =>
+    http.get<ApiResponse<ArchiveAttachment[]>, ApiResponse<ArchiveAttachment[]>>(`/archive/records/${id}/attachments`),
   create: (data: ArchiveCreate) => http.post<ApiResponse<Archive>, ApiResponse<Archive>>("/archive/records", data),
   update: (id: string, data: ArchiveUpdate) =>
     http.put<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`, data),

@@ -34,6 +34,7 @@ from app.modules.ai.services.capabilities.types import CapabilityContext
 from app.modules.ai.services.retrieval_service import (
     KBType,
     RetrievalService,
+    RetrievalUnavailableError,
     RetrieveFilter,
 )
 from app.modules.ai.services.user_token import (
@@ -349,7 +350,15 @@ async def dispatch_tool_text(
         secret_level=claims.secret_level,
         scenario_code=code,
     )
-    result = await capability_dispatch(db=db, ctx=ctx, code=code, query=query)
+    try:
+        result = await capability_dispatch(db=db, ctx=ctx, code=code, query=query)
+    except RetrievalUnavailableError:
+        # 检索后端故障：老实报"暂不可用"，绝不伪装成"查无此档"误导用户
+        logger.warning("dispatch_text 检索服务不可用 code=%s query=%r", code, query[:80])
+        return PlainTextResponse(
+            content="档案检索服务暂时不可用，请稍后重试。（系统已记录该故障）",
+            media_type="text/markdown; charset=utf-8",
+        )
     return PlainTextResponse(
         content=result.answer or "未在档案库中找到相关内容。",
         media_type="text/markdown; charset=utf-8",

@@ -93,6 +93,7 @@
               :style="msg.role === 'user'
                 ? 'background:oklch(var(--p));color:oklch(var(--pc))'
                 : 'background:var(--semi-color-bg-0);color:var(--semi-color-text-0);border:1px solid var(--semi-color-border)'"
+              @click="msg.role === 'assistant' && onAnswerClick($event)"
               v-html="msg.role === 'assistant'
                 ? renderAnswer(getMsgText(msg)) + (chat.status === 'streaming' && isLastMsg(msg) ? '<span class=&quot;typing-cursor-inline&quot;></span>' : '')
                 : getMsgText(msg)"
@@ -524,15 +525,36 @@ const onMessageCitations = (messageId: string, chips: CitationChip[]) => {
 const citationsFor = (id: string): CitationChip[] =>
   messageCitations.value.get(id) ?? [];
 
+// 在新浏览器标签打开档案原文阅览页（左元数据 / 中 PDF / 顶工具栏）。
+// /ai（portal layout）与阅览页（archive layout）分属不同 layout，开新标签后
+// /ai 原样保留，用户可随时切回继续追问。reader 页冷加载 ?id 即可。
+const openArchiveTab = (query: Record<string, string>) => {
+  const href = router.resolve({ path: "/archive/reader", query }).href;
+  window.open(href, "_blank", "noopener");
+};
+
+// AI 答案里的 markdown 链接（如 [题名](/archive/reader?id=xxx)）→ 新标签打开，
+// 不在 /ai 页内导航（会顶掉聊天上下文）。
+const onAnswerClick = (e: MouseEvent) => {
+  const anchor = (e.target as HTMLElement)?.closest("a");
+  if (!anchor) return;
+  const href = anchor.getAttribute("href") ?? "";
+  if (!href || href.startsWith("#")) return;
+  e.preventDefault();
+  const url = href.startsWith("/") ? router.resolve(href).href : href;
+  window.open(url, "_blank", "noopener");
+};
+
 const onCitationClick = (chip: CitationChip) => {
-  // meta 类（命中具体档案）→ 跳查阅页并定位到该档案（layout 自动开新标签）
+  // meta 类（命中具体档案）→ 用 archive_id 精确定位原文
   if (chip.source_type === "meta" && chip.source_id) {
-    router.push({ path: "/archive/utilization/reading", query: { id: chip.source_id } });
+    openArchiveTab({ id: chip.source_id });
     return;
   }
-  // dify 类（无具体 archive_id）→ 用标题做关键字搜索
+  // dify 类（无具体 archive_id）→ 退回查阅页做关键字检索
   if (chip.source_type === "dify" && chip.title) {
-    router.push({ path: "/archive/utilization/reading", query: { q: chip.title } });
+    const href = router.resolve({ path: "/archive/utilization/reading", query: { q: chip.title } }).href;
+    window.open(href, "_blank", "noopener");
     return;
   }
   // rule / ocr 类不跳转（popover 已展示规则正文，无对应档案条目）
@@ -690,11 +712,35 @@ const isLastMsg = (msg: UIMessage) =>
   chat.messages[chat.messages.length - 1]?.id === msg.id;
 
 // ── 自动滚动 ───────────────────────────────────────────────────────────────
+// 贴底才跟随：用户上滑看历史时不打扰；force=true 用于新消息加入时强制到底。
+const scrollToBottom = (force = false) => {
+  const el = scrollRef.value;
+  if (!el) return;
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  if (force || nearBottom) el.scrollTop = el.scrollHeight;
+};
+
+// 最后一条消息的文本（流式增量时逐 token 变化，驱动跟随滚动）
+const lastMsgText = computed(() => {
+  const m = chat.messages[chat.messages.length - 1];
+  return m ? getMsgText(m) : "";
+});
+
+// 新消息加入（用户提问 / AI 占位）→ 强制滚到底
 watch(
-  () => chat.messages,
+  () => chat.messages.length,
   async () => {
     await nextTick();
-    if (scrollRef.value) scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+    scrollToBottom(true);
+  },
+);
+
+// 流式增量 + 状态切换 → 贴底时跟随
+watch(
+  () => [chat.status, lastMsgText.value],
+  async () => {
+    await nextTick();
+    scrollToBottom();
   },
 );
 

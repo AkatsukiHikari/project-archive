@@ -326,6 +326,7 @@ class DifyClient:
         description: str,
         icon: str,
         icon_background: str,
+        app_id: str | None = None,
     ) -> str:
         body = {
             "mode": "yaml-content",
@@ -336,6 +337,9 @@ class DifyClient:
             "icon": icon,
             "icon_background": icon_background,
         }
+        # 传 app_id → Dify 原地覆盖该 app 的 DSL，保留 app 与 API Key（不换 key）
+        if app_id:
+            body["app_id"] = app_id
         r = self.client.post(f"{self.base_url}/apps/imports", json=body)
         if r.status_code not in (200, 202):
             raise RuntimeError(f"导入失败 {r.status_code}: {r.text[:300]}")
@@ -506,7 +510,10 @@ def main() -> int:
     APPS_V2_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1) 生成所有 YAML 并备份
-    master_spec = build_master_chatflow()
+    #    若配置了 AI_SERVICE_TOKEN，则把它烘焙进 dispatch 节点的 X-Service-Token 头，
+    #    作为 Dify→后端的稳定调用方鉴权（与会话级 user_token 解耦，后者只携带身份）。
+    _service_token = os.getenv("AI_SERVICE_TOKEN", "")
+    master_spec = build_master_chatflow(service_token=_service_token)
     master_yaml = _dump_yaml(master_spec, APPS_V2_DIR / "master_chatflow.yml")
     logger.info("YAML 备份 → docs/dify/apps_v2/master_chatflow.yml")
 
@@ -531,8 +538,16 @@ def main() -> int:
             cli.delete_app(existed["id"])
             existed = None
         if existed:
-            app_id = existed["id"]
-            logger.info("已存在 %s id=%s（跳过导入）", name, app_id)
+            # 原地覆盖 DSL：保留 app 与 API Key，无需改 .env
+            app_id = cli.import_app(
+                yaml_content=yaml_content,
+                name=name,
+                description=description,
+                icon=icon,
+                icon_background=icon_bg,
+                app_id=existed["id"],
+            )
+            logger.info("原地更新 %s id=%s（保留 API Key）", name, app_id)
         else:
             app_id = cli.import_app(
                 yaml_content=yaml_content,

@@ -34,6 +34,7 @@ from app.modules.ai.services.answer_synth import synthesize_answer
 from app.modules.ai.services.dify_service import dify_service
 from app.modules.ai.services.retrieval_service import (
     RetrievalService,
+    RetrievalUnavailableError,
     RetrieveFilter,
 )
 from app.modules.ai.services.scenario_router import (
@@ -220,9 +221,14 @@ async def chat(
         secret_level=user_secret_level,
         user_id=current_user.id,
     )
-    # 同时跑 rules + meta，两类引用合并；失败容忍（返空列表）
-    rule_hits = await retrieval_svc.retrieve(query=body.query, kb_type="rules", top_k=3, filt=filt)
-    meta_hits = await retrieval_svc.retrieve(query=body.query, kb_type="meta", top_k=3, filt=filt)
+    # 同时跑 rules + meta，两类引用合并。引用是"锦上添花"，ES 不可用时容忍降级为空，
+    # 让聊天仍能流式；真正的故障提示由 dispatch_text → LLM 那条主链路给出，不在此重复报错。
+    try:
+        rule_hits = await retrieval_svc.retrieve(query=body.query, kb_type="rules", top_k=3, filt=filt)
+        meta_hits = await retrieval_svc.retrieve(query=body.query, kb_type="meta", top_k=3, filt=filt)
+    except RetrievalUnavailableError:
+        logger.warning("chat 引用检索：ES 不可用，本轮引用降级为空")
+        rule_hits, meta_hits = [], []
     all_hits = (rule_hits + meta_hits)[:6]
     citations_payload = [
         {

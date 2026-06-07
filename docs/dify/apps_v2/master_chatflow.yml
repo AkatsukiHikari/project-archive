@@ -1,5 +1,5 @@
 app:
-  description: 档案智能体主入口：意图分类 → 能力分发 → 答案合成
+  description: 档案智能体主入口：意图分类 → 各意图独立分支（调后端能力 + 该意图 LLM 整理）→ 流式作答
   icon: robot_face
   icon_background: '#E0F2FE'
   icon_type: emoji
@@ -20,7 +20,7 @@ workflow:
   features:
     file_upload:
       enabled: false
-    opening_statement: 你好！我是 SAMS 档案智能体。我会先分析你的问题属于哪个档案业务场景，然后调用对应能力为你处理。
+    opening_statement: 你好！我是 SAMS 档案智能体。我会先判断你的问题属于哪个档案业务场景，再走对应分支为你处理。
     retriever_resource:
       enabled: true
     sensitive_word_avoidance:
@@ -39,27 +39,313 @@ workflow:
       voice: ''
   graph:
     edges:
-    - id: edge_node_start_node_http
+    - id: edge_node_start_node_classifier
       source: node_start
       sourceHandle: source
-      target: node_http
+      target: node_classifier
       targetHandle: target
       type: custom
       data:
         isInIteration: false
         isInLoop: false
         sourceType: start
+        targetType: question-classifier
+    - id: edge_cls_qa
+      source: node_classifier
+      sourceHandle: qa
+      target: http_qa
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
         targetType: http-request
-    - id: edge_node_http_node_answer
-      source: node_http
+    - id: edge_http_qa_llm_qa
+      source: http_qa
       sourceHandle: source
-      target: node_answer
+      target: llm_qa
       targetHandle: target
       type: custom
       data:
         isInIteration: false
         isInLoop: false
         sourceType: http-request
+        targetType: llm
+    - id: edge_llm_qa_ans_qa
+      source: llm_qa
+      sourceHandle: source
+      target: ans_qa
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_search
+      source: node_classifier
+      sourceHandle: search
+      target: http_search
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_search_llm_search
+      source: http_search
+      sourceHandle: source
+      target: llm_search
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_search_ans_search
+      source: llm_search
+      sourceHandle: source
+      target: ans_search
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_summary
+      source: node_classifier
+      sourceHandle: summary
+      target: http_summary
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_summary_llm_summary
+      source: http_summary
+      sourceHandle: source
+      target: llm_summary
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_summary_ans_summary
+      source: llm_summary
+      sourceHandle: source
+      target: ans_summary
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_attach
+      source: node_classifier
+      sourceHandle: attach
+      target: http_attach
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_attach_llm_attach
+      source: http_attach
+      sourceHandle: source
+      target: llm_attach
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_attach_ans_attach
+      source: llm_attach
+      sourceHandle: source
+      target: ans_attach
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_catalog
+      source: node_classifier
+      sourceHandle: catalog
+      target: http_catalog
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_catalog_llm_catalog
+      source: http_catalog
+      sourceHandle: source
+      target: llm_catalog
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_catalog_ans_catalog
+      source: llm_catalog
+      sourceHandle: source
+      target: ans_catalog
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_fournat
+      source: node_classifier
+      sourceHandle: fournat
+      target: http_fournat
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_fournat_llm_fournat
+      source: http_fournat
+      sourceHandle: source
+      target: llm_fournat
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_fournat_ans_fournat
+      source: llm_fournat
+      sourceHandle: source
+      target: ans_fournat
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_draft
+      source: node_classifier
+      sourceHandle: draft
+      target: http_draft
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_draft_llm_draft
+      source: http_draft
+      sourceHandle: source
+      target: llm_draft
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_draft_ans_draft
+      source: llm_draft
+      sourceHandle: source
+      target: ans_draft
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_relate
+      source: node_classifier
+      sourceHandle: relate
+      target: http_relate
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_relate_llm_relate
+      source: http_relate
+      sourceHandle: source
+      target: llm_relate
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_relate_ans_relate
+      source: llm_relate
+      sourceHandle: source
+      target: ans_relate
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: answer
+    - id: edge_cls_kb_manage
+      source: node_classifier
+      sourceHandle: kb_manage
+      target: http_kb_manage
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: question-classifier
+        targetType: http-request
+    - id: edge_http_kb_manage_llm_kb_manage
+      source: http_kb_manage
+      sourceHandle: source
+      target: llm_kb_manage
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: llm
+    - id: edge_llm_kb_manage_ans_kb_manage
+      source: llm_kb_manage
+      sourceHandle: source
+      target: ans_kb_manage
+      targetHandle: target
+      type: custom
+      data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
         targetType: answer
     nodes:
     - id: node_start
@@ -95,7 +381,7 @@ workflow:
           options: []
       position:
         x: 80
-        y: 200
+        y: 280
       sourcePosition: right
       targetPosition: left
     - id: node_classifier
@@ -103,13 +389,13 @@ workflow:
       data:
         type: question-classifier
         title: 意图分类
-        desc: 10 选 1 把用户问题归到对应能力
+        desc: 把用户问题归到对应档案业务场景，路由到该意图分支
         query_variable_selector:
         - sys
         - query
         model:
           provider: langgenius/ollama/ollama
-          name: qwen2.5:0.5b
+          name: qwen2.5:7b
           mode: chat
           completion_params:
             temperature: 0.1
@@ -132,7 +418,18 @@ workflow:
           name: 关联（找语义/时间/责任者相关的其他档案）
         - id: kb_manage
           name: 知识库（查询索引状态、触发重建）
-        instruction: "根据用户的提问内容，从以下 9 个档案业务场景中选择最匹配的一个：\n  问答: 基于档案知识库的检索增强问答\n  检索:\
+        instruction: "根据用户的提问内容，从以下档案业务场景中选择最匹配的一个：\n  问答: 基于档案知识库的检索增强问答\n  检索: 自然语言查询转结构化检索，定位档案\n\
+          \  综述: 按主题/全宗/类目生成专题综述\n  挂接: 新材料匹配档案，产出挂接 patch\n  编目: 从档案文本抽取元数据生成编目 patch\n\
+          \  四性: 真实性/完整性/可用性/安全性 风险提示\n  拟稿: 鉴定意见 / 销毁建议 / 利用报告草稿\n  关联: 找语义/时间/责任者相关的其他档案\n\
+          \  知识库: 查询索引状态、触发重建\n\n参考示例：\n- 「永久保管期限是多久」 → 问答\n- 「档号是如何组成的」 → 问答\n- 「四性检测包含哪些」\
+          \ → 问答\n- 「查 2024 年的财务凭证」 → 检索\n- 「找市档案馆人事任免文件」 → 检索\n- 「数字化建设相关档案」 → 检索\n\
+          - 「2024 年度财务工作综述」 → 综述\n- 「近三年数字化建设进展」 → 综述\n- 「永久保管档案管理要点」 → 综述\n- 「把这份新材料挂接到合适的目录」\
+          \ → 挂接\n- 「为这份文件找归属档案」 → 挂接\n- 「新材料归类到哪个目录」 → 挂接\n- 「从这段文字抽取档案字段」 → 编目\n\
+          - 「自动编目这份文件」 → 编目\n- 「提取题名责任者年度」 → 编目\n- 「做四性检测」 → 四性\n- 「档案的真实性如何评估」 →\
+          \ 四性\n- 「归档前的可用性风险」 → 四性\n- 「拟一份销毁建议」 → 拟稿\n- 「写一份利用工作报告」 → 拟稿\n- 「起草档案鉴定意见」\
+          \ → 拟稿\n- 「找跟这份档案相关的其他档案」 → 关联\n- 「档案的关联分析」 → 关联\n- 「类似主题的档案有哪些」 → 关联\n\
+          - 「知识库现在有多少档案」 → 知识库\n- 「如何重建索引」 → 知识库\n- 「L4 业务规则有哪些类别」 → 知识库\n\n判断要点：含『查/找』→检索；『综述/汇总』→综述；『新材料/挂接』→挂接；『字段/抽取』→编目；『真实性/完整性』→四性；『拟/起草/写一份』→拟稿；『相关/关联』→关联；『索引/重建/知识库』→知识库；其余一般问答→问答。"
+        instructions: "根据用户的提问内容，从以下档案业务场景中选择最匹配的一个：\n  问答: 基于档案知识库的检索增强问答\n  检索:\
           \ 自然语言查询转结构化检索，定位档案\n  综述: 按主题/全宗/类目生成专题综述\n  挂接: 新材料匹配档案，产出挂接 patch\n \
           \ 编目: 从档案文本抽取元数据生成编目 patch\n  四性: 真实性/完整性/可用性/安全性 风险提示\n  拟稿: 鉴定意见 / 销毁建议\
           \ / 利用报告草稿\n  关联: 找语义/时间/责任者相关的其他档案\n  知识库: 查询索引状态、触发重建\n\n参考示例：\n- 「永久保管期限是多久」\
@@ -143,33 +440,21 @@ workflow:
           \ → 编目\n- 「做四性检测」 → 四性\n- 「档案的真实性如何评估」 → 四性\n- 「归档前的可用性风险」 → 四性\n- 「拟一份销毁建议」\
           \ → 拟稿\n- 「写一份利用工作报告」 → 拟稿\n- 「起草档案鉴定意见」 → 拟稿\n- 「找跟这份档案相关的其他档案」 → 关联\n\
           - 「档案的关联分析」 → 关联\n- 「类似主题的档案有哪些」 → 关联\n- 「知识库现在有多少档案」 → 知识库\n- 「如何重建索引」\
-          \ → 知识库\n- 「L4 业务规则有哪些类别」 → 知识库\n\n判断要点：包含『查/找』倾向于检索；『综述/汇总』倾向于综述；『新材料/挂接』倾向于挂接；『字段/抽取』倾向于编目；『真实性/完整性』倾向于四性；『拟/起草/写一份』倾向于拟稿；『相关/关联』倾向于关联；『索引/重建/知识库』倾向于知识库管理；其余一般问答归入『问答』。"
-        instructions: "根据用户的提问内容，从以下 9 个档案业务场景中选择最匹配的一个：\n  问答: 基于档案知识库的检索增强问答\n \
-          \ 检索: 自然语言查询转结构化检索，定位档案\n  综述: 按主题/全宗/类目生成专题综述\n  挂接: 新材料匹配档案，产出挂接 patch\n\
-          \  编目: 从档案文本抽取元数据生成编目 patch\n  四性: 真实性/完整性/可用性/安全性 风险提示\n  拟稿: 鉴定意见 / 销毁建议\
-          \ / 利用报告草稿\n  关联: 找语义/时间/责任者相关的其他档案\n  知识库: 查询索引状态、触发重建\n\n参考示例：\n- 「永久保管期限是多久」\
-          \ → 问答\n- 「档号是如何组成的」 → 问答\n- 「四性检测包含哪些」 → 问答\n- 「查 2024 年的财务凭证」 → 检索\n-\
-          \ 「找市档案馆人事任免文件」 → 检索\n- 「数字化建设相关档案」 → 检索\n- 「2024 年度财务工作综述」 → 综述\n- 「近三年数字化建设进展」\
-          \ → 综述\n- 「永久保管档案管理要点」 → 综述\n- 「把这份新材料挂接到合适的目录」 → 挂接\n- 「为这份文件找归属档案」 → 挂接\n\
-          - 「新材料归类到哪个目录」 → 挂接\n- 「从这段文字抽取档案字段」 → 编目\n- 「自动编目这份文件」 → 编目\n- 「提取题名责任者年度」\
-          \ → 编目\n- 「做四性检测」 → 四性\n- 「档案的真实性如何评估」 → 四性\n- 「归档前的可用性风险」 → 四性\n- 「拟一份销毁建议」\
-          \ → 拟稿\n- 「写一份利用工作报告」 → 拟稿\n- 「起草档案鉴定意见」 → 拟稿\n- 「找跟这份档案相关的其他档案」 → 关联\n\
-          - 「档案的关联分析」 → 关联\n- 「类似主题的档案有哪些」 → 关联\n- 「知识库现在有多少档案」 → 知识库\n- 「如何重建索引」\
-          \ → 知识库\n- 「L4 业务规则有哪些类别」 → 知识库\n\n判断要点：包含『查/找』倾向于检索；『综述/汇总』倾向于综述；『新材料/挂接』倾向于挂接；『字段/抽取』倾向于编目；『真实性/完整性』倾向于四性；『拟/起草/写一份』倾向于拟稿；『相关/关联』倾向于关联；『索引/重建/知识库』倾向于知识库管理；其余一般问答归入『问答』。"
+          \ → 知识库\n- 「L4 业务规则有哪些类别」 → 知识库\n\n判断要点：含『查/找』→检索；『综述/汇总』→综述；『新材料/挂接』→挂接；『字段/抽取』→编目；『真实性/完整性』→四性；『拟/起草/写一份』→拟稿；『相关/关联』→关联；『索引/重建/知识库』→知识库；其余一般问答→问答。"
         topics: []
         vision:
           enabled: false
       position:
-        x: 380
-        y: 200
+        x: 360
+        y: 280
       sourcePosition: right
       targetPosition: left
-    - id: node_http
+    - id: http_qa
       type: custom
       data:
         type: http-request
-        title: 调用后端 dispatch
-        desc: 按分类结果路由到后端能力 service
+        title: 调用后端 · 问答
+        desc: 回调 /tool/dispatch_text（tool_name=qa）取权威数据
         method: post
         url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
         authorization:
@@ -184,8 +469,8 @@ workflow:
           data:
           - key: ''
             type: text
-            value: '{"tool_name": "{{#node_start.scenario_hint#}}", "fallback_tool_name":
-              "qa", "arguments": {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+            value: '{"tool_name": "qa", "fallback_tool_name": "qa", "arguments": {"query":
+              "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
         timeout:
           connect: 10
           read: 60
@@ -199,57 +484,31 @@ workflow:
             multiplier: 2
             max_interval: 10000
       position:
-        x: 680
-        y: 200
+        x: 660
+        y: 80
       sourcePosition: right
       targetPosition: left
-    - id: node_llm
+    - id: llm_qa
       type: custom
       data:
         type: llm
-        title: 答案格式化
-        desc: 把 dispatch 的 JSON 包装成用户可读答案
+        title: 问答 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
         model:
           provider: langgenius/ollama/ollama
-          name: qwen2.5:0.5b
+          name: qwen2.5:7b
           mode: chat
           completion_params:
-            temperature: 0.3
+            temperature: 0.2
         prompt_template:
         - role: system
-          text: '你是 SAMS 档案库回答助手。
-
-
-            用户问题：{{#sys.query#}}
-
-
-            档案库返回（JSON 格式）：{{#node_http.body#}}
-
-
-            【任务】
-
-            上述 JSON 中 data.result.answer 字段已经是档案库的标准答复文本。
-
-            请直接以该字段的内容作为基础，用 Markdown 格式重新排版后输出：
-
-            - 列表项用 1. 2. 3. 编号
-
-            - 档号用反引号包裹，如 `Q001-HJ-2024-C-00001`
-
-            - 重要词用 **加粗**
-
-
-            【严禁】
-
-            - 不要编造 answer 字段以外的档案、年份、档号
-
-            - 不要写任何 URL、链接、『点击查看』『访问』之类跳转语
-
-            - 不要说『前端』『后端』『系统』『JSON』『字段』等技术词
-
-            - 不要写『根据...』『以下是...』『检索结果显示...』开头
-
-            - 若 answer 字段为空字符串或不存在，直接回复『未在档案库中找到相关内容，请尝试补充关键词、年份或全宗号。』'
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_qa.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
         memory:
           query_prompt_template: '{{#sys.query#}}'
           window:
@@ -262,24 +521,736 @@ workflow:
           enabled: false
         variables: []
       position:
-        x: 980
-        y: 200
+        x: 960
+        y: 80
       sourcePosition: right
       targetPosition: left
-    - id: node_answer
+    - id: ans_qa
       type: custom
       data:
         type: answer
-        title: Answer
+        title: 问答 · Answer
         desc: ''
-        answer: '{{#node_http.body#}}'
+        answer: '{{#llm_qa.text#}}'
         variables: []
       position:
-        x: 1280
-        y: 200
+        x: 1260
+        y: 80
+      sourcePosition: right
+      targetPosition: left
+    - id: http_search
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 检索
+        desc: 回调 /tool/dispatch_text（tool_name=search）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "search", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_search
+      type: custom
+      data:
+        type: llm
+        title: 检索 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_search.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_search
+      type: custom
+      data:
+        type: answer
+        title: 检索 · Answer
+        desc: ''
+        answer: '{{#llm_search.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: http_summary
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 综述
+        desc: 回调 /tool/dispatch_text（tool_name=summary）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "summary", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 400
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_summary
+      type: custom
+      data:
+        type: llm
+        title: 综述 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_summary.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 400
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_summary
+      type: custom
+      data:
+        type: answer
+        title: 综述 · Answer
+        desc: ''
+        answer: '{{#llm_summary.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 400
+      sourcePosition: right
+      targetPosition: left
+    - id: http_attach
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 挂接
+        desc: 回调 /tool/dispatch_text（tool_name=attach）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "attach", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 560
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_attach
+      type: custom
+      data:
+        type: llm
+        title: 挂接 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_attach.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 560
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_attach
+      type: custom
+      data:
+        type: answer
+        title: 挂接 · Answer
+        desc: ''
+        answer: '{{#llm_attach.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 560
+      sourcePosition: right
+      targetPosition: left
+    - id: http_catalog
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 编目
+        desc: 回调 /tool/dispatch_text（tool_name=catalog）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "catalog", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 720
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_catalog
+      type: custom
+      data:
+        type: llm
+        title: 编目 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_catalog.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 720
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_catalog
+      type: custom
+      data:
+        type: answer
+        title: 编目 · Answer
+        desc: ''
+        answer: '{{#llm_catalog.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 720
+      sourcePosition: right
+      targetPosition: left
+    - id: http_fournat
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 四性
+        desc: 回调 /tool/dispatch_text（tool_name=fournat）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "fournat", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 880
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_fournat
+      type: custom
+      data:
+        type: llm
+        title: 四性 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_fournat.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 880
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_fournat
+      type: custom
+      data:
+        type: answer
+        title: 四性 · Answer
+        desc: ''
+        answer: '{{#llm_fournat.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 880
+      sourcePosition: right
+      targetPosition: left
+    - id: http_draft
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 拟稿
+        desc: 回调 /tool/dispatch_text（tool_name=draft）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "draft", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 1040
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_draft
+      type: custom
+      data:
+        type: llm
+        title: 拟稿 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_draft.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 1040
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_draft
+      type: custom
+      data:
+        type: answer
+        title: 拟稿 · Answer
+        desc: ''
+        answer: '{{#llm_draft.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 1040
+      sourcePosition: right
+      targetPosition: left
+    - id: http_relate
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 关联
+        desc: 回调 /tool/dispatch_text（tool_name=relate）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "relate", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 1200
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_relate
+      type: custom
+      data:
+        type: llm
+        title: 关联 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_relate.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 1200
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_relate
+      type: custom
+      data:
+        type: answer
+        title: 关联 · Answer
+        desc: ''
+        answer: '{{#llm_relate.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 1200
+      sourcePosition: right
+      targetPosition: left
+    - id: http_kb_manage
+      type: custom
+      data:
+        type: http-request
+        title: 调用后端 · 知识库
+        desc: 回调 /tool/dispatch_text（tool_name=kb_manage）取权威数据
+        method: post
+        url: http://host.docker.internal:8000/api/v1/ai/internal/tool/dispatch_text
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          X-User-Token:{{#node_start.user_token#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - key: ''
+            type: text
+            value: '{"tool_name": "kb_manage", "fallback_tool_name": "qa", "arguments":
+              {"query": "{{#sys.query#}}", "tenant_id": "{{#node_start.tenant_id#}}"}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 30
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      position:
+        x: 660
+        y: 1360
+      sourcePosition: right
+      targetPosition: left
+    - id: llm_kb_manage
+      type: custom
+      data:
+        type: llm
+        title: 知识库 · 整理
+        desc: 该意图自己的 LLM：把后端权威数据按意图排版并流式输出
+        model:
+          provider: langgenius/ollama/ollama
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            temperature: 0.2
+        prompt_template:
+        - role: system
+          text: "你是 SAMS 档案库问答助手。\n\n用户问题：{{#sys.query#}}\n\n后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n\
+            {{#http_kb_manage.body#}}\n\n【输出要求】\n1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n\
+            2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），逐条输出为带编号的可点击列表，不得遗漏：\n\
+            \   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n\
+            \   archive_id 只用于拼链接，不要显示给用户。\n3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论\
+            \ **加粗**。\n4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。素材包含任何条目时绝不能说未找到。\n\
+            5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          window:
+            enabled: false
+            size: 10
+        context:
+          enabled: false
+          variable_selector: []
+        vision:
+          enabled: false
+        variables: []
+      position:
+        x: 960
+        y: 1360
+      sourcePosition: right
+      targetPosition: left
+    - id: ans_kb_manage
+      type: custom
+      data:
+        type: answer
+        title: 知识库 · Answer
+        desc: ''
+        answer: '{{#llm_kb_manage.text#}}'
+        variables: []
+      position:
+        x: 1260
+        y: 1360
       sourcePosition: right
       targetPosition: left
     viewport:
       x: 0
       y: 0
-      zoom: 0.6
+      zoom: 0.5

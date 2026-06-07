@@ -146,7 +146,7 @@ workflow:
         desc: 用 LLM 把后端 JSON 结果改写为人类可读答案
         model:
           provider: langgenius/ollama/ollama
-          name: qwen2.5:0.5b
+          name: qwen2.5:7b
           mode: chat
           completion_params:
             temperature: 0.3

@@ -18,6 +18,45 @@ from app.modules.repository.services.es_sync_service import delete_one, sync_one
 router = APIRouter(tags=["档案管理"])
 
 
+async def _find_archive(db: AsyncSession, raw: str):
+    """按 UUID 或 档号(DH) 定位档案；先查暂存库再查正式库。
+
+    AI 链接 / 外部跳转可能传 UUID，也可能传人类可读的档号(如 Q001-HJ-2024-C-00001)，
+    两者都要能打开原文，否则路径用 uuid.UUID 强类型会直接 422。
+    """
+    from sqlalchemy import select
+    from app.modules.repository.models.archive import Archive, ArchiveStaging
+
+    try:
+        aid = uuid.UUID(raw)
+    except (ValueError, AttributeError, TypeError):
+        aid = None
+
+    if aid is not None:
+        r = await db.execute(
+            select(ArchiveStaging).where(
+                ArchiveStaging.id == aid, ArchiveStaging.is_deleted == False  # noqa: E712
+            )
+        )
+        obj = r.scalar_one_or_none()
+        if obj:
+            return obj
+        r = await db.execute(select(Archive).where(Archive.id == aid))
+        return r.scalars().first()
+
+    # 按档号匹配
+    r = await db.execute(
+        select(ArchiveStaging)
+        .where(ArchiveStaging.DH == raw, ArchiveStaging.is_deleted == False)  # noqa: E712
+        .limit(1)
+    )
+    obj = r.scalar_one_or_none()
+    if obj:
+        return obj
+    r = await db.execute(select(Archive).where(Archive.DH == raw).limit(1))
+    return r.scalars().first()
+
+
 # ── 目录 ──────────────────────────────────────────────────────────────────────
 
 @router.get("/archive/catalogs", response_model=ResponseModel[list[CatalogRead]])
@@ -101,13 +140,59 @@ async def create_archive(
 
 @router.get("/archive/records/{archive_id}", response_model=ResponseModel[ArchiveRead])
 async def get_archive(
-    archive_id: uuid.UUID,
+    archive_id: str,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    svc = ArchiveService(db)
-    item = await svc.get(archive_id)
+    from app.common.error_code import ErrorCode
+    from app.common.exceptions.base import NotFoundException
+
+    item = await _find_archive(db, archive_id)
+    if item is None:
+        raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="档案不存在")
     return success(ArchiveRead.model_validate(item))
+
+
+@router.get("/archive/records/{archive_id}/attachments", response_model=ResponseModel[list[dict]])
+async def list_archive_attachments(
+    archive_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """档案原文附件列表（含预签名直读 URL，供阅览页 PDF 渲染）。
+
+    archive_id 接受 UUID 或 档号(DH)。主附件优先、按 sort_order 排序；
+    URL 失败的条目 url=None 不阻断其余。
+    """
+    from sqlalchemy import select
+    from app.infra.storage.factory import storage
+    from app.modules.repository.models.archive import ArchiveAttachment
+    from app.modules.repository.schemas.archive import AttachmentRead
+
+    found = await _find_archive(db, archive_id)
+    if found is None:
+        return success([])
+    resolved_id = found.id
+
+    result = await db.execute(
+        select(ArchiveAttachment)
+        .where(
+            ArchiveAttachment.archive_id == resolved_id,
+            ArchiveAttachment.is_deleted == False,  # noqa: E712
+        )
+        .order_by(ArchiveAttachment.is_primary.desc(), ArchiveAttachment.sort_order)
+    )
+    rows = result.scalars().all()
+    out: list[dict] = []
+    for a in rows:
+        try:
+            url = storage.get_presigned_url(a.storage_key, a.storage_bucket, expires_seconds=3600)
+        except Exception:
+            url = None
+        item = AttachmentRead.model_validate(a).model_dump(mode="json")
+        item["url"] = url
+        out.append(item)
+    return success(out)
 
 
 @router.put("/archive/records/{archive_id}", response_model=ResponseModel[ArchiveRead])

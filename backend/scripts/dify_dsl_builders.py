@@ -238,39 +238,59 @@ def _gen_id(prefix: str) -> str:
 # ── 主 Chatflow 构造 ────────────────────────────────────────────────────────
 
 
-def build_master_chatflow() -> dict:
-    """主 Chatflow：Start → Classifier → HTTP → LLM(格式化) → Answer"""
+def build_master_chatflow(service_token: str = "") -> dict:
+    """主 Chatflow（真分发版）：Start → 意图分类(真接线) → 各意图独立分支 → Answer(流式)
+
+    每个意图一条分支：分支内 HTTP 调对应后端 capability 取权威数据，再由该意图自己的
+    LLM 节点按意图排版并逐 token 流式输出。慢但真：分类器真正参与执行、每意图逻辑独立。
+
+    service_token: 配置 AI_SERVICE_TOKEN 时，给每条分支的 dispatch HTTP 加 X-Service-Token 头。
+    """
     start_id = "node_start"
     classifier_id = "node_classifier"
-    http_id = "node_http"
-    llm_id = "node_llm"
-    answer_id = "node_answer"
 
-    # 分类器的 classes
     classifier_classes = [
         {"id": sc.code, "name": f"{sc.classifier_label}（{sc.description}）"}
         for sc in SCENARIOS
     ]
-    # 分类器的 instruction（把示例拼上）
     examples_text = "\n".join(
         f"- 「{ex}」 → {sc.classifier_label}"
         for sc in SCENARIOS for ex in sc.classifier_examples
     )
     classifier_instruction = (
-        "根据用户的提问内容，从以下 9 个档案业务场景中选择最匹配的一个：\n"
+        "根据用户的提问内容，从以下档案业务场景中选择最匹配的一个：\n"
         + "\n".join(f"  {sc.classifier_label}: {sc.description}" for sc in SCENARIOS)
         + "\n\n参考示例：\n"
         + examples_text
-        + "\n\n判断要点：包含『查/找』倾向于检索；『综述/汇总』倾向于综述；"
-        "『新材料/挂接』倾向于挂接；『字段/抽取』倾向于编目；"
-        "『真实性/完整性』倾向于四性；『拟/起草/写一份』倾向于拟稿；"
-        "『相关/关联』倾向于关联；『索引/重建/知识库』倾向于知识库管理；"
-        "其余一般问答归入『问答』。"
+        + "\n\n判断要点：含『查/找』→检索；『综述/汇总』→综述；『新材料/挂接』→挂接；"
+        "『字段/抽取』→编目；『真实性/完整性』→四性；『拟/起草/写一份』→拟稿；"
+        "『相关/关联』→关联；『索引/重建/知识库』→知识库；其余一般问答→问答。"
     )
 
-    # 为兼容低算力环境（qwen 0.5b 跑 classifier 极慢），暂时跳过 Classifier 节点，
-    # 直接用 scenario_hint 路由。Classifier 节点保留在 graph 中但不接边 —— 客户在 Dify
-    # 后台仍能看到分类逻辑设计，提供升级到大模型时启用。
+    header = "Content-Type:application/json\nX-User-Token:{{#" + start_id + ".user_token#}}"
+    if service_token:
+        header += f"\nX-Service-Token:{service_token}"
+
+    # 各分支 LLM 的统一系统提示：兼容"档案条目清单"与"业务规则文本"两类素材，
+    # 检索类逐条输出可点击 /archive/reader 链接，有条目绝不说"未找到"。
+    def branch_prompt(http_id: str) -> str:
+        return (
+            "你是 SAMS 档案库问答助手。\n\n"
+            "用户问题：{{#sys.query#}}\n\n"
+            "后端检索到的真实素材（权威数据，可能是档案条目清单，也可能是业务规则文本）：\n"
+            "{{#" + http_id + ".body#}}\n\n"
+            "【输出要求】\n"
+            "1. 只能基于素材作答，绝不编造素材之外的档案、年度、档号、责任者或结论。\n"
+            "2. 若素材是档案条目清单（每行形如 `archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号`），"
+            "逐条输出为带编号的可点击列表，不得遗漏：\n"
+            "   1. [题名](/archive/reader?id=该行的archive_id) — 档号 `档号` · 年度 年 · 责任者 责任者\n"
+            "   archive_id 只用于拼链接，不要显示给用户。\n"
+            "3. 若素材是业务规则/说明文本，用简洁自然的中文作答，Markdown 排版，关键结论 **加粗**。\n"
+            "4. 仅当素材明确为『未命中/为空』时，才回复：未检索到相关内容，请补充关键词、年份或全宗号后重试。"
+            "素材包含任何条目时绝不能说未找到。\n"
+            "5. 不要以『根据…』『以下是…』开头，不要出现『前端/后端/系统/JSON/字段/素材』等技术词。"
+        )
+
     nodes = [
         {
             "id": start_id,
@@ -280,41 +300,13 @@ def build_master_chatflow() -> dict:
                 "title": "Start",
                 "desc": "",
                 "variables": [
-                    {
-                        "label": "scenario_hint",
-                        "variable": "scenario_hint",
-                        "type": "text-input",
-                        "required": False,
-                        "max_length": 32,
-                        "options": [],
-                    },
-                    {
-                        "label": "citations_json",
-                        "variable": "citations_json",
-                        "type": "paragraph",
-                        "required": False,
-                        "max_length": 16384,
-                        "options": [],
-                    },
-                    {
-                        "label": "tenant_id",
-                        "variable": "tenant_id",
-                        "type": "text-input",
-                        "required": False,
-                        "max_length": 64,
-                        "options": [],
-                    },
-                    {
-                        "label": "user_token",
-                        "variable": "user_token",
-                        "type": "text-input",
-                        "required": False,
-                        "max_length": 1024,
-                        "options": [],
-                    },
+                    {"label": "scenario_hint", "variable": "scenario_hint", "type": "text-input", "required": False, "max_length": 32, "options": []},
+                    {"label": "citations_json", "variable": "citations_json", "type": "paragraph", "required": False, "max_length": 16384, "options": []},
+                    {"label": "tenant_id", "variable": "tenant_id", "type": "text-input", "required": False, "max_length": 64, "options": []},
+                    {"label": "user_token", "variable": "user_token", "type": "text-input", "required": False, "max_length": 1024, "options": []},
                 ],
             },
-            "position": {"x": 80, "y": 200},
+            "position": {"x": 80, "y": 280},
             "sourcePosition": "right",
             "targetPosition": "left",
         },
@@ -324,11 +316,11 @@ def build_master_chatflow() -> dict:
             "data": {
                 "type": "question-classifier",
                 "title": "意图分类",
-                "desc": "10 选 1 把用户问题归到对应能力",
+                "desc": "把用户问题归到对应档案业务场景，路由到该意图分支",
                 "query_variable_selector": ["sys", "query"],
                 "model": {
                     "provider": "langgenius/ollama/ollama",
-                    "name": "qwen2.5:0.5b",
+                    "name": "qwen2.5:7b",
                     "mode": "chat",
                     "completion_params": {"temperature": 0.1},
                 },
@@ -338,154 +330,130 @@ def build_master_chatflow() -> dict:
                 "topics": [],
                 "vision": {"enabled": False},
             },
-            "position": {"x": 380, "y": 200},
+            "position": {"x": 360, "y": 280},
             "sourcePosition": "right",
             "targetPosition": "left",
         },
+    ]
+
+    edges = [
         {
+            "id": f"edge_{start_id}_{classifier_id}",
+            "source": start_id,
+            "sourceHandle": "source",
+            "target": classifier_id,
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"isInIteration": False, "isInLoop": False, "sourceType": "start", "targetType": "question-classifier"},
+        }
+    ]
+
+    for i, sc in enumerate(SCENARIOS):
+        http_id = f"http_{sc.code}"
+        llm_id = f"llm_{sc.code}"
+        ans_id = f"ans_{sc.code}"
+        y = 80 + i * 160
+
+        dispatch_body = json.dumps(
+            {
+                "tool_name": sc.code,
+                "fallback_tool_name": "qa",
+                "arguments": {"query": "{{#sys.query#}}", "tenant_id": "{{#" + start_id + ".tenant_id#}}"},
+            },
+            ensure_ascii=False,
+        )
+
+        nodes.append({
             "id": http_id,
             "type": "custom",
             "data": {
                 "type": "http-request",
-                "title": "调用后端 dispatch",
-                "desc": "按分类结果路由到后端能力 service",
+                "title": f"调用后端 · {sc.classifier_label}",
+                "desc": f"回调 /tool/dispatch_text（tool_name={sc.code}）取权威数据",
                 "method": "post",
                 "url": f"{BACKEND_URL_FROM_DIFY}/api/v1/ai/internal/tool/dispatch_text",
-                "authorization": {
-                    "type": "no-auth",
-                    "config": None,
-                },
-                "headers": "Content-Type:application/json\nX-User-Token:{{#" + start_id + ".user_token#}}",
+                "authorization": {"type": "no-auth", "config": None},
+                "headers": header,
                 "params": "",
-                # 路由策略：tool_name 优先用前端的 scenario_hint（精确）；为空时回退 Classifier 输出
-                # 注意：citations 不嵌入 JSON body —— Dify 的 repair_json 会"过度智能"地把
-                # 嵌套 JSON 字符串展开成顶层字段，破坏 body 结构。后端 dispatch 自己根据 query 重检索。
-                "body": {
-                    "type": "json",
-                    "data": [
-                        {
-                            "key": "",
-                            "type": "text",
-                            "value": json.dumps(
-                                {
-                                    "tool_name": "{{#" + start_id + ".scenario_hint#}}",
-                                    "fallback_tool_name": "qa",
-                                    "arguments": {
-                                        "query": "{{#sys.query#}}",
-                                        "tenant_id": "{{#" + start_id + ".tenant_id#}}",
-                                    },
-                                },
-                                ensure_ascii=False,
-                            ),
-                        }
-                    ],
-                },
+                "body": {"type": "json", "data": [{"key": "", "type": "text", "value": dispatch_body}]},
                 "timeout": {"connect": 10, "read": 60, "write": 30},
-                "retry_config": {
-                    "enabled": False,
-                    "max_retries": 1,
-                    "retry_interval": 1000,
-                    "exponential_backoff": {
-                        "enabled": False,
-                        "multiplier": 2,
-                        "max_interval": 10000,
-                    },
-                },
+                "retry_config": {"enabled": False, "max_retries": 1, "retry_interval": 1000, "exponential_backoff": {"enabled": False, "multiplier": 2, "max_interval": 10000}},
             },
-            "position": {"x": 680, "y": 200},
+            "position": {"x": 660, "y": y},
             "sourcePosition": "right",
             "targetPosition": "left",
-        },
-        {
+        })
+
+        nodes.append({
             "id": llm_id,
             "type": "custom",
             "data": {
                 "type": "llm",
-                "title": "答案格式化",
-                "desc": "把 dispatch 的 JSON 包装成用户可读答案",
+                "title": f"{sc.classifier_label} · 整理",
+                "desc": "该意图自己的 LLM：把后端权威数据按意图排版并流式输出",
                 "model": {
                     "provider": "langgenius/ollama/ollama",
-                    "name": "qwen2.5:0.5b",
+                    "name": "qwen2.5:7b",
                     "mode": "chat",
-                    "completion_params": {"temperature": 0.3},
+                    "completion_params": {"temperature": 0.2},
                 },
-                "prompt_template": [
-                    {
-                        "role": "system",
-                        "text": (
-                            "你是 SAMS 档案库回答助手。\n\n"
-                            "用户问题：{{#sys.query#}}\n\n"
-                            "档案库返回（JSON 格式）：{{#" + http_id + ".body#}}\n\n"
-                            "【任务】\n"
-                            "上述 JSON 中 data.result.answer 字段已经是档案库的标准答复文本。\n"
-                            "请直接以该字段的内容作为基础，用 Markdown 格式重新排版后输出：\n"
-                            "- 列表项用 1. 2. 3. 编号\n"
-                            "- 档号用反引号包裹，如 `Q001-HJ-2024-C-00001`\n"
-                            "- 重要词用 **加粗**\n\n"
-                            "【严禁】\n"
-                            "- 不要编造 answer 字段以外的档案、年份、档号\n"
-                            "- 不要写任何 URL、链接、『点击查看』『访问』之类跳转语\n"
-                            "- 不要说『前端』『后端』『系统』『JSON』『字段』等技术词\n"
-                            "- 不要写『根据...』『以下是...』『检索结果显示...』开头\n"
-                            "- 若 answer 字段为空字符串或不存在，直接回复『未在档案库中找到相关内容，请尝试补充关键词、年份或全宗号。』"
-                        ),
-                    }
-                ],
-                "memory": {
-                    "query_prompt_template": "{{#sys.query#}}",
-                    "window": {"enabled": False, "size": 10},
-                },
+                "prompt_template": [{"role": "system", "text": branch_prompt(http_id)}],
+                "memory": {"query_prompt_template": "{{#sys.query#}}", "window": {"enabled": False, "size": 10}},
                 "context": {"enabled": False, "variable_selector": []},
                 "vision": {"enabled": False},
                 "variables": [],
             },
-            "position": {"x": 980, "y": 200},
+            "position": {"x": 960, "y": y},
             "sourcePosition": "right",
             "targetPosition": "left",
-        },
-        {
-            "id": answer_id,
+        })
+
+        nodes.append({
+            "id": ans_id,
             "type": "custom",
             "data": {
                 "type": "answer",
-                "title": "Answer",
+                "title": f"{sc.classifier_label} · Answer",
                 "desc": "",
-                # 直接输出 HTTP 节点 body（dispatch_text 返回 plain markdown）
-                # 绕开 LLM 节点，避免 0.5b 模型截断/编造档案
-                "answer": "{{#" + http_id + ".body#}}",
+                "answer": "{{#" + llm_id + ".text#}}",
                 "variables": [],
             },
-            "position": {"x": 1280, "y": 200},
+            "position": {"x": 1260, "y": y},
             "sourcePosition": "right",
             "targetPosition": "left",
-        },
-    ]
+        })
 
-    # 边：Start → HTTP → Answer（绕过 LLM 与 Classifier 节点，避免 0.5b 模型不稳定）
-    edges = [
-        {
-            "id": f"edge_{start_id}_{http_id}",
-            "source": start_id,
-            "sourceHandle": "source",
+        edges.append({
+            "id": f"edge_cls_{sc.code}",
+            "source": classifier_id,
+            "sourceHandle": sc.code,
             "target": http_id,
             "targetHandle": "target",
             "type": "custom",
-            "data": {"isInIteration": False, "isInLoop": False, "sourceType": "start", "targetType": "http-request"},
-        },
-        {
-            "id": f"edge_{http_id}_{answer_id}",
+            "data": {"isInIteration": False, "isInLoop": False, "sourceType": "question-classifier", "targetType": "http-request"},
+        })
+        edges.append({
+            "id": f"edge_{http_id}_{llm_id}",
             "source": http_id,
             "sourceHandle": "source",
-            "target": answer_id,
+            "target": llm_id,
             "targetHandle": "target",
             "type": "custom",
-            "data": {"isInIteration": False, "isInLoop": False, "sourceType": "http-request", "targetType": "answer"},
-        },
-    ]
+            "data": {"isInIteration": False, "isInLoop": False, "sourceType": "http-request", "targetType": "llm"},
+        })
+        edges.append({
+            "id": f"edge_{llm_id}_{ans_id}",
+            "source": llm_id,
+            "sourceHandle": "source",
+            "target": ans_id,
+            "targetHandle": "target",
+            "type": "custom",
+            "data": {"isInIteration": False, "isInLoop": False, "sourceType": "llm", "targetType": "answer"},
+        })
 
     return {
         "app": {
-            "description": "档案智能体主入口：意图分类 → 能力分发 → 答案合成",
+            "description": "档案智能体主入口：意图分类 → 各意图独立分支（调后端能力 + 该意图 LLM 整理）→ 流式作答",
             "icon": "robot_face",
             "icon_background": "#E0F2FE",
             "icon_type": "emoji",
@@ -501,22 +469,18 @@ def build_master_chatflow() -> dict:
             "environment_variables": [],
             "features": {
                 "file_upload": {"enabled": False},
-                "opening_statement": "你好！我是 SAMS 档案智能体。我会先分析你的问题属于哪个档案业务场景，然后调用对应能力为你处理。",
+                "opening_statement": "你好！我是 SAMS 档案智能体。我会先判断你的问题属于哪个档案业务场景，再走对应分支为你处理。",
                 "retriever_resource": {"enabled": True},
                 "sensitive_word_avoidance": {"enabled": False},
                 "speech_to_text": {"enabled": False},
-                "suggested_questions": [
-                    "永久保管期限的档案有哪些？",
-                    "查 2024 年的财务凭证",
-                    "为 2024 年人事档案生成专题综述",
-                ],
+                "suggested_questions": ["永久保管期限的档案有哪些？", "查 2024 年的财务凭证", "为 2024 年人事档案生成专题综述"],
                 "suggested_questions_after_answer": {"enabled": False},
                 "text_to_speech": {"enabled": False, "language": "", "voice": ""},
             },
             "graph": {
                 "edges": edges,
                 "nodes": nodes,
-                "viewport": {"x": 0, "y": 0, "zoom": 0.6},
+                "viewport": {"x": 0, "y": 0, "zoom": 0.5},
             },
         },
     }
@@ -627,7 +591,7 @@ def build_sub_workflow(scenario: ScenarioMeta) -> dict:
                 "desc": "用 LLM 把后端 JSON 结果改写为人类可读答案",
                 "model": {
                     "provider": "langgenius/ollama/ollama",
-                    "name": "qwen2.5:0.5b",
+                    "name": "qwen2.5:7b",
                     "mode": "chat",
                     "completion_params": {"temperature": 0.3},
                 },

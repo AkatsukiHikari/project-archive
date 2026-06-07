@@ -31,6 +31,16 @@ from app.infra.search.es_client import (
 logger = logging.getLogger(__name__)
 
 
+class RetrievalUnavailableError(RuntimeError):
+    """检索后端（ES）不可用时抛出。
+
+    与"检索成功但零命中"严格区分：零命中返回空列表，是合法结果；
+    ES 连接失败 / 503 / 超时则抛此异常，绝不能静默降级成空列表，
+    否则会把"服务故障"伪装成"查无此档"误导用户。
+    """
+
+
+
 # 用户 secret_level（int）→ 可见 MJ 字符串集合（DA/T 18 密级）
 # 0=公开 / 1=内部 / 2=秘密 / 3=机密 / 4=绝密；按"低看不到高"原则下游降级
 _MJ_BY_LEVEL: dict[int, tuple[str, ...]] = {
@@ -68,6 +78,8 @@ class RetrieveFilter:
     user_id: uuid.UUID
     category_ids: tuple[str, ...] = ()
     fonds_ids: tuple[str, ...] = ()
+    nd: int | None = None          # 年度精确过滤（自然语言里解析出的"2022年"）
+    qzh: str | None = None         # 全宗号精确过滤
 
 
 @dataclass(frozen=True)
@@ -136,37 +148,42 @@ class RetrievalService:
         """查 ES ``sams_archives`` 索引，强制注入 tenant_id + MJ 允许列表。"""
         client = get_es_client()
         allowed = list(_allowed_mj(filt.secret_level))
+
+        # 结构化过滤：租户 + 密级 + （可选）年度 / 全宗号
+        filters: list[dict[str, Any]] = [
+            {"term": {"tenant_id": str(filt.tenant_id)}},
+            {"terms": {"MJ": allowed}},
+        ]
+        if filt.nd is not None:
+            filters.append({"term": {"ND": filt.nd}})
+        if filt.qzh:
+            filters.append({"term": {"QZH.keyword": filt.qzh}})
+
+        # 有关键词 → 多字段匹配；纯结构化查询（如"查2022年的档案"去掉年度/停用词后为空）→ match_all
+        q = (query or "").strip()
+        must: list[dict[str, Any]] = (
+            [{"multi_match": {"query": q, "fields": ["TM^3", "RZZ^2"], "type": "best_fields", "fuzziness": "AUTO"}}]
+            if q
+            else [{"match_all": {}}]
+        )
+
         es_query: dict[str, Any] = {
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "multi_match": {
-                                "query": query,
-                                "fields": ["TM^3", "RZZ^2"],
-                                "type": "best_fields",
-                                "fuzziness": "AUTO",
-                            }
-                        }
-                    ],
-                    "filter": [
-                        {"term": {"tenant_id": str(filt.tenant_id)}},
-                        {"terms": {"MJ": allowed}},
-                    ],
-                }
-            },
+            "query": {"bool": {"must": must, "filter": filters}},
             "size": top_k,
             "_source": [
                 "id", "DH", "QZH", "TM", "RZZ", "ND", "MJ",
-                "catalog_id", "tenant_id",
+                "catalog_id", "tenant_id", "WJRQ",
             ],
         }
+        # 纯结构化检索按年度倒序，给出稳定且符合直觉的顺序
+        if not q:
+            es_query["sort"] = [{"ND": "desc"}]
 
         try:
             resp = await client.search(index=ARCHIVE_INDEX, body=es_query)
         except Exception as exc:
             logger.warning("retrieval.meta ES 查询失败 query=%r: %s", query, exc)
-            return []
+            raise RetrievalUnavailableError("档案检索服务暂时不可用") from exc
 
         hits = resp.get("hits", {}).get("hits", []) or []
         out: list[RetrievedChunk] = []
@@ -188,7 +205,14 @@ class RetrievalService:
                     secret_level=level,
                     tenant_id=str(src.get("tenant_id") or filt.tenant_id),
                     category_id=str(src.get("catalog_id")) if src.get("catalog_id") else None,
-                    extra={"DH": src.get("DH"), "ND": src.get("ND"), "MJ": mj},
+                    extra={
+                        "DH": src.get("DH"),
+                        "QZH": src.get("QZH"),
+                        "TM": src.get("TM"),
+                        "RZZ": src.get("RZZ"),
+                        "ND": src.get("ND"),
+                        "MJ": mj,
+                    },
                 )
             )
         return out
@@ -231,7 +255,7 @@ class RetrievalService:
             resp = await client.search(index=AI_RULES_INDEX, body=es_query)
         except Exception as exc:
             logger.warning("retrieval.rules ES 查询失败 query=%r: %s", query, exc)
-            return []
+            raise RetrievalUnavailableError("业务规则检索服务暂时不可用") from exc
 
         hits = resp.get("hits", {}).get("hits", []) or []
         out: list[RetrievedChunk] = []

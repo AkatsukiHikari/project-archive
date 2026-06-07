@@ -16,25 +16,45 @@ from app.modules.ai.services.retrieval_service import RetrievalService, Retrieve
 
 _YEAR_RE = re.compile(r"(19|20)\d{2}")
 _QZH_RE = re.compile(r"[JQ]\d{3}")
+# 检索口语里的停用词：剔除后剩下的才是真正的主题关键词
+_STOPWORDS = (
+    "查询", "查找", "检索", "查", "找", "看看", "给我", "帮我", "一下", "所有", "全部",
+    "的", "档案", "文件", "材料", "资料", "年度", "年", "相关", "关于", "有哪些", "有",
+)
 
 
 def _extract_dsl(query: str) -> dict:
-    """简单的 NL → 结构化检索意图（关键词 + 年度 + 全宗号）。"""
-    dsl: dict = {"keywords": query, "filters": {}}
-    if m := _YEAR_RE.search(query):
-        dsl["filters"]["ND"] = int(m.group())
-    if m := _QZH_RE.search(query):
-        dsl["filters"]["QZH"] = m.group()
-    return dsl
+    """NL → 结构化检索意图（主题关键词 + 年度 + 全宗号）。
+
+    关键：把"2022年""查/的/档案"等剥掉，避免它们污染全文匹配；
+    年度/全宗号转成精确过滤，否则"查2022年的档案"会变成对题名的模糊匹配而错配。
+    """
+    nd = int(m.group()) if (m := _YEAR_RE.search(query)) else None
+    qzh = m.group() if (m := _QZH_RE.search(query)) else None
+
+    kw = _YEAR_RE.sub("", query)
+    if qzh:
+        kw = kw.replace(qzh, "")
+    for w in _STOPWORDS:
+        kw = kw.replace(w, "")
+    kw = kw.strip()
+
+    return {"keywords": kw, "filters": {"ND": nd, "QZH": qzh}}
 
 
 async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> CapabilityResult:
     dsl = _extract_dsl(query)
     svc = RetrievalService(db)
-    filt = RetrieveFilter(tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id)
+    filt = RetrieveFilter(
+        tenant_id=ctx.tenant_id,
+        secret_level=ctx.secret_level,
+        user_id=ctx.user_id,
+        nd=dsl["filters"]["ND"],
+        qzh=dsl["filters"]["QZH"],
+    )
 
-    # P1：ES 已能按 query 多字段匹配；filters 暂时存到 detail 给 LLM 节点解释意图
-    hits = await svc.retrieve(query=query, kb_type="meta", top_k=8, filt=filt)
+    # 主题关键词走全文匹配；年度/全宗号走精确过滤（在 retrieve 内注入 ES filter）
+    hits = await svc.retrieve(query=dsl["keywords"], kb_type="meta", top_k=10, filt=filt)
     citations = [
         {
             "chunk_id": c.chunk_id,
@@ -53,19 +73,20 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
     if not hits:
         return CapabilityResult(
             status="ok",
-            answer=f"未找到匹配「{query}」的档案。建议补充时间范围、关键词或全宗号。",
+            answer="检索结果：未命中任何档案。",
             detail={"dsl": dsl, "hits_count": 0},
         )
 
-    lines = [f"基于查询「{query}」检索到 {len(hits)} 条命中（按相关度排序）：", ""]
-    for i, h in enumerate(hits, start=1):
-        nd = (h.extra or {}).get("ND")
-        dh = (h.extra or {}).get("DH")
-        qzh = h.snippet.split(' / ')[1] if ' / ' in h.snippet else '—'
-        # 在题名上加 markdown 链接 → 档案查阅页定位到该档案
-        # 前端 RagChatPanel 会拦截 a[href] 点击转 window.open（新浏览器 tab）
-        url = f"/archive/utilization/reading?id={h.source_id}"
-        lines.append(f"{i}. [{h.title}]({url})（档号 `{dh or '—'}` · {nd or '—'} 年 · 全宗 {qzh}）")
+    # 返回"原始事实块"而非成品散文：格式交给 Dify 的 LLM 节点控制，
+    # 但带上 archive_id 让模型能生成 [题名](/archive/reader?id=...) 的可点击原文链接。
+    lines = [f"检索到 {len(hits)} 条档案，字段顺序：archive_id | 档号 | 题名 | 年度 | 责任者 | 全宗号"]
+    for h in hits:
+        ex = h.extra or {}
+        qzh = ex.get("QZH") or (h.snippet.split(" / ")[1] if " / " in h.snippet else "")
+        lines.append(
+            f"- {h.source_id} | {ex.get('DH') or '—'} | {h.title} | "
+            f"{ex.get('ND') or '—'} | {ex.get('RZZ') or '—'} | {qzh or '—'}"
+        )
     return CapabilityResult(
         status="ok",
         answer="\n".join(lines),

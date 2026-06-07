@@ -59,3 +59,6 @@ v1_router.include_router(search_router, prefix="/utilization", tags=["utilizatio
 
 from app.modules.collection.api.routes_import import router as import_router
 v1_router.include_router(import_router)
+
+from app.modules.collection.api.routes_transfer import router as transfer_router
+v1_router.include_router(transfer_router)

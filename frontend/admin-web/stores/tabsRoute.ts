@@ -24,6 +24,7 @@ const ROUTE_TITLE_MAP: Record<string, string> = {
   "/archive/collection/receive": "接收登记",
   "/archive/collection/import": "批量导入",
   "/archive/collection/ledger": "收集台账",
+  "/archive/reader": "原文阅览",
   "/archive/organize/records": "档案著录",
   "/archive/organize/catalogs": "目录管理",
   "/archive/organize/digitize": "数字化加工",

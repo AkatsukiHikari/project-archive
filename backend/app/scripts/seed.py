@@ -72,8 +72,22 @@ MENU_TREE = [
                 "code": "archive.collection", "name": "档案收集", "type": "DIR",
                 "icon": "heroicons:inbox-arrow-down", "sort_order": 1,
                 "children": [
-                    {"code": "archive.collection.transfer",   "name": "归档移交", "type": "MENU", "path": "/archive/collection/transfer",  "icon": "heroicons:arrow-down-tray",          "sort_order": 1},
-                    {"code": "archive.collection.receive",    "name": "接收登记", "type": "MENU", "path": "/archive/collection/receive",   "icon": "heroicons:clipboard-document-check", "sort_order": 2},
+                    {
+                        "code": "archive.collection.transfer", "name": "归档移交", "type": "MENU",
+                        "path": "/archive/collection/transfer", "icon": "heroicons:arrow-down-tray", "sort_order": 1,
+                        "children": [
+                            # 移交单/归档计划 写操作（创建、编辑明细、提交移交）
+                            {"code": "collection:create", "name": "移交编辑", "type": "BUTTON", "sort_order": 1},
+                        ],
+                    },
+                    {
+                        "code": "archive.collection.receive", "name": "接收登记", "type": "MENU",
+                        "path": "/archive/collection/receive", "icon": "heroicons:clipboard-document-check", "sort_order": 2,
+                        "children": [
+                            # 四性预检 / 接收入库 / 退回 等审核操作
+                            {"code": "collection:review", "name": "接收审核", "type": "BUTTON", "sort_order": 1},
+                        ],
+                    },
                     {"code": "archive.collection.import",     "name": "批量导入", "type": "MENU", "path": "/archive/collection/import",    "icon": "heroicons:table-cells",              "sort_order": 3},
                     {"code": "archive.collection.ledger",     "name": "收集台账", "type": "MENU", "path": "/archive/collection/ledger",    "icon": "heroicons:book-open",                "sort_order": 4},
                 ],
@@ -198,11 +212,12 @@ async def _ensure_tenant(db: AsyncSession) -> Tenant:
 
 
 async def _ensure_roles(db: AsyncSession) -> dict[str, Role]:
-    """确保三个内置全局角色存在，返回 {code: Role} 字典。"""
+    """确保内置全局角色存在，返回 {code: Role} 字典。"""
     role_defs = [
         {"code": "superadmin", "name": "超级管理员", "description": "拥有系统全部权限，不可删除"},
         {"code": "admin",      "name": "系统管理员", "description": "拥有平台管理权限"},
         {"code": "viewer",     "name": "只读用户",   "description": "仅可查看，不可操作"},
+        {"code": "archivist",  "name": "档案业务员", "description": "档案收集/整理/保管等业务操作权限"},
     ]
     roles: dict[str, Role] = {}
     for rd in role_defs:
@@ -353,6 +368,13 @@ async def run_seed() -> None:
             # 5. admin 角色绑定平台管理+安全菜单（非档案/AI业务菜单）
             admin_menus = [m for m in all_menus if m.code.startswith(("platform", "security"))]
             await _bind_role_menus(db, roles["admin"], admin_menus)
+
+            # 5b. archivist 档案业务员：绑定全部档案业务菜单 + 收集写/审核按钮
+            archivist_menus = [
+                m for m in all_menus
+                if m.code.startswith("archive") or m.code in ("collection:create", "collection:review")
+            ]
+            await _bind_role_menus(db, roles["archivist"], archivist_menus)
 
             # 6. 超级管理员用户
             await _ensure_superadmin(db, tenant, roles["superadmin"])

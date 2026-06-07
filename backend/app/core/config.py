@@ -129,8 +129,12 @@ class Settings(BaseSettings):
     AI_ENABLED_CAPABILITIES: str = "qa,search,summary,attach,catalog,fournat,draft,relate,kb_manage"
     # 默认模型档位：快 / 准 / 思考
     AI_DEFAULT_MODEL_TIER: str = "准"
-    # Tool 回调短 token 有效期（秒），用于 Dify → 后端工具调用的身份验证
-    AI_USER_TOKEN_TTL_SECONDS: int = 300
+    # Tool 回调 token 有效期（秒），用于 Dify → 后端工具调用时恢复用户身份。
+    # 注意：Dify chatflow 会在「会话创建时」冻结 inputs，后续轮次复用首轮的 user_token，
+    # 因此 TTL 必须覆盖整段会话寿命，否则多轮对话超过 TTL 后 dispatch 会 401。
+    # 该 token 仅在 后端↔Dify↔后端 闭环内流转、不下发浏览器；真正的调用方鉴权由
+    # AI_SERVICE_TOKEN（X-Service-Token）承担，故此处放宽到 24h 是安全的。
+    AI_USER_TOKEN_TTL_SECONDS: int = 86400
     # Patch 默认闸门：auto / review / manual
     AI_PATCH_DEFAULT_GATE: str = "review"
     # 是否强制引用（无 evidence 拒答）

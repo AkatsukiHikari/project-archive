@@ -57,6 +57,12 @@ v1_router.include_router(fonds_router)
 from app.modules.utilization.api.search import router as search_router
 v1_router.include_router(search_router, prefix="/utilization", tags=["utilization"])
 
+from app.modules.utilization.api.routes_application import router as util_application_router
+v1_router.include_router(util_application_router)
+
+from app.modules.preservation.api.routes_detection import router as preservation_detection_router
+v1_router.include_router(preservation_detection_router)
+
 from app.modules.collection.api.routes_import import router as import_router
 v1_router.include_router(import_router)
 

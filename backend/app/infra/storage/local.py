@@ -63,6 +63,10 @@ class LocalAdapter(StorageAdapter):
             
         return str(target_path)
 
+    def get(self, filename: str, bucket: str) -> bytes:
+        """读取本地对象字节。"""
+        return self._get_path(bucket, filename).read_bytes()
+
     def get_public_url(self, filename: str, bucket: str) -> str:
         """本地模式：返回 FastAPI StaticFiles 挂载的静态访问路径。"""
         return f"/static/{bucket}/{filename}"

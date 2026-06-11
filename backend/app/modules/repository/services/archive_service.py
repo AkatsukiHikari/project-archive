@@ -12,6 +12,7 @@ from app.modules.repository.schemas.archive import (
     ArchiveListQuery,
     ArchiveUpdate,
     CatalogCreate,
+    CatalogUpdate,
 )
 
 
@@ -34,6 +35,16 @@ class CatalogService:
 
     async def list_by_fonds(self, fonds_id: uuid.UUID) -> list[Catalog]:
         return await self._repo.list_by_fonds(fonds_id)
+
+    async def update(self, catalog_id: uuid.UUID, data: CatalogUpdate) -> Catalog:
+        catalog = await self._repo.get_by_id(catalog_id)
+        if not catalog:
+            raise NotFoundException(code=ErrorCode.ARCHIVE_NOT_FOUND, message="目录不存在")
+        update_data = data.model_dump(exclude_unset=True)
+        for field in ("name", "year", "catalog_type", "volume_archive_id"):
+            if field in update_data:
+                setattr(catalog, field, update_data[field])
+        return catalog
 
     async def delete(self, catalog_id: uuid.UUID) -> None:
         catalog = await self._repo.get_by_id(catalog_id)

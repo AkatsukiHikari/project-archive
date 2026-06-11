@@ -71,7 +71,28 @@ class ArchiveRepository:
             conditions.append(ArchiveStaging.status == query.status)
         if query.keyword:
             kw = f"%{query.keyword}%"
-            conditions.append(or_(ArchiveStaging.TM.ilike(kw), ArchiveStaging.RZZ.ilike(kw)))
+            conditions.append(or_(
+                ArchiveStaging.TM.ilike(kw),
+                ArchiveStaging.RZZ.ilike(kw),
+                ArchiveStaging.DH.ilike(kw),
+            ))
+        # 高级组合：逐字段精确/范围
+        if query.TM:
+            conditions.append(ArchiveStaging.TM.ilike(f"%{query.TM}%"))
+        if query.RZZ:
+            conditions.append(ArchiveStaging.RZZ.ilike(f"%{query.RZZ}%"))
+        if query.DH:
+            conditions.append(ArchiveStaging.DH.ilike(f"%{query.DH}%"))
+        if query.BGQX:
+            conditions.append(ArchiveStaging.BGQX == query.BGQX)
+        if query.ND_from is not None:
+            conditions.append(ArchiveStaging.ND >= query.ND_from)
+        if query.ND_to is not None:
+            conditions.append(ArchiveStaging.ND <= query.ND_to)
+        if query.WJRQ_from:
+            conditions.append(ArchiveStaging.WJRQ >= query.WJRQ_from)
+        if query.WJRQ_to:
+            conditions.append(ArchiveStaging.WJRQ <= query.WJRQ_to)
 
         count_result = await self._db.execute(
             select(func.count()).select_from(ArchiveStaging).where(and_(*conditions))

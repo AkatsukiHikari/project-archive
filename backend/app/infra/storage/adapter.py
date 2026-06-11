@@ -43,6 +43,10 @@ class StorageAdapter(ABC):
         """
 
     @abstractmethod
+    def get(self, filename: str, bucket: str) -> bytes:
+        """下载对象，返回字节。"""
+
+    @abstractmethod
     def get_public_url(self, filename: str, bucket: str) -> str:
         """
         构造文件的永久公开访问 URL。

@@ -225,6 +225,7 @@ const menuOptions = computed<MenuOption[]>(() => {
       (m) =>
         m.type !== "BUTTON" &&
         m.is_visible &&
+        (m as { is_deleted?: boolean }).is_deleted !== true &&
         m.code.startsWith("archive."),
     )
     .sort((a, b) => a.sort_order - b.sort_order);

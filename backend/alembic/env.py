@@ -27,6 +27,9 @@ from app.modules.collection.models.import_task import ImportTask  # noqa: F401
 from app.modules.collection.models.mapping_template import FieldMappingTemplate  # noqa: F401
 from app.modules.collection.models.transfer_plan import TransferPlan  # noqa: F401
 from app.modules.collection.models.transfer import TransferBatch, TransferEntry  # noqa: F401
+from app.modules.utilization.models.application import UtilizationApplication, UtilizationItem  # noqa: F401
+from app.modules.preservation.models.scheme import CheckItem, DetectionScheme, SchemeItem  # noqa: F401
+from app.modules.preservation.models.run import DetectionBatch, DetectionRun, DetectionResultItem  # noqa: F401
 from app.modules.ai.models.ai_scenario import AIScenario  # noqa: F401
 from app.modules.ai.models.ai_session import AISession  # noqa: F401
 from app.modules.ai_patch.models.ai_patch import AIPatch  # noqa: F401

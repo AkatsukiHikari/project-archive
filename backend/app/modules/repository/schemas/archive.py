@@ -104,9 +104,18 @@ class ArchiveListQuery(BaseModel):
     catalog_id: Optional[uuid.UUID] = None
     category_id: Optional[uuid.UUID] = None
     ND: Optional[int] = None
-    keyword: Optional[str] = Field(default=None, description="题名/责任者关键字")
+    keyword: Optional[str] = Field(default=None, description="题名/责任者/档号 综合关键字")
     MJ: Optional[str] = None
     status: Optional[str] = None
+    # ── 高级组合检索字段（逐字段精确/范围） ──
+    TM: Optional[str] = Field(default=None, description="题名（模糊）")
+    RZZ: Optional[str] = Field(default=None, description="责任者（模糊）")
+    DH: Optional[str] = Field(default=None, description="档号（模糊）")
+    BGQX: Optional[str] = Field(default=None, description="保管期限")
+    ND_from: Optional[int] = Field(default=None, description="年度起")
+    ND_to: Optional[int] = Field(default=None, description="年度止")
+    WJRQ_from: Optional[str] = Field(default=None, description="文件日期起 YYYY-MM-DD")
+    WJRQ_to: Optional[str] = Field(default=None, description="文件日期止 YYYY-MM-DD")
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
 

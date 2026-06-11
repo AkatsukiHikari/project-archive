@@ -10,7 +10,7 @@ from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
 from app.modules.repository.schemas.archive import (
     ArchiveCreate, ArchiveListQuery, ArchiveRead, ArchiveUpdate,
-    CatalogCreate, CatalogRead,
+    CatalogCreate, CatalogRead, CatalogUpdate,
 )
 from app.modules.repository.services.archive_service import ArchiveService, CatalogService
 from app.modules.repository.services.es_sync_service import delete_one, sync_one
@@ -82,6 +82,19 @@ async def create_catalog(
     return success(CatalogRead.model_validate(item))
 
 
+@router.put("/archive/catalogs/{catalog_id}", response_model=ResponseModel[CatalogRead])
+async def update_catalog(
+    catalog_id: uuid.UUID,
+    data: CatalogUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = CatalogService(db)
+    item = await svc.update(catalog_id, data)
+    await db.commit()
+    return success(CatalogRead.model_validate(item))
+
+
 @router.delete("/archive/catalogs/{catalog_id}", response_model=ResponseModel[None])
 async def delete_catalog(
     catalog_id: uuid.UUID,
@@ -105,6 +118,14 @@ async def list_archives(
     keyword: Optional[str] = Query(default=None),
     MJ: Optional[str] = Query(default=None),
     status: Optional[str] = Query(default=None),
+    TM: Optional[str] = Query(default=None),
+    RZZ: Optional[str] = Query(default=None),
+    DH: Optional[str] = Query(default=None),
+    BGQX: Optional[str] = Query(default=None),
+    ND_from: Optional[int] = Query(default=None),
+    ND_to: Optional[int] = Query(default=None),
+    WJRQ_from: Optional[str] = Query(default=None),
+    WJRQ_to: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -112,8 +133,10 @@ async def list_archives(
 ):
     query = ArchiveListQuery(
         fonds_id=fonds_id, catalog_id=catalog_id, category_id=category_id,
-        ND=ND, keyword=keyword, MJ=MJ,
-        status=status, page=page, page_size=page_size,
+        ND=ND, keyword=keyword, MJ=MJ, status=status,
+        TM=TM, RZZ=RZZ, DH=DH, BGQX=BGQX,
+        ND_from=ND_from, ND_to=ND_to, WJRQ_from=WJRQ_from, WJRQ_to=WJRQ_to,
+        page=page, page_size=page_size,
     )
     svc = ArchiveService(db)
     items, total = await svc.list_archives(query, tenant_id=current_user.tenant_id)

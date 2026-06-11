@@ -124,6 +124,33 @@ BUILTIN_DICTS: list[dict] = [
             {"item_value": "YYYY",       "item_label": "YYYY（精确到年）",       "is_default": False, "sort_order": 3},
         ],
     },
+    {
+        "dict_type": "LYFS",
+        "dict_name": "利用方式",
+        "description": "档案利用方式",
+        "sort_order": 100,
+        "items": [
+            {"item_value": "read",        "item_label": "查阅",     "is_default": True,  "sort_order": 1},
+            {"item_value": "borrow",      "item_label": "借阅",     "is_default": False, "sort_order": 2},
+            {"item_value": "copy",        "item_label": "复制",     "is_default": False, "sort_order": 3},
+            {"item_value": "certificate", "item_label": "出具证明", "is_default": False, "sort_order": 4},
+        ],
+    },
+    {
+        "dict_type": "LYMD",
+        "dict_name": "利用目的",
+        "description": "档案利用目的",
+        "sort_order": 110,
+        "items": [
+            {"item_value": "工作查考", "item_label": "工作查考", "is_default": True,  "sort_order": 1},
+            {"item_value": "学术研究", "item_label": "学术研究", "is_default": False, "sort_order": 2},
+            {"item_value": "经济建设", "item_label": "经济建设", "is_default": False, "sort_order": 3},
+            {"item_value": "编史修志", "item_label": "编史修志", "is_default": False, "sort_order": 4},
+            {"item_value": "诉讼维权", "item_label": "诉讼维权", "is_default": False, "sort_order": 5},
+            {"item_value": "个人事务", "item_label": "个人事务", "is_default": False, "sort_order": 6},
+            {"item_value": "其他",     "item_label": "其他",     "is_default": False, "sort_order": 7},
+        ],
+    },
 ]
 
 

@@ -98,6 +98,20 @@ class MinioAdapter(StorageAdapter):
             logger.error(f"MinIO 上传失败: {e}")
             raise
 
+    def get(self, filename: str, bucket: str) -> bytes:
+        """下载对象字节。"""
+        resp = None
+        try:
+            resp = self.client.get_object(bucket, filename)
+            return resp.read()
+        except S3Error as e:
+            logger.error(f"MinIO 下载失败: {e}")
+            raise
+        finally:
+            if resp is not None:
+                resp.close()
+                resp.release_conn()
+
     def get_presigned_url(self, filename: str, bucket: str, expires_seconds: int = 3600) -> str:
         """
         生成预签名临时访问 URL（用于私有 bucket 的档案资源）。

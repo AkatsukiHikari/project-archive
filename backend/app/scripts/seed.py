@@ -99,8 +99,6 @@ MENU_TREE = [
                 "children": [
                     {"code": "archive.organize.records",  "name": "档案著录",   "type": "MENU", "path": "/archive/organize/records",  "icon": "heroicons:document-text",       "sort_order": 1},
                     {"code": "archive.organize.catalogs", "name": "目录管理",   "type": "MENU", "path": "/archive/organize/catalogs", "icon": "heroicons:bars-3-bottom-left",  "sort_order": 2},
-                    {"code": "archive.organize.digitize", "name": "数字化加工", "type": "MENU", "path": "/archive/organize/digitize", "icon": "heroicons:computer-desktop",    "sort_order": 3},
-                    {"code": "archive.organize.ledger",   "name": "整理台账",   "type": "MENU", "path": "/archive/organize/ledger",   "icon": "heroicons:book-open",           "sort_order": 4},
                 ],
             },
             # ── 档案保管 ──────────────────────────────────────────────────────────

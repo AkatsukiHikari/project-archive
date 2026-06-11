@@ -163,12 +163,22 @@ export interface CatalogCreate {
   volume_archive_id?: string;
 }
 
+export interface CatalogUpdate {
+  name?: string;
+  year?: number | null;
+  catalog_type?: CatalogType;
+  volume_archive_id?: string | null;
+}
+
 export const CatalogAPI = {
   list: (fonds_id: string) =>
     http.get<ApiResponse<Catalog[]>, ApiResponse<Catalog[]>>("/archive/catalogs", { params: { fonds_id } }),
   create: (data: CatalogCreate) => http.post<ApiResponse<Catalog>, ApiResponse<Catalog>>("/archive/catalogs", data),
+  update: (id: string, data: CatalogUpdate) =>
+    http.put<ApiResponse<Catalog>, ApiResponse<Catalog>>(`/archive/catalogs/${id}`, data),
   remove: (id: string) => http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/catalogs/${id}`),
 };
+
 
 // ─── 档案 ────────────────────────────────────────────────────────────────────
 
@@ -311,6 +321,14 @@ export interface ArchiveListParams {
   keyword?: string;
   MJ?: string;
   status?: string;
+  TM?: string;
+  RZZ?: string;
+  DH?: string;
+  BGQX?: string;
+  ND_from?: number;
+  ND_to?: number;
+  WJRQ_from?: string;
+  WJRQ_to?: string;
   page?: number;
   page_size?: number;
 }

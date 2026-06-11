@@ -27,8 +27,6 @@ const ROUTE_TITLE_MAP: Record<string, string> = {
   "/archive/reader": "原文阅览",
   "/archive/organize/records": "档案著录",
   "/archive/organize/catalogs": "目录管理",
-  "/archive/organize/digitize": "数字化加工",
-  "/archive/organize/ledger": "整理台账",
   "/archive/storage/vault": "库房管理",
   "/archive/storage/inout": "出入库记录",
   "/archive/storage/detection": "四性检测",

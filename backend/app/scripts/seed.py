@@ -131,30 +131,67 @@ MENU_TREE = [
                 "code": "archive.appraisal", "name": "档案鉴定", "type": "DIR",
                 "icon": "heroicons:scale", "sort_order": 5,
                 "children": [
-                    {"code": "archive.appraisal.plan",            "name": "鉴定计划", "type": "MENU", "path": "/archive/appraisal/plan",            "icon": "heroicons:calendar",                "sort_order": 1},
-                    {"code": "archive.appraisal.review",          "name": "期限复查", "type": "MENU", "path": "/archive/appraisal/review",          "icon": "heroicons:clock",                   "sort_order": 2},
-                    {"code": "archive.appraisal.evaluate",        "name": "鉴定工作", "type": "MENU", "path": "/archive/appraisal/evaluate",        "icon": "heroicons:clipboard-document-list", "sort_order": 3},
-                    {"code": "archive.appraisal.destroy-apply",   "name": "销毁申请", "type": "MENU", "path": "/archive/appraisal/destroy-apply",   "icon": "heroicons:trash",                   "sort_order": 4},
-                    {"code": "archive.appraisal.destroy-approve", "name": "销毁审批", "type": "MENU", "path": "/archive/appraisal/destroy-approve", "icon": "heroicons:check-badge",             "sort_order": 5},
-                    {"code": "archive.appraisal.destroy-exec",    "name": "销毁执行", "type": "MENU", "path": "/archive/appraisal/destroy-exec",    "icon": "heroicons:fire",                    "sort_order": 6},
-                    {"code": "archive.appraisal.ledger",          "name": "鉴定台账", "type": "MENU", "path": "/archive/appraisal/ledger",          "icon": "heroicons:book-open",               "sort_order": 7},
+                    {
+                        "code": "archive.appraisal.plan", "name": "鉴定计划", "type": "MENU",
+                        "path": "/archive/appraisal/plan", "icon": "heroicons:calendar", "sort_order": 1,
+                        "children": [
+                            # 圈定预览 / 创建计划 / 分配任务
+                            {"code": "appraisal:plan", "name": "计划管理", "type": "BUTTON", "sort_order": 1},
+                        ],
+                    },
+                    {
+                        "code": "archive.appraisal.evaluate", "name": "鉴定工作", "type": "MENU",
+                        "path": "/archive/appraisal/evaluate", "icon": "heroicons:clipboard-document-list", "sort_order": 2,
+                        "children": [
+                            # AI 预鉴定 / 下结论 / 提交审核
+                            {"code": "appraisal:evaluate", "name": "鉴定操作", "type": "BUTTON", "sort_order": 1},
+                        ],
+                    },
+                    {
+                        "code": "archive.appraisal.review", "name": "鉴定审核", "type": "MENU",
+                        "path": "/archive/appraisal/review", "icon": "heroicons:check-circle", "sort_order": 3,
+                        "children": [
+                            # 审核通过（结论回写）/ 驳回
+                            {"code": "appraisal:review", "name": "鉴定审核", "type": "BUTTON", "sort_order": 1},
+                        ],
+                    },
+                    {
+                        "code": "archive.appraisal.standards", "name": "鉴定标准", "type": "MENU",
+                        "path": "/archive/appraisal/standards", "icon": "heroicons:scale", "sort_order": 4,
+                        "children": [
+                            # 标准条款 / 敏感词库维护
+                            {"code": "appraisal:standard", "name": "标准维护", "type": "BUTTON", "sort_order": 1},
+                        ],
+                    },
+                    {"code": "archive.appraisal.destroy-apply",   "name": "销毁申请", "type": "MENU", "path": "/archive/appraisal/destroy-apply",   "icon": "heroicons:trash",                   "sort_order": 5},
+                    {"code": "archive.appraisal.destroy-approve", "name": "销毁审批", "type": "MENU", "path": "/archive/appraisal/destroy-approve", "icon": "heroicons:check-badge",             "sort_order": 6},
+                    {"code": "archive.appraisal.destroy-exec",    "name": "销毁执行", "type": "MENU", "path": "/archive/appraisal/destroy-exec",    "icon": "heroicons:fire",                    "sort_order": 7},
+                    {"code": "archive.appraisal.ledger",          "name": "鉴定台账", "type": "MENU", "path": "/archive/appraisal/ledger",          "icon": "heroicons:book-open",               "sort_order": 8},
+                ],
+            },
+            # ── 档案统计 ──────────────────────────────────────────────────────────
+            {
+                "code": "archive.statistics", "name": "档案统计", "type": "DIR",
+                "icon": "heroicons:chart-bar", "sort_order": 6,
+                "children": [
+                    {"code": "archive.statistics.overview", "name": "综合统计",   "type": "MENU", "path": "/archive/statistics/overview", "icon": "heroicons:chart-pie",          "sort_order": 1},
+                    {"code": "archive.statistics.cockpit",  "name": "大屏驾驶舱", "type": "MENU", "path": "/archive/statistics/cockpit",  "icon": "heroicons:presentation-chart-line", "sort_order": 2},
+                    {"code": "archive.statistics.annual",   "name": "年度报表",   "type": "MENU", "path": "/archive/statistics/annual",   "icon": "heroicons:document-chart-bar", "sort_order": 3},
                 ],
             },
             # ── 档案编研 ──────────────────────────────────────────────────────────
             {
                 "code": "archive.research", "name": "档案编研", "type": "DIR",
-                "icon": "heroicons:academic-cap", "sort_order": 6,
+                "icon": "heroicons:academic-cap", "sort_order": 7,
                 "children": [
                     {"code": "archive.research.project",     "name": "编研项目", "type": "MENU", "path": "/archive/research/project",     "icon": "heroicons:folder-open",       "sort_order": 1},
                     {"code": "archive.research.compilation", "name": "专题汇编", "type": "MENU", "path": "/archive/research/compilation", "icon": "heroicons:book-open",         "sort_order": 2},
-                    {"code": "archive.research.stats",       "name": "档案统计", "type": "MENU", "path": "/archive/research/stats",       "icon": "heroicons:chart-bar",         "sort_order": 3},
-                    {"code": "archive.research.annual",      "name": "年报管理", "type": "MENU", "path": "/archive/research/annual",      "icon": "heroicons:document-chart-bar", "sort_order": 4},
                 ],
             },
             # ── 基础配置 ──────────────────────────────────────────────────────────
             {
                 "code": "archive.settings", "name": "基础配置", "type": "DIR",
-                "icon": "heroicons:cog-6-tooth", "sort_order": 7,
+                "icon": "heroicons:cog-6-tooth", "sort_order": 8,
                 "children": [
                     {"code": "archive.settings.fonds",      "name": "全宗管理",   "type": "MENU", "path": "/archive/settings/fonds",      "icon": "heroicons:building-library", "sort_order": 1},
                     {"code": "archive.settings.categories", "name": "档案门类",   "type": "MENU", "path": "/archive/settings/categories", "icon": "heroicons:tag",              "sort_order": 2},
@@ -370,7 +407,11 @@ async def run_seed() -> None:
             # 5b. archivist 档案业务员：绑定全部档案业务菜单 + 收集写/审核按钮
             archivist_menus = [
                 m for m in all_menus
-                if m.code.startswith("archive") or m.code in ("collection:create", "collection:review")
+                if m.code.startswith("archive") or m.code in (
+                    "collection:create", "collection:review",
+                    "appraisal:plan", "appraisal:evaluate",
+                    "appraisal:review", "appraisal:standard",
+                )
             ]
             await _bind_role_menus(db, roles["archivist"], archivist_menus)
 

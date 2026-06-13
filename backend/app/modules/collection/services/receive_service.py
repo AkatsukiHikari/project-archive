@@ -185,7 +185,7 @@ class ReceiveService:
             ND=e.ND if e.ND is not None else batch.year,
             WJRQ=e.WJRQ,
             YS=e.YS,
-            MJ=e.MJ or "public",
+            MJ=e.MJ or "无",
             BGQX=e.BGQX or "permanent",
             ext_fields=e.ext_fields,
             status="pending_review",

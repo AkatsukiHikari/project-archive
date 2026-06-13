@@ -15,7 +15,7 @@ from datetime import date
 from typing import Optional
 
 # 合规取值（与 repo_archive 模型保持一致）
-_VALID_MJ = {"public", "internal", "confidential", "secret"}
+_VALID_MJ = {"无", "秘密", "机密", "绝密"}
 _VALID_BGQX = {"permanent", "long", "short"}
 
 # 维度权重（合计 1.0）
@@ -164,7 +164,7 @@ def precheck_entries(
                 issues.append("文件日期格式非法（应为 YYYY-MM-DD）")
 
         # 安全性：密级 + 保管期限合规
-        mj_ok = (e.MJ or "public") in _VALID_MJ
+        mj_ok = (e.MJ or "无") in _VALID_MJ
         bgqx_ok = (e.BGQX or "permanent") in _VALID_BGQX
         if mj_ok and bgqx_ok:
             safe_pass += 1

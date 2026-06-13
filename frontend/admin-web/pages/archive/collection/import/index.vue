@@ -14,6 +14,7 @@
         <NStep title="预检验证" description="检查数据合规性" />
         <NStep title="执行导入" description="触发异步导入任务" />
         <NStep title="导入完成" description="查看结果报告" />
+        <NStep title="挂接成果" description="按档号批量挂接数字化成果" />
       </NSteps>
     </div>
 
@@ -192,7 +193,26 @@
           <template #icon><Icon name="heroicons:arrow-down-tray" class="w-4 h-4" /></template>
           下载失败报表
         </NButton>
-        <NButton type="primary" @click="restart">再次导入</NButton>
+        <NButton type="primary" @click="step = 6">
+          <template #icon><Icon name="heroicons:paper-clip" class="w-4 h-4" /></template>
+          挂接数字化成果
+        </NButton>
+        <NButton tertiary @click="restart">再次导入</NButton>
+      </div>
+    </div>
+
+    <!-- Step 6: 挂接数字化成果 -->
+    <div v-if="step === 6" class="pro-card p-5 flex flex-col gap-4">
+      <p class="text-sm m-0" style="color:var(--semi-color-text-2)">
+        刚导入的著录条目已生成档号，把对应的数字化成果（PDF / OFD，文件名 = 档号）拖入下方即可批量挂接。
+        每次挂接自动留痕，可在 档案整理 → 挂接成果 → 挂接历史 中追溯。
+      </p>
+      <AttachBatchPanel @done="attachDone = true" />
+      <div class="flex justify-between">
+        <NButton @click="step = 5">上一步</NButton>
+        <NButton :type="attachDone ? 'primary' : 'default'" @click="restart">
+          {{ attachDone ? "完成，再次导入" : "跳过，再次导入" }}
+        </NButton>
       </div>
     </div>
   </div>
@@ -211,6 +231,7 @@ import { ImportAPI } from "@/api/collection";
 import type { UploadResponse, DryRunResponse, ImportTask, ColumnMapping, MappingTemplate } from "@/api/collection";
 import { AdminPageHeader } from "@/components/admin";
 import { ProTable } from "@/components/ui";
+import { AttachBatchPanel } from "@/components/archive";
 import { useUserStore } from "@/stores/user";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
@@ -219,6 +240,7 @@ const message = useMessage();
 const userStore = useUserStore();
 
 const step = ref(1);
+const attachDone = ref(false);
 
 const fondsList = ref<Fonds[]>([]);
 const catalogList = ref<Catalog[]>([]);
@@ -471,6 +493,7 @@ async function loadFinalTask(tid: string) {
 
 function restart() {
   step.value = 1;
+  attachDone.value = false;
   uploadResult.value = null;
   taskId.value = null;
   dryRunResult.value = null;

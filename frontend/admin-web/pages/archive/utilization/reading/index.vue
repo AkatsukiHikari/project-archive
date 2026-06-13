@@ -134,8 +134,8 @@ const appId = computed(() => (route.query.app ? String(route.query.app) : null))
 const publicOnly = computed(() => !!appId.value);  // 社会大众查档：仅公开
 
 const mjOptions = [
-  { label: "公开", value: "public" }, { label: "内部", value: "internal" },
-  { label: "秘密", value: "secret" }, { label: "机密", value: "confidential" }, { label: "绝密", value: "top_secret" },
+  { label: "无", value: "无" }, { label: "秘密", value: "秘密" },
+  { label: "机密", value: "机密" }, { label: "绝密", value: "绝密" }, { label: "绝密", value: "top_secret" },
 ];
 const bgqxOptions = [{ label: "永久", value: "permanent" }, { label: "长期", value: "long" }, { label: "短期", value: "short" }];
 const MJ_LABEL: Record<string, string> = { public: "公开", internal: "内部", secret: "秘密", confidential: "机密", top_secret: "绝密" };
@@ -291,9 +291,9 @@ const detailFields = computed(() => {
 function openDetail(r: Archive) { detail.value = r; showDetail.value = true; }
 function openReader(id?: string) {
   const aid = id ?? detail.value?.id;
-  if (aid) window.open(`/archive/reader?id=${aid}`, "_blank", "noopener");
+  if (aid) router.push(`/archive/reader?id=${aid}`);
 }
-function openReaderFor(r: Archive) { window.open(`/archive/reader?id=${r.id}`, "_blank", "noopener"); }
+function openReaderFor(r: Archive) { router.push(`/archive/reader?id=${r.id}`); }
 
 onMounted(async () => {
   const [f, c] = await Promise.all([FondsAPI.list(), CategoryAPI.list()]);

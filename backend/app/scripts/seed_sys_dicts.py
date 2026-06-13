@@ -51,7 +51,8 @@ BUILTIN_DICTS: list[dict] = [
         "items": [
             {"item_value": "开放",   "item_label": "开放",   "is_default": True,  "sort_order": 1},
             {"item_value": "控制使用", "item_label": "控制使用", "is_default": False, "sort_order": 2},
-            {"item_value": "不开放",  "item_label": "不开放",  "is_default": False, "sort_order": 3},
+            {"item_value": "延期开放", "item_label": "延期开放", "is_default": False, "sort_order": 3},
+            {"item_value": "不开放",  "item_label": "不开放",  "is_default": False, "sort_order": 4},
         ],
     },
     {

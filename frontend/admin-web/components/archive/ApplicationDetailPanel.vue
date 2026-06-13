@@ -153,7 +153,7 @@ function goProcess() {
   if (props.appId) router.push(`/archive/utilization/reading?app=${props.appId}`);
 }
 function openReader(archiveId: string) {
-  window.open(`/archive/reader?id=${archiveId}`, "_blank", "noopener");
+  router.push(`/archive/reader?id=${archiveId}`);
 }
 
 watch(() => props.appId, reload);

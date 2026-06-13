@@ -140,11 +140,34 @@ async def list_archives(
     )
     svc = ArchiveService(db)
     items, total = await svc.list_archives(query, tenant_id=current_user.tenant_id)
+
+    # 原文附件数（整理页"原文"列）
+    from sqlalchemy import func, select
+    from app.modules.repository.models.archive import ArchiveAttachment
+
+    counts: dict = {}
+    ids = [i.id for i in items]
+    if ids:
+        rows = await db.execute(
+            select(ArchiveAttachment.archive_id, func.count())
+            .where(
+                ArchiveAttachment.archive_id.in_(ids),
+                ArchiveAttachment.is_deleted == False,  # noqa: E712
+            )
+            .group_by(ArchiveAttachment.archive_id)
+        )
+        counts = {r[0]: r[1] for r in rows.all()}
+
+    out = []
+    for i in items:
+        d = ArchiveRead.model_validate(i).model_dump(mode="json")
+        d["attachment_count"] = counts.get(i.id, 0)
+        out.append(d)
     return success({
         "total": total,
         "page": page,
         "page_size": page_size,
-        "items": [ArchiveRead.model_validate(i) for i in items],
+        "items": out,
     })
 
 

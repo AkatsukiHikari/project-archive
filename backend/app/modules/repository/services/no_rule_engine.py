@@ -29,11 +29,16 @@ class ArchiveNoEngine:
         self._seq_repo = SeqRepository(db)
 
     async def generate(
-        self, rule: ArchiveNoRule, archive: ArchiveStaging, preview: bool = False
+        self,
+        rule: ArchiveNoRule,
+        archive: ArchiveStaging,
+        preview: bool = False,
+        seq_override: Optional[int] = None,
     ) -> str:
         """
         根据 rule.rule_template 生成档号字符串。
         preview=True：序号段用 "0" * padding 占位，不操作 DB。
+        seq_override：批量重编场景用调用方提供的连续序号，不走序号器。
         """
         template = rule.rule_template or {}
         separator: str = template.get("separator", "-")
@@ -50,7 +55,9 @@ class ArchiveNoEngine:
                 parts.append(self._resolve_date_part(archive, seg))
             elif seg_type == "sequence":
                 padding: int = seg.get("padding", 4)
-                if preview:
+                if seq_override is not None:
+                    parts.append(str(seq_override).zfill(padding))
+                elif preview:
                     parts.append("0" * padding)
                 else:
                     seq_val = await self._next_seq(

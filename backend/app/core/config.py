@@ -101,6 +101,7 @@ class Settings(BaseSettings):
     DIFY_API_KEY_DRAFT: str = ""
     DIFY_API_KEY_RELATE: str = ""
     DIFY_API_KEY_KB_MANAGE: str = ""
+    DIFY_API_KEY_APPRAISAL: str = ""
 
     # A' 方案：1 主 Chatflow + 8 子 Workflow
     DIFY_MASTER_API_KEY: str = ""

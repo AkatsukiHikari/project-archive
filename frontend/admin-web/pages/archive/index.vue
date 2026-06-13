@@ -13,7 +13,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <KpiCard
         label="全宗数量"
-        value="—"
+        :value="kpi ? String(kpi.fonds_count) : '—'"
         sub="个全宗"
         icon="heroicons:building-library"
         icon-bg="rgba(59,130,246,0.1)"
@@ -21,7 +21,7 @@
       />
       <KpiCard
         label="档案总量"
-        value="—"
+        :value="kpi ? String(kpi.archive_total) : '—'"
         sub="条档案"
         icon="heroicons:document-text"
         icon-bg="rgba(245,158,11,0.1)"
@@ -29,7 +29,7 @@
       />
       <KpiCard
         label="本月新增"
-        value="—"
+        :value="kpi ? String(kpi.month_new) : '—'"
         sub="条档案"
         icon="heroicons:plus-circle"
         icon-bg="rgba(16,185,129,0.1)"
@@ -37,7 +37,7 @@
       />
       <KpiCard
         label="待处理"
-        value="—"
+        :value="kpi ? String(kpi.todo_total) : '—'"
         sub="项任务"
         icon="heroicons:clock"
         icon-bg="rgba(239,68,68,0.1)"
@@ -74,15 +74,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { KpiCard } from "@/components/admin";
+import { WorkbenchAPI } from "@/api/appraisal";
+import type { WorkbenchOverview } from "@/api/appraisal";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 
 const router = useRouter();
 const userStore = useUserStore();
+
+const kpi = ref<WorkbenchOverview["kpi"] | null>(null);
+
+onMounted(async () => {
+  const res = await WorkbenchAPI.overview();
+  if (res.code === 0) kpi.value = res.data.kpi;
+});
 
 const displayName = computed(() =>
   userStore.userInfo?.full_name || userStore.userInfo?.username || "档案员"

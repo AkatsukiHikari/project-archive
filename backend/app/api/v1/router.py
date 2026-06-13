@@ -13,7 +13,7 @@ from app.modules.repository.api.routes_category import router as archive_categor
 from app.modules.repository.api.routes_archive import router as archive_router
 from app.modules.repository.api.routes_no_rule import router as no_rule_router
 from app.modules.repository.api.routes_fonds import router as fonds_router
-from app.api.v1 import ws, stats
+from app.api.v1 import ws, stats, workbench
 
 # ---------------------------------------------------------------------------
 # V1 版本路由
@@ -68,3 +68,15 @@ v1_router.include_router(import_router)
 
 from app.modules.collection.api.routes_transfer import router as transfer_router
 v1_router.include_router(transfer_router)
+
+from app.modules.repository.api.routes_organize import router as organize_router
+v1_router.include_router(organize_router)
+
+from app.modules.appraisal.api.routes_appraisal import router as appraisal_router
+from app.modules.appraisal.api.routes_standard import router as appraisal_standard_router
+v1_router.include_router(appraisal_router)
+v1_router.include_router(appraisal_standard_router)
+v1_router.include_router(workbench.router)
+
+from app.modules.statistics.api.routes_statistics import router as statistics_router
+v1_router.include_router(statistics_router)

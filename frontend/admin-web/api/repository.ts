@@ -196,10 +196,14 @@ export interface Archive {
   YS?: number;
   MJ: string;
   BGQX: string;
+  KFZT?: string | null;
+  JDRQ?: string | null;
+  KFLY?: string | null;
   status: string;
   ext_fields?: Record<string, unknown>;
   embedding_status: string;
   tenant_id?: string;
+  attachment_count?: number;
 }
 
 // ─── 档号规则 ─────────────────────────────────────────────────────────────────
@@ -359,4 +363,158 @@ export const ArchiveAPI = {
   remove: (id: string) => http.delete<ApiResponse<null>, ApiResponse<null>>(`/archive/records/${id}`),
   overrideNo: (id: string, DH: string) =>
     http.patch<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}/override-no`, { DH }),
+};
+
+// ─── 档案整理（批量修改 / 重编档号 / 挂接数字化成果 / 归档入库） ──────────────
+
+export interface BatchUpdatePayload {
+  ids: string[];
+  MJ?: string;
+  BGQX?: string;
+  RZZ?: string;
+  ND?: number;
+  WJRQ?: string;
+}
+
+export interface RenumberPayload {
+  rule_id: string;
+  catalog_id?: string;
+  ids?: string[];
+  /** 按当前查询条件全量应用（与著录列表同一套条件，跨页生效） */
+  query?: Partial<ArchiveListParams>;
+  start_seq?: number;
+}
+
+export interface RenumberRow {
+  id: string;
+  TM: string;
+  WJRQ?: string | null;
+  DH_old?: string | null;
+  DH_new: string;
+  conflict: boolean;
+}
+
+export interface RenumberPreviewResult {
+  total: number;
+  conflicts: number;
+  rows: RenumberRow[];
+}
+
+export type AttachRowStatus =
+  | "matched" | "not_found" | "has_primary"   // 预检
+  | "attached" | "skipped";                    // 执行
+
+export interface AttachMatchRow {
+  filename: string;
+  DH: string;
+  status: AttachRowStatus;
+  source?: "staging" | "formal" | null;
+  archive_id?: string | null;
+  TM?: string | null;
+  reason?: string | null;
+}
+
+export interface AttachPreviewResult {
+  total: number;
+  matched: number;
+  not_found: number;
+  has_primary: number;
+  rows: AttachMatchRow[];
+}
+
+export interface AttachBatchResult {
+  batch_no: string;
+  attached: number;
+  skipped: number;
+  not_found: number;
+  rows: AttachMatchRow[];
+}
+
+export interface AttachBatchRecord {
+  id: string;
+  batch_no: string;
+  total: number;
+  attached: number;
+  skipped: number;
+  not_found: number;
+  overwrite: boolean;
+  create_time: string | null;
+  rows?: AttachMatchRow[];
+}
+
+export interface ArchiveToFormalRow {
+  id: string;
+  DH?: string | null;
+  TM: string;
+  status: "ok" | "failed";
+  reason?: string | null;
+}
+
+export interface ArchiveToFormalResult {
+  archived: number;
+  failed: number;
+  rows: ArchiveToFormalRow[];
+}
+
+export const OrganizeAPI = {
+  batchUpdate: (data: BatchUpdatePayload) =>
+    http.put<ApiResponse<{ updated: number }>, ApiResponse<{ updated: number }>>(
+      "/archive/organize/records/batch", data,
+    ),
+
+  renumberPreview: (data: RenumberPayload) =>
+    http.post<ApiResponse<RenumberPreviewResult>, ApiResponse<RenumberPreviewResult>>(
+      "/archive/organize/renumber/preview", data,
+    ),
+  renumberApply: (data: RenumberPayload) =>
+    http.post<ApiResponse<{ renumbered: number }>, ApiResponse<{ renumbered: number }>>(
+      "/archive/organize/renumber/apply", data,
+    ),
+
+  attachPreview: (filenames: string[]) =>
+    http.post<ApiResponse<AttachPreviewResult>, ApiResponse<AttachPreviewResult>>(
+      "/archive/organize/attach/preview", { filenames },
+    ),
+  attachBatch: (files: File[], overwrite: boolean) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    form.append("overwrite", String(overwrite));
+    return http.post<ApiResponse<AttachBatchResult>, ApiResponse<AttachBatchResult>>(
+      "/archive/organize/attach/batch", form,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+  },
+
+  listAttachBatches: (params?: { skip?: number; limit?: number }) =>
+    http.get<ApiResponse<{ total: number; items: AttachBatchRecord[] }>, ApiResponse<{ total: number; items: AttachBatchRecord[] }>>(
+      "/archive/organize/attach/batches", { params },
+    ),
+  getAttachBatch: (id: string) =>
+    http.get<ApiResponse<AttachBatchRecord>, ApiResponse<AttachBatchRecord>>(
+      `/archive/organize/attach/batches/${id}`,
+    ),
+
+  uploadAttachment: (archiveId: string, file: File, isPrimary = true) => {
+    const form = new FormData();
+    form.append("archive_id", archiveId);
+    form.append("is_primary", String(isPrimary));
+    form.append("file", file);
+    return http.post<ApiResponse<ArchiveAttachment>, ApiResponse<ArchiveAttachment>>(
+      "/archive/organize/attachments/upload", form,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+  },
+  deleteAttachment: (attachmentId: string) =>
+    http.delete<ApiResponse<null>, ApiResponse<null>>(
+      `/archive/organize/attachments/${attachmentId}`,
+    ),
+  setPrimaryAttachment: (attachmentId: string) =>
+    http.patch<ApiResponse<ArchiveAttachment>, ApiResponse<ArchiveAttachment>>(
+      `/archive/organize/attachments/${attachmentId}/primary`,
+    ),
+
+  archiveToFormal: (ids: string[]) =>
+    http.post<ApiResponse<ArchiveToFormalResult>, ApiResponse<ArchiveToFormalResult>>(
+      "/archive/organize/archive-to-formal", { ids },
+    ),
 };

@@ -1,307 +1,169 @@
 <template>
-  <div class="flex flex-col gap-4 min-h-0 flex-1">
+  <div class="flex flex-col gap-3 min-h-0 flex-1">
     <AdminPageHeader
-      title="档案检索 / 著录"
-      description="按题名、责任者、档号、年度、密级一键检索；点击命中行可查看完整元数据"
-      icon="heroicons:magnifying-glass-circle"
+      title="档案著录 / 整理"
+      description="对暂存库档案进行著录、批量修改、重编档号、挂接数字化成果，整理完成后归档入库"
+      icon="heroicons:pencil-square"
     />
 
-    <!-- ════════════════════════════════════════════════════════
-         主搜索区
-    ════════════════════════════════════════════════════════ -->
-    <div
-      class="rounded-xl p-4 flex flex-col gap-3 flex-shrink-0"
-      style="background:var(--semi-color-bg-0);border:1px solid var(--semi-color-border)"
-    >
-      <div class="flex items-stretch gap-2">
-        <div class="flex-1">
-          <NInput
-            v-model:value="filter.keyword"
-            placeholder="搜索题名、责任者、档号 ⋯ 例如「2024 财务凭证」「干部任免」"
-            size="large"
-            clearable
-            @keydown.enter="search"
-          >
-            <template #prefix>
-              <Icon name="heroicons:magnifying-glass" class="w-4 h-4" style="color:var(--semi-color-text-3)" />
-            </template>
-          </NInput>
-        </div>
-        <NButton type="primary" size="large" :loading="loading" @click="search">
-          <template #icon><Icon name="heroicons:magnifying-glass" class="w-4 h-4" /></template>
-          搜索
+    <!-- ── 组合检索区（与查阅登记同风格） ─────────────────── -->
+    <div class="pro-card p-4 flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <NInput
+          v-model:value="filter.keyword"
+          placeholder="题名 / 责任者 / 档号"
+          clearable
+          style="width: 320px"
+          @keydown.enter="search"
+        >
+          <template #prefix><Icon name="heroicons:magnifying-glass" class="w-4 h-4 text-gray-400" /></template>
+        </NInput>
+        <NButton type="primary" :loading="loading" @click="search">查询</NButton>
+        <NButton tertiary @click="resetFilter">重置</NButton>
+        <NButton text type="primary" @click="advanced = !advanced">
+          <Icon :name="advanced ? 'heroicons:chevron-up' : 'heroicons:adjustments-horizontal'" class="w-4 h-4 mr-1" />
+          {{ advanced ? "收起" : "高级查询" }}
         </NButton>
-        <NButton size="large" @click="resetFilter">重置</NButton>
-        <NButton size="large" :disabled="!filter.fonds_id" @click="openModal(null)">
+        <div class="flex-1" />
+        <span class="text-sm text-gray-500">共 <strong>{{ total }}</strong> 条</span>
+      </div>
+
+      <div
+        v-show="advanced"
+        class="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 pt-1 border-t"
+        style="border-color: var(--semi-color-border)"
+      >
+        <Field label="题名"><NInput v-model:value="filter.TM" placeholder="题名关键字" clearable /></Field>
+        <Field label="责任者"><NInput v-model:value="filter.RZZ" placeholder="责任者" clearable /></Field>
+        <Field label="档号"><NInput v-model:value="filter.DH" placeholder="档号" clearable /></Field>
+        <Field label="全宗">
+          <NSelect v-model:value="filter.fonds_id" :options="fondsOptions" placeholder="全部全宗" clearable filterable @update:value="onFondsChange" />
+        </Field>
+        <Field label="目录">
+          <NSelect v-model:value="filter.catalog_id" :options="catalogOptions" placeholder="全部目录" clearable :disabled="!filter.fonds_id" />
+        </Field>
+        <Field label="门类">
+          <NSelect v-model:value="filter.category_id" :options="categoryOptions" placeholder="全部门类" clearable filterable />
+        </Field>
+        <Field label="密级"><NSelect v-model:value="filter.MJ" :options="mjOptions" placeholder="全部" clearable /></Field>
+        <Field label="保管期限"><NSelect v-model:value="filter.BGQX" :options="bgqxOptions" placeholder="全部" clearable /></Field>
+        <Field label="整理状态"><NSelect v-model:value="filter.status" :options="statusOptions" placeholder="全部" clearable /></Field>
+        <Field label="年度">
+          <div class="flex items-center gap-1">
+            <NInputNumber v-model:value="filter.ND_from" :show-button="false" placeholder="起" class="flex-1" />
+            <span class="text-gray-400">~</span>
+            <NInputNumber v-model:value="filter.ND_to" :show-button="false" placeholder="止" class="flex-1" />
+          </div>
+        </Field>
+        <Field label="文件日期">
+          <div class="flex items-center gap-1">
+            <NInput v-model:value="filter.WJRQ_from" placeholder="2020-01-01" clearable class="flex-1" />
+            <span class="text-gray-400">~</span>
+            <NInput v-model:value="filter.WJRQ_to" placeholder="2025-12-31" clearable class="flex-1" />
+          </div>
+        </Field>
+      </div>
+    </div>
+
+    <!-- ── 结果表 ─────────────────────────────────────────── -->
+    <div class="pro-card p-4 flex-1 min-h-0 flex flex-col gap-3">
+      <!-- 整理工具条 -->
+      <div class="flex flex-wrap items-center gap-2">
+        <NButton size="small" type="primary" @click="openModal(null)">
           <template #icon><Icon name="heroicons:plus" class="w-4 h-4" /></template>
-          新增
+          新增著录
         </NButton>
+        <NButton size="small" @click="showAttachWizard = true">
+          <template #icon><Icon name="heroicons:paper-clip" class="w-4 h-4" /></template>
+          挂接成果
+        </NButton>
+        <NButton size="small" :disabled="selectedIds.length === 0 && total === 0" @click="showRenumber = true">
+          <template #icon><Icon name="heroicons:hashtag" class="w-4 h-4" /></template>
+          重编档号
+        </NButton>
+
+        <template v-if="selectedIds.length > 0">
+          <span class="w-px h-4" style="background:var(--semi-color-border)" />
+          <span class="text-sm" style="color:oklch(var(--p))">已选 <strong>{{ selectedIds.length }}</strong> 条</span>
+          <NButton size="small" @click="showBatchEdit = true">
+            <template #icon><Icon name="heroicons:pencil-square" class="w-4 h-4" /></template>
+            批量修改
+          </NButton>
+          <NButton size="small" type="primary" secondary @click="confirmArchiveToFormal">
+            <template #icon><Icon name="heroicons:archive-box-arrow-down" class="w-4 h-4" /></template>
+            归档入库
+          </NButton>
+          <NButton size="small" quaternary @click="selectedIds = []">取消选择</NButton>
+        </template>
       </div>
 
-      <!-- 快捷过滤 chip 行 -->
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[11.5px] shrink-0" style="color:var(--semi-color-text-3)">年度</span>
-          <button
-            v-for="y in quickYears"
-            :key="y ?? 'all'"
-            class="px-2 py-0.5 rounded-full text-[11.5px] cursor-pointer border-none transition-all"
-            :style="chipStyle(filter.ND === y)"
-            @click="toggleYear(y)"
-          >
-            {{ y ?? '不限' }}
-          </button>
-        </div>
+      <ProTable :columns="columns" :data="archiveList" :loading="loading" :page-size="0" size="small" />
 
-        <span class="w-px h-4 shrink-0" style="background:var(--semi-color-border)" />
-
-        <div class="flex items-center gap-1.5">
-          <span class="text-[11.5px] shrink-0" style="color:var(--semi-color-text-3)">密级</span>
-          <button
-            v-for="opt in securityOptions"
-            :key="opt.value ?? 'all'"
-            class="px-2 py-0.5 rounded-full text-[11.5px] cursor-pointer border-none transition-all"
-            :style="chipStyle(filter.MJ === opt.value)"
-            @click="toggleMJ(opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
-
-        <span class="w-px h-4 shrink-0" style="background:var(--semi-color-border)" />
-
-        <div class="flex items-center gap-1.5">
-          <span class="text-[11.5px] shrink-0" style="color:var(--semi-color-text-3)">全宗</span>
-          <NSelect
-            v-model:value="filter.fonds_id"
-            :options="fondsOptions"
-            placeholder="全部"
-            size="tiny"
-            style="width: 180px"
-            clearable
-            @update:value="onFondsChange"
-          />
-        </div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-[11.5px] shrink-0" style="color:var(--semi-color-text-3)">门类</span>
-          <NSelect
-            v-model:value="filter.category_id"
-            :options="categoryOptions"
-            placeholder="全部"
-            size="tiny"
-            style="width: 140px"
-            clearable
-            @update:value="search"
-          />
-        </div>
-        <div v-if="filter.fonds_id" class="flex items-center gap-1.5">
-          <span class="text-[11.5px] shrink-0" style="color:var(--semi-color-text-3)">目录</span>
-          <NSelect
-            v-model:value="filter.catalog_id"
-            :options="catalogOptions"
-            placeholder="全部"
-            size="tiny"
-            style="width: 200px"
-            clearable
-            @update:value="search"
-          />
-        </div>
+      <div class="flex justify-end">
+        <NPagination
+          v-model:page="filter.page"
+          v-model:page-size="filter.page_size"
+          :item-count="total"
+          :page-sizes="[20, 50, 100]"
+          show-size-picker
+          show-quick-jumper
+          @update:page="loadArchives"
+          @update:page-size="loadArchives"
+        />
       </div>
     </div>
 
-    <!-- 命中统计行 -->
-    <div
-      v-if="!loading && total > 0"
-      class="flex items-center gap-3 px-1 text-[12px] flex-shrink-0"
-      style="color:var(--semi-color-text-2)"
-    >
-      <span class="font-medium" style="color:var(--semi-color-text-0)">
-        命中 <span class="tabular-nums" style="color:oklch(var(--p));font-weight:600">{{ total }}</span> 条
-      </span>
-      <span v-if="hitStats.fonds > 0">· 跨 {{ hitStats.fonds }} 个全宗</span>
-      <span v-if="hitStats.years">· {{ hitStats.years }}</span>
-      <span v-if="filter.keyword" class="ml-auto" style="color:var(--semi-color-text-3)">
-        关键词：「{{ filter.keyword }}」
-      </span>
-    </div>
-
-    <!-- 命中列表 / 空态 -->
-    <div
-      class="flex-1 min-h-[300px] rounded-xl overflow-hidden"
-      style="background:var(--semi-color-bg-0);border:1px solid var(--semi-color-border)"
-    >
-      <div
-        v-if="!loading && archiveList.length === 0 && !hasSearched"
-        class="h-full flex flex-col items-center justify-center gap-5 px-8"
-      >
-        <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:oklch(var(--p)/0.1)">
-          <Icon name="heroicons:archive-box" class="w-8 h-8" style="color:oklch(var(--p))" />
-        </div>
-        <div class="text-center">
-          <p class="text-[15px] font-semibold mb-1" style="color:var(--semi-color-text-0)">在档案库中检索</p>
-          <p class="text-[12px]" style="color:var(--semi-color-text-2)">支持题名 / 责任者 / 档号关键词，回车即搜</p>
-        </div>
-        <div class="flex flex-wrap gap-2 justify-center max-w-2xl">
-          <button
-            v-for="ex in EXAMPLE_QUERIES"
-            :key="ex"
-            class="text-[12px] px-3 py-1.5 rounded-full border cursor-pointer transition-colors hover:bg-[var(--semi-color-fill-0)]"
-            style="border-color:var(--semi-color-border);color:var(--semi-color-text-1)"
-            @click="runExample(ex)"
-          >{{ ex }}</button>
-        </div>
-      </div>
-
-      <div
-        v-else-if="!loading && archiveList.length === 0 && hasSearched"
-        class="h-full flex flex-col items-center justify-center gap-3"
-      >
-        <Icon name="heroicons:face-frown" class="w-10 h-10" style="color:var(--semi-color-text-3)" />
-        <p class="text-[13px]" style="color:var(--semi-color-text-2)">未找到匹配的档案</p>
-        <p class="text-[11.5px]" style="color:var(--semi-color-text-3)">试试换个关键词，或放宽筛选条件</p>
-      </div>
-
-      <div v-else class="h-full overflow-y-auto">
-        <div
-          v-if="loading && archiveList.length === 0"
-          class="h-full flex items-center justify-center text-[12px]"
-          style="color:var(--semi-color-text-3)"
-        >加载中…</div>
-        <div v-else>
-          <button
-            v-for="(row, idx) in archiveList"
-            :key="row.id"
-            class="w-full text-left flex items-start gap-3 px-4 py-3 border-none bg-transparent cursor-pointer transition-colors"
-            :style="rowStyle(row, idx)"
-            @click="openDetail(row)"
-            @mouseenter="(e) => activateRow(e)"
-            @mouseleave="(e) => deactivateRow(e, row)"
-          >
-            <div
-              class="w-1 self-stretch rounded-full shrink-0 mt-0.5"
-              :style="{ background: securityBar[row.MJ] ?? 'var(--semi-color-fill-1)' }"
-            />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-[13px] font-medium" style="color:var(--semi-color-text-0)">
-                  <span v-html="highlight(row.TM)" />
-                </span>
-                <NTag :type="securityType[row.MJ] ?? 'default'" size="tiny" :bordered="false">
-                  {{ securityLabel[row.MJ] ?? row.MJ }}
-                </NTag>
-                <NTag size="tiny" :bordered="false" style="background:var(--semi-color-fill-0)">
-                  {{ retentionLabel[row.BGQX] ?? row.BGQX }}
-                </NTag>
-              </div>
-              <div class="flex items-center gap-2 mt-1 text-[11.5px]" style="color:var(--semi-color-text-3)">
-                <code class="px-1 rounded font-mono" style="background:var(--semi-color-fill-0);color:var(--semi-color-text-1)">
-                  {{ row.DH || '—' }}
-                </code>
-                <span v-if="row.RZZ">· <span v-html="highlight(row.RZZ)" /></span>
-                <span v-if="row.ND">· {{ row.ND }} 年度</span>
-                <span v-if="row.WJRQ">· 文件日期 {{ row.WJRQ }}</span>
-                <span>· 全宗 {{ row.QZH }}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <span class="text-[11px] px-1.5 py-0.5 rounded" :style="statusStyleFor(row.status)">
-                {{ statusLabel[row.status] ?? row.status }}
-              </span>
-              <Icon name="heroicons:chevron-right" class="w-4 h-4" style="color:var(--semi-color-text-3)" />
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="total > 0" class="flex items-center justify-between flex-shrink-0">
-      <span class="text-[11.5px]" style="color:var(--semi-color-text-3)">
-        第 {{ filter.page }} / {{ Math.max(1, Math.ceil(total / filter.page_size)) }} 页
-      </span>
-      <NPagination
-        v-model:page="filter.page"
-        v-model:page-size="filter.page_size"
-        :item-count="total"
-        :page-sizes="[20, 50, 100]"
-        show-size-picker
-        @update:page="loadArchives"
-        @update:page-size="loadArchives"
-      />
-    </div>
-
-    <!-- ════════════════════════════════════════════════════════
-         详情抽屉
-    ════════════════════════════════════════════════════════ -->
-    <NDrawer v-model:show="detailVisible" :width="520" placement="right">
-      <NDrawerContent v-if="detailRow" :title="detailRow.TM" closable>
+    <!-- ── 详情抽屉 ───────────────────────────────────────── -->
+    <NDrawer v-model:show="detailVisible" :width="560" placement="right">
+      <NDrawerContent v-if="detailRow" :title="`档案详情 · ${detailRow.DH || detailRow.TM}`" closable>
         <div class="flex flex-col gap-4">
-          <div class="flex items-center gap-2 flex-wrap">
-            <NTag :type="securityType[detailRow.MJ] ?? 'default'" :bordered="false">
-              {{ securityLabel[detailRow.MJ] ?? detailRow.MJ }}
-            </NTag>
-            <NTag :bordered="false">{{ retentionLabel[detailRow.BGQX] ?? detailRow.BGQX }}</NTag>
-            <NTag :bordered="false">{{ statusLabel[detailRow.status] ?? detailRow.status }}</NTag>
-            <NTag :bordered="false" type="info">{{ detailRow.ND ?? '—' }} 年度</NTag>
-          </div>
+          <table class="w-full text-[13px] border-collapse">
+            <tbody>
+              <tr
+                v-for="f in detailFields"
+                :key="f.label"
+                class="border-b"
+                style="border-color: var(--semi-color-border)"
+              >
+                <th class="text-left align-top py-2 pr-3 font-medium whitespace-nowrap" style="width:96px;color:var(--semi-color-text-3)">{{ f.label }}</th>
+                <td class="py-2 break-words" :class="f.mono ? 'font-mono' : ''" style="color:var(--semi-color-text-0)">{{ f.value || "—" }}</td>
+              </tr>
+            </tbody>
+          </table>
 
-          <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-[12px]">
-            <div>
-              <div style="color:var(--semi-color-text-3)" class="text-[10.5px]">档号 DH</div>
-              <code class="font-mono">{{ detailRow.DH || '—' }}</code>
-            </div>
-            <div>
-              <div style="color:var(--semi-color-text-3)" class="text-[10.5px]">全宗号 QZH</div>
-              <span>{{ detailRow.QZH }}</span>
-            </div>
-            <div>
-              <div style="color:var(--semi-color-text-3)" class="text-[10.5px]">责任者 RZZ</div>
-              <span>{{ detailRow.RZZ || '—' }}</span>
-            </div>
-            <div>
-              <div style="color:var(--semi-color-text-3)" class="text-[10.5px]">文件日期 WJRQ</div>
-              <span>{{ detailRow.WJRQ || '—' }}</span>
-            </div>
-            <div>
-              <div style="color:var(--semi-color-text-3)" class="text-[10.5px]">页数 YS</div>
-              <span>{{ detailRow.YS ?? '—' }}</span>
-            </div>
-            <div>
-              <div style="color:var(--semi-color-text-3)" class="text-[10.5px]">门类</div>
-              <span>{{ categoryNameById[detailRow.category_id] ?? '—' }}</span>
-            </div>
-          </div>
-
-          <div v-if="detailRow.ext_fields && Object.keys(detailRow.ext_fields).length > 0">
-            <div class="text-[10.5px] mb-1.5" style="color:var(--semi-color-text-3)">门类扩展字段</div>
-            <pre class="text-[11px] p-3 rounded-lg overflow-auto max-h-48" style="background:var(--semi-color-fill-0);color:var(--semi-color-text-1)">{{ JSON.stringify(detailRow.ext_fields, null, 2) }}</pre>
-          </div>
-
-          <div class="flex gap-2 mt-2">
+          <AttachmentPanel :archive-id="detailRow.id" @changed="loadArchives" />
+        </div>
+        <template #footer>
+          <div class="flex w-full items-center gap-2">
             <NButton type="primary" @click="() => { openModal(detailRow!); detailVisible = false; }">
               <template #icon><Icon name="heroicons:pencil-square" class="w-4 h-4" /></template>
               编辑
             </NButton>
-            <NButton type="error" ghost @click="() => confirmDelete(detailRow!)">
-              <template #icon><Icon name="heroicons:trash" class="w-4 h-4" /></template>
-              删除
+            <NButton type="error" ghost @click="() => confirmDelete(detailRow!)">删除</NButton>
+            <div class="flex-1" />
+            <NButton text type="primary" @click="askAI(detailRow)">
+              <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
+              让 AI 解读
             </NButton>
-            <div class="ml-auto flex items-center gap-1.5 text-[11px]" style="color:var(--semi-color-text-3)">
-              <Icon name="heroicons:sparkles" class="w-3.5 h-3.5" style="color:oklch(var(--p))" />
-              <button
-                class="cursor-pointer border-none bg-transparent p-0 underline"
-                style="color:oklch(var(--p))"
-                @click="askAI(detailRow)"
-              >让 AI 帮我解读</button>
-            </div>
           </div>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
+
+    <!-- ── 单条挂接抽屉 ───────────────────────────────────── -->
+    <NDrawer v-model:show="attachVisible" :width="480" placement="right">
+      <NDrawerContent v-if="attachRow" :title="`挂接数字化成果 · ${attachRow.DH || attachRow.TM}`" closable>
+        <div class="flex flex-col gap-3">
+          <p class="text-[12.5px] m-0" style="color:var(--semi-color-text-2)">{{ attachRow.TM }}</p>
+          <AttachmentPanel :archive-id="attachRow.id" @changed="loadArchives" />
         </div>
       </NDrawerContent>
     </NDrawer>
 
-    <!-- 编辑弹窗 -->
+    <!-- 新增 / 编辑 -->
     <CrudModal
       v-model:visible="modalVisible"
-      :title="isEdit ? '编辑档案' : '新增档案'"
+      :title="isEdit ? '编辑档案' : '新增著录'"
       :loading="saving"
       :width="600"
       @confirm="submitForm"
@@ -330,10 +192,10 @@
             <NInputNumber v-model:value="formData.ND" placeholder="年度" class="w-full" />
           </NFormItem>
           <NFormItem path="MJ" label="密级">
-            <NSelect v-model:value="formData.MJ" :options="securityOptionsForm" class="w-full" />
+            <NSelect v-model:value="formData.MJ" :options="mjOptions" class="w-full" />
           </NFormItem>
           <NFormItem path="BGQX" label="保管期限">
-            <NSelect v-model:value="formData.BGQX" :options="retentionOptions" class="w-full" />
+            <NSelect v-model:value="formData.BGQX" :options="bgqxOptions" class="w-full" />
           </NFormItem>
           <NFormItem path="WJRQ" label="文件日期">
             <NInput v-model:value="formData.WJRQ" placeholder="YYYY-MM-DD" />
@@ -347,22 +209,42 @@
         </NFormItem>
       </NForm>
     </CrudModal>
+
+    <!-- 整理工具 -->
+    <BatchAttachWizard v-model:show="showAttachWizard" @done="loadArchives" />
+    <RenumberWizard
+      v-model:show="showRenumber"
+      :selected-ids="selectedIds"
+      :query="currentQuery"
+      :query-total="total"
+      @done="onOrganizeDone"
+    />
+    <BatchEditModal
+      v-model:show="showBatchEdit"
+      :selected-ids="selectedIds"
+      @done="onOrganizeDone"
+    />
   </div>
 </template>
 
 <script setup lang="tsx">
-import { ref, computed, onMounted, reactive, watch } from "vue";
+import { computed, h, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
-  NButton, NInput, NInputNumber, NSelect, NForm, NFormItem, NTag,
-  NDrawer, NDrawerContent, NPagination,
-  useMessage, useDialog,
+  NButton, NCheckbox, NDrawer, NDrawerContent, NForm, NFormItem, NInput,
+  NInputNumber, NPagination, NSelect, NTag,
+  useDialog, useMessage,
 } from "naive-ui";
-import type { FormInst } from "naive-ui";
-import { FondsAPI, CatalogAPI, CategoryAPI, ArchiveAPI } from "@/api/repository";
-import type { Fonds, Catalog, ArchiveCategory, Archive, ArchiveCreate, ArchiveUpdate } from "@/api/repository";
+import type { DataTableColumns, FormInst } from "naive-ui";
+import { ArchiveAPI, CatalogAPI, CategoryAPI, FondsAPI, OrganizeAPI } from "@/api/repository";
+import type {
+  Archive, ArchiveCategory, ArchiveCreate, ArchiveListParams, ArchiveUpdate, Catalog, Fonds,
+} from "@/api/repository";
 import { AdminPageHeader } from "@/components/admin";
-import { CrudModal } from "@/components/ui";
+import { CrudModal, ProTable } from "@/components/ui";
+import {
+  AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
+} from "@/components/archive";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 
@@ -371,7 +253,39 @@ const dialog = useDialog();
 const router = useRouter();
 const route = useRoute();
 
-// ── 引用数据 ────────────────────────────────────────────────────────────────
+type SlotsCtx = { slots: { default?: () => unknown } };
+const Field = (props: { label: string }, { slots }: SlotsCtx) =>
+  h("div", { class: "flex flex-col gap-1" }, [
+    h("span", { class: "text-[11.5px]", style: "color:var(--semi-color-text-3)" }, props.label),
+    slots.default?.(),
+  ]);
+
+// ── 选项 ─────────────────────────────────────────────────────────────────────
+const mjOptions = [
+  { label: "无", value: "无" }, { label: "秘密", value: "秘密" },
+  { label: "机密", value: "机密" }, { label: "绝密", value: "绝密" },
+];
+const bgqxOptions = [
+  { label: "永久", value: "permanent" }, { label: "长期", value: "long" }, { label: "短期", value: "short" },
+];
+const statusOptions = [
+  { label: "草稿", value: "draft" }, { label: "待审", value: "pending_review" }, { label: "退回", value: "rejected" },
+];
+// 密级历史英文值兜底映射
+const securityLabel: Record<string, string> = {
+  "无": "无", "秘密": "秘密", "机密": "机密", "绝密": "绝密",
+  public: "无", internal: "无", secret: "秘密", confidential: "机密",
+};
+const securityType: Record<string, "default" | "info" | "warning" | "error" | "success"> = {
+  "无": "default", "秘密": "info", "机密": "warning", "绝密": "error",
+  public: "default", internal: "default", secret: "info", confidential: "warning",
+};
+const retentionLabel: Record<string, string> = { permanent: "永久", long: "长期", short: "短期" };
+const statusLabel: Record<string, string> = {
+  draft: "草稿", pending_review: "待审", rejected: "退回", archived: "已归档",
+};
+
+// ── 引用数据 ─────────────────────────────────────────────────────────────────
 const fondsList = ref<Fonds[]>([]);
 const catalogList = ref<Catalog[]>([]);
 const categoryList = ref<ArchiveCategory[]>([]);
@@ -393,263 +307,226 @@ const categoryNameById = computed<Record<string, string>>(() =>
   Object.fromEntries(categoryList.value.map((c) => [c.id, `${c.code} - ${c.name}`])),
 );
 
-const securityOptions = [
-  { label: "不限", value: null as string | null },
-  { label: "公开", value: "public" },
-  { label: "内部", value: "internal" },
-  { label: "秘密", value: "secret" },
-  { label: "机密", value: "confidential" },
-];
-const securityOptionsForm = [
-  { label: "公开", value: "public" },
-  { label: "内部", value: "internal" },
-  { label: "秘密", value: "secret" },
-  { label: "机密", value: "confidential" },
-];
-const retentionOptions = [
-  { label: "永久", value: "permanent" },
-  { label: "长期", value: "long" },
-  { label: "短期", value: "short" },
-];
-const securityLabel: Record<string, string> = {
-  public: "公开", internal: "内部", confidential: "机密", secret: "秘密",
-};
-const securityType: Record<string, "default" | "info" | "warning" | "error" | "success"> = {
-  public: "success", internal: "info", confidential: "warning", secret: "error",
-};
-const securityBar: Record<string, string> = {
-  public: "oklch(var(--su)/0.7)",
-  internal: "oklch(var(--in)/0.7)",
-  confidential: "oklch(0.7 0.18 80/0.7)",
-  secret: "oklch(var(--er)/0.7)",
-};
-const retentionLabel: Record<string, string> = {
-  permanent: "永久", long: "长期", short: "短期",
-};
-const statusLabel: Record<string, string> = {
-  draft: "草稿", pending_review: "待审", rejected: "退回",
-  archived: "归档", active: "在库", restricted: "受限",
-};
-const statusStyleFor = (s: string): Record<string, string> => {
-  switch (s) {
-    case "archived":
-    case "active":
-      return { background: "oklch(var(--su)/0.12)", color: "oklch(var(--su))" };
-    case "pending_review":
-      return { background: "oklch(0.95 0.05 80)", color: "oklch(0.5 0.2 80)" };
-    case "rejected":
-      return { background: "oklch(var(--er)/0.12)", color: "oklch(var(--er))" };
-    default:
-      return { background: "var(--semi-color-fill-0)", color: "var(--semi-color-text-2)" };
-  }
-};
-
-const EXAMPLE_QUERIES = [
-  "2024 财务凭证",
-  "干部任免",
-  "档案信息化",
-  "数字化建设",
-  "永久保管",
-  "审计报告",
-];
-
-const quickYears: (number | null)[] = (() => {
-  const cur = new Date().getFullYear();
-  return [null, cur, cur - 1, cur - 2, cur - 3, cur - 4];
-})();
-
-// ── 状态 ───────────────────────────────────────────────────────────────────
-const filter = reactive({
+// ── 查询状态 ─────────────────────────────────────────────────────────────────
+const advanced = ref(false);
+const emptyFilter = () => ({
+  keyword: "", TM: "", RZZ: "", DH: "",
   fonds_id: null as string | null,
   catalog_id: null as string | null,
   category_id: null as string | null,
-  ND: null as number | null,
-  keyword: "",
   MJ: null as string | null,
+  BGQX: null as string | null,
   status: null as string | null,
-  page: 1,
-  page_size: 20,
+  ND_from: null as number | null,
+  ND_to: null as number | null,
+  WJRQ_from: "", WJRQ_to: "",
+  page: 1, page_size: 20,
 });
+const filter = reactive(emptyFilter());
 
 const archiveList = ref<Archive[]>([]);
 const total = ref(0);
 const loading = ref(false);
-const hasSearched = ref(false);
-const highlightId = ref<string | null>(null);
 
-const detailVisible = ref(false);
-const detailRow = ref<Archive | null>(null);
+const currentQuery = computed<Partial<ArchiveListParams>>(() => ({
+  keyword: filter.keyword || undefined,
+  TM: filter.TM || undefined,
+  RZZ: filter.RZZ || undefined,
+  DH: filter.DH || undefined,
+  fonds_id: filter.fonds_id ?? undefined,
+  catalog_id: filter.catalog_id ?? undefined,
+  category_id: filter.category_id ?? undefined,
+  MJ: filter.MJ ?? undefined,
+  BGQX: filter.BGQX ?? undefined,
+  status: filter.status ?? undefined,
+  ND_from: filter.ND_from ?? undefined,
+  ND_to: filter.ND_to ?? undefined,
+  WJRQ_from: filter.WJRQ_from || undefined,
+  WJRQ_to: filter.WJRQ_to || undefined,
+}));
 
-const hitStats = computed(() => {
-  if (archiveList.value.length === 0) return { fonds: 0, years: "" };
-  const fondsSet = new Set(archiveList.value.map((a) => a.QZH));
-  const years = archiveList.value
-    .map((a) => a.ND)
-    .filter((y): y is number => typeof y === "number");
-  if (years.length === 0) return { fonds: fondsSet.size, years: "" };
-  const min = Math.min(...years);
-  const max = Math.max(...years);
-  return {
-    fonds: fondsSet.size,
-    years: min === max ? `${min} 年` : `${min} – ${max} 年`,
-  };
-});
-
-// ── 高亮 ───────────────────────────────────────────────────────────────────
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-}
-function highlight(text: string | null | undefined): string {
-  if (!text) return "";
-  const safe = escapeHtml(text);
-  const kw = filter.keyword.trim();
-  if (!kw) return safe;
-  const tokens = kw.split(/\s+/).filter((t) => t.length > 0).map(escapeHtml);
-  if (tokens.length === 0) return safe;
-  const re = new RegExp(`(${tokens.join("|")})`, "gi");
-  return safe.replace(re, '<mark style="background:oklch(var(--p)/0.18);color:oklch(var(--p));padding:0 2px;border-radius:3px">$1</mark>');
-}
-
-// ── 行交互 ─────────────────────────────────────────────────────────────────
-const chipStyle = (active: boolean): Record<string, string> => active
-  ? { background: "oklch(var(--p)/0.14)", color: "oklch(var(--p))", fontWeight: "600", boxShadow: "0 0 0 1px oklch(var(--p)/0.3) inset" }
-  : { background: "var(--semi-color-fill-0)", color: "var(--semi-color-text-2)" };
-
-function rowStyle(row: Archive, idx: number): Record<string, string> {
-  const isHighlighted = row.id === highlightId.value;
-  return {
-    borderBottom: idx === archiveList.value.length - 1 ? "none" : "1px solid var(--semi-color-border)",
-    background: isHighlighted ? "oklch(var(--p)/0.06)" : "transparent",
-  };
-}
-
-function activateRow(e: Event) {
-  const el = e.currentTarget as HTMLElement;
-  el.style.background = "var(--semi-color-fill-0)";
-}
-function deactivateRow(e: Event, row: Archive) {
-  const el = e.currentTarget as HTMLElement;
-  el.style.background = row.id === highlightId.value ? "oklch(var(--p)/0.06)" : "transparent";
-}
-
-// ── 操作 ───────────────────────────────────────────────────────────────────
-async function onFondsChange(id: string | null) {
-  filter.catalog_id = null;
-  catalogList.value = [];
-  if (id) {
-    const res = await CatalogAPI.list(id);
-    catalogList.value = res.data;
+async function loadArchives() {
+  loading.value = true;
+  try {
+    const res = await ArchiveAPI.list({
+      ...currentQuery.value,
+      page: filter.page,
+      page_size: filter.page_size,
+    });
+    archiveList.value = res.data.items as Archive[];
+    total.value = res.data.total;
+  } finally {
+    loading.value = false;
   }
-  search();
-}
-
-function toggleYear(y: number | null) {
-  filter.ND = filter.ND === y ? null : y;
-  search();
-}
-function toggleMJ(v: string | null) {
-  filter.MJ = filter.MJ === v ? null : v;
-  search();
-}
-
-function resetFilter() {
-  Object.assign(filter, {
-    fonds_id: null, catalog_id: null, category_id: null,
-    ND: null, keyword: "", MJ: null, status: null, page: 1,
-  });
-  catalogList.value = [];
-  hasSearched.value = false;
-  highlightId.value = null;
-  syncUrl();
-  loadArchives();
 }
 
 function search() {
   filter.page = 1;
-  hasSearched.value = true;
-  syncUrl();
   loadArchives();
 }
 
-function runExample(q: string) {
-  filter.keyword = q;
-  search();
+function resetFilter() {
+  Object.assign(filter, emptyFilter());
+  loadArchives();
 }
+
+async function onFondsChange(id: string | null) {
+  filter.catalog_id = null;
+  catalogList.value = id ? (await CatalogAPI.list(id)).data : [];
+}
+
+// ── 勾选 ─────────────────────────────────────────────────────────────────────
+const selectedIds = ref<string[]>([]);
+
+const allPageChecked = computed(
+  () => archiveList.value.length > 0 && archiveList.value.every((a) => selectedIds.value.includes(a.id)),
+);
+const somePageChecked = computed(() => archiveList.value.some((a) => selectedIds.value.includes(a.id)));
+
+function toggleSelect(id: string, checked: boolean) {
+  selectedIds.value = checked
+    ? [...selectedIds.value, id]
+    : selectedIds.value.filter((x) => x !== id);
+}
+
+function toggleAllPage(checked: boolean) {
+  const pageIds = archiveList.value.map((a) => a.id);
+  selectedIds.value = checked
+    ? [...new Set([...selectedIds.value, ...pageIds])]
+    : selectedIds.value.filter((x) => !pageIds.includes(x));
+}
+
+// ── 表格 ─────────────────────────────────────────────────────────────────────
+const columns = computed<DataTableColumns<Archive>>(() => [
+  {
+    key: "selection", width: 42,
+    title: () => h(NCheckbox, {
+      checked: allPageChecked.value,
+      indeterminate: somePageChecked.value && !allPageChecked.value,
+      "onUpdate:checked": toggleAllPage,
+    }),
+    render: (r) => h(NCheckbox, {
+      checked: selectedIds.value.includes(r.id),
+      "onUpdate:checked": (v: boolean) => toggleSelect(r.id, v),
+    }),
+  },
+  {
+    title: "档号", key: "DH", width: 190, ellipsis: { tooltip: true },
+    render: (r) => h("code", { class: "font-mono text-[12px]" }, r.DH || "—"),
+  },
+  { title: "题名", key: "TM", minWidth: 220, ellipsis: { tooltip: true } },
+  { title: "责任者", key: "RZZ", width: 110, ellipsis: { tooltip: true }, render: (r) => r.RZZ || "—" },
+  { title: "年度", key: "ND", width: 64, render: (r) => r.ND ?? "—" },
+  {
+    title: "密级", key: "MJ", width: 72,
+    render: (r) => h(NTag, { size: "small", type: securityType[r.MJ] ?? "default", bordered: false },
+      { default: () => securityLabel[r.MJ] ?? r.MJ }),
+  },
+  { title: "期限", key: "BGQX", width: 60, render: (r) => retentionLabel[r.BGQX] ?? r.BGQX },
+  {
+    title: "开放状态", key: "KFZT", width: 90,
+    render: (r) => h(KfztTag, { value: r.KFZT }),
+  },
+  {
+    title: "原文", key: "attachment_count", width: 70,
+    render: (r) => (r.attachment_count
+      ? h("span", { class: "inline-flex items-center gap-0.5 text-[12px]", style: "color:oklch(var(--su))" },
+          [h("span", "📎"), String(r.attachment_count)])
+      : h("span", { class: "text-[11.5px]", style: "color:var(--semi-color-text-3)" }, "无")),
+  },
+  {
+    title: "状态", key: "status", width: 70,
+    render: (r) => h("span", { class: "text-[12px]" }, statusLabel[r.status] ?? r.status),
+  },
+  {
+    title: "操作", key: "actions", width: 130,
+    render: (r) => [
+      h(NButton, { size: "tiny", tertiary: true, class: "mr-1", onClick: () => openDetail(r) }, { default: () => "详情" }),
+      h(NButton, { size: "tiny", tertiary: true, type: "primary", onClick: () => openAttach(r) }, { default: () => "挂接" }),
+    ],
+  },
+]);
+
+// ── 详情 / 挂接抽屉 ──────────────────────────────────────────────────────────
+const detailVisible = ref(false);
+const detailRow = ref<Archive | null>(null);
+const attachVisible = ref(false);
+const attachRow = ref<Archive | null>(null);
+
+const detailFields = computed(() => {
+  const r = detailRow.value;
+  if (!r) return [];
+  const base = [
+    { label: "档号", value: r.DH, mono: true },
+    { label: "题名", value: r.TM },
+    { label: "全宗号", value: r.QZH },
+    { label: "责任者", value: r.RZZ },
+    { label: "年度", value: r.ND ? String(r.ND) : "" },
+    { label: "文件日期", value: r.WJRQ },
+    { label: "页数", value: r.YS ? String(r.YS) : "" },
+    { label: "密级", value: securityLabel[r.MJ] ?? r.MJ },
+    { label: "保管期限", value: retentionLabel[r.BGQX] ?? r.BGQX },
+    { label: "开放状态", value: r.KFZT ?? "未鉴定" },
+    { label: "鉴定日期", value: r.JDRQ },
+    { label: "开放理由", value: r.KFLY },
+    { label: "门类", value: categoryNameById.value[r.category_id] },
+    { label: "整理状态", value: statusLabel[r.status] ?? r.status },
+  ];
+  // 门类扩展字段全部展开显示
+  const ext = Object.entries(r.ext_fields ?? {}).map(([k, v]) => ({
+    label: k,
+    value: v == null ? "" : String(v),
+    mono: false,
+  }));
+  return [...base, ...ext];
+});
 
 function openDetail(row: Archive) {
   detailRow.value = row;
   detailVisible.value = true;
-  highlightId.value = row.id;
 }
 
-function askAI(row: Archive) {
-  router.push({ path: "/ai", query: { q: `请帮我解读档案：${row.TM}`, archive_id: row.id } });
+function openAttach(row: Archive) {
+  attachRow.value = row;
+  attachVisible.value = true;
 }
 
-// ── URL 状态化 ─────────────────────────────────────────────────────────────
-function syncUrl() {
-  const q: Record<string, string> = {};
-  if (filter.keyword) q.q = filter.keyword;
-  if (filter.ND) q.year = String(filter.ND);
-  if (filter.MJ) q.mj = filter.MJ;
-  if (filter.fonds_id) q.fonds = filter.fonds_id;
-  if (filter.category_id) q.cat = filter.category_id;
-  router.replace({ path: route.path, query: q });
+function askAI(row: Archive | null) {
+  if (!row) return;
+  router.push({ path: "/ai", query: { archive_id: row.id, q: `请帮我解读这份档案：${row.TM}` } });
 }
 
-function hydrateFromUrl() {
-  const q = route.query;
-  if (typeof q.q === "string") filter.keyword = q.q;
-  if (typeof q.year === "string") filter.ND = Number(q.year) || null;
-  if (typeof q.mj === "string") filter.MJ = q.mj;
-  if (typeof q.fonds === "string") filter.fonds_id = q.fonds;
-  if (typeof q.cat === "string") filter.category_id = q.cat;
-  if (typeof q.id === "string") highlightId.value = q.id;
-  if (filter.keyword || filter.ND || filter.MJ || filter.fonds_id || filter.category_id) {
-    hasSearched.value = true;
-  }
-}
-
-// ── 弹窗 / CRUD ─────────────────────────────────────────────────────────────
+// ── 新增 / 编辑 ──────────────────────────────────────────────────────────────
 const modalVisible = ref(false);
-const saving = ref(false);
 const isEdit = ref(false);
 const editId = ref<string | null>(null);
+const saving = ref(false);
 const formRef = ref<FormInst | null>(null);
 
 const emptyForm = () => ({
-  fonds_id: filter.fonds_id ?? "",
-  catalog_id: filter.catalog_id ?? "",
+  fonds_id: null as string | null,
+  catalog_id: null as string | null,
   category_id: null as string | null,
-  TM: "",
-  QZH: "",
-  RZZ: "",
-  ND: null as number | null,
-  WJRQ: "",
-  YS: null as number | null,
-  MJ: "public",
-  BGQX: "permanent",
-  DH: "",
+  TM: "", QZH: "", RZZ: "",
+  ND: new Date().getFullYear() as number | null,
+  WJRQ: "", YS: null as number | null,
+  MJ: "无", BGQX: "long", DH: "",
 });
-
 const formData = reactive(emptyForm());
 
 const rules = {
-  fonds_id: [{ required: true, message: "请选择全宗", trigger: "change" }],
-  catalog_id: [{ required: true, message: "请选择目录", trigger: "change" }],
-  TM: [{ required: true, message: "请输入题名", trigger: "blur" }],
-  QZH: [{ required: true, message: "请输入全宗号", trigger: "blur" }],
+  fonds_id: { required: true, message: "请选择全宗", trigger: ["change", "blur"] },
+  catalog_id: { required: true, message: "请选择目录", trigger: ["change", "blur"] },
+  category_id: { required: true, message: "请选择门类", trigger: ["change", "blur"] },
+  TM: { required: true, message: "请填写题名", trigger: "blur" },
+  QZH: { required: true, message: "请填写全宗号", trigger: "blur" },
 };
 
 async function onFormFondsChange(id: string | null) {
-  formData.catalog_id = "";
-  formCatalogs.value = [];
-  if (id) {
-    const selectedFonds = fondsList.value.find((f) => f.id === id);
-    if (selectedFonds) formData.QZH = selectedFonds.fonds_code;
-    const res = await CatalogAPI.list(id);
-    formCatalogs.value = res.data;
-  }
+  formData.catalog_id = null;
+  formCatalogs.value = id ? (await CatalogAPI.list(id)).data : [];
+  const fonds = fondsList.value.find((f) => f.id === id);
+  if (fonds) formData.QZH = fonds.fonds_code;
 }
 
 function openModal(row: Archive | null) {
@@ -657,18 +534,9 @@ function openModal(row: Archive | null) {
     isEdit.value = true;
     editId.value = row.id;
     Object.assign(formData, {
-      fonds_id: row.fonds_id,
-      catalog_id: row.catalog_id,
-      category_id: row.category_id,
-      TM: row.TM,
-      QZH: row.QZH,
-      RZZ: row.RZZ ?? "",
-      ND: row.ND ?? null,
-      WJRQ: row.WJRQ ?? "",
-      YS: row.YS ?? null,
-      MJ: row.MJ,
-      BGQX: row.BGQX,
-      DH: row.DH ?? "",
+      fonds_id: row.fonds_id, catalog_id: row.catalog_id, category_id: row.category_id,
+      TM: row.TM, QZH: row.QZH, RZZ: row.RZZ ?? "", ND: row.ND ?? null,
+      WJRQ: row.WJRQ ?? "", YS: row.YS ?? null, MJ: row.MJ, BGQX: row.BGQX, DH: row.DH ?? "",
     });
   } else {
     isEdit.value = false;
@@ -689,31 +557,18 @@ async function submitForm() {
   try {
     if (isEdit.value && editId.value) {
       const payload: ArchiveUpdate = {
-        TM: formData.TM,
-        RZZ: formData.RZZ || undefined,
-        ND: formData.ND ?? undefined,
-        WJRQ: formData.WJRQ || undefined,
-        YS: formData.YS ?? undefined,
-        MJ: formData.MJ,
-        BGQX: formData.BGQX,
-        DH: formData.DH || undefined,
+        TM: formData.TM, RZZ: formData.RZZ || undefined, ND: formData.ND ?? undefined,
+        WJRQ: formData.WJRQ || undefined, YS: formData.YS ?? undefined,
+        MJ: formData.MJ, BGQX: formData.BGQX, DH: formData.DH || undefined,
       };
       await ArchiveAPI.update(editId.value, payload);
       message.success("已更新");
     } else {
       const payload: ArchiveCreate = {
-        fonds_id: formData.fonds_id,
-        catalog_id: formData.catalog_id,
-        category_id: formData.category_id!,
-        TM: formData.TM,
-        QZH: formData.QZH,
-        RZZ: formData.RZZ || undefined,
-        ND: formData.ND ?? undefined,
-        WJRQ: formData.WJRQ || undefined,
-        YS: formData.YS ?? undefined,
-        MJ: formData.MJ,
-        BGQX: formData.BGQX,
-        DH: formData.DH || undefined,
+        fonds_id: formData.fonds_id!, catalog_id: formData.catalog_id!, category_id: formData.category_id!,
+        TM: formData.TM, QZH: formData.QZH, RZZ: formData.RZZ || undefined,
+        ND: formData.ND ?? undefined, WJRQ: formData.WJRQ || undefined, YS: formData.YS ?? undefined,
+        MJ: formData.MJ, BGQX: formData.BGQX, DH: formData.DH || undefined,
       };
       await ArchiveAPI.create(payload);
       message.success("已创建");
@@ -728,7 +583,7 @@ async function submitForm() {
 function confirmDelete(row: Archive) {
   dialog.warning({
     title: "删除确认",
-    content: `确定删除「${row.TM}」？（软删除）`,
+    content: `确认删除档案「${row.TM}」？`,
     positiveText: "删除",
     negativeText: "取消",
     onPositiveClick: async () => {
@@ -740,52 +595,55 @@ function confirmDelete(row: Archive) {
   });
 }
 
-async function loadArchives() {
-  loading.value = true;
-  try {
-    const params = {
-      ...(filter.fonds_id ? { fonds_id: filter.fonds_id } : {}),
-      ...(filter.catalog_id ? { catalog_id: filter.catalog_id } : {}),
-      ...(filter.category_id ? { category_id: filter.category_id } : {}),
-      ...(filter.ND ? { ND: filter.ND } : {}),
-      ...(filter.keyword ? { keyword: filter.keyword } : {}),
-      ...(filter.MJ ? { MJ: filter.MJ } : {}),
-      ...(filter.status ? { status: filter.status } : {}),
-      page: filter.page,
-      page_size: filter.page_size,
-    };
-    const res = await ArchiveAPI.list(params);
-    archiveList.value = res.data.items;
-    total.value = res.data.total;
-  } finally {
-    loading.value = false;
-  }
+// ── 整理工具 ─────────────────────────────────────────────────────────────────
+const showAttachWizard = ref(false);
+const showRenumber = ref(false);
+const showBatchEdit = ref(false);
+
+function onOrganizeDone() {
+  selectedIds.value = [];
+  loadArchives();
 }
 
-async function loadRefData() {
-  const [fondsRes, catRes] = await Promise.all([FondsAPI.list(), CategoryAPI.list()]);
-  fondsList.value = fondsRes.data;
-  categoryList.value = catRes.data;
+function confirmArchiveToFormal() {
+  dialog.warning({
+    title: "归档入库",
+    content: `确认将选中的 ${selectedIds.value.length} 条档案从暂存库转入正式库？转入后档案进入正式管理流程（鉴定 / 利用 / 统计）。`,
+    positiveText: "确认归档",
+    negativeText: "取消",
+    onPositiveClick: async () => {
+      const res = await OrganizeAPI.archiveToFormal(selectedIds.value);
+      if (res.code !== 0) {
+        message.error(res.message);
+        return;
+      }
+      const { archived, failed, rows } = res.data;
+      if (failed === 0) {
+        message.success(`已归档入库 ${archived} 条`);
+      } else {
+        const reasons = rows
+          .filter((r) => r.status === "failed")
+          .slice(0, 5)
+          .map((r) => `「${r.TM}」：${r.reason}`)
+          .join("\n");
+        dialog.error({
+          title: `归档完成：成功 ${archived} 条，失败 ${failed} 条`,
+          content: reasons,
+          positiveText: "知道了",
+        });
+      }
+      onOrganizeDone();
+    },
+  });
 }
 
-watch(highlightId, async (id) => {
-  if (!id) return;
-  const found = archiveList.value.find((a) => a.id === id);
-  if (found) {
-    detailRow.value = found;
-    detailVisible.value = true;
-  } else {
-    try {
-      const res = await ArchiveAPI.get(id);
-      detailRow.value = res.data;
-      detailVisible.value = true;
-    } catch { /* ignore */ }
-  }
-});
-
+// ── 初始化 ───────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  hydrateFromUrl();
-  await loadRefData();
-  await loadArchives();
+  const kw = route.query.keyword;
+  if (typeof kw === "string" && kw) filter.keyword = kw;
+  loadArchives();
+  const [fondsRes, categoryRes] = await Promise.all([FondsAPI.list(), CategoryAPI.list()]);
+  fondsList.value = fondsRes.data ?? [];
+  categoryList.value = categoryRes.data ?? [];
 });
 </script>

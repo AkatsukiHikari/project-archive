@@ -205,8 +205,8 @@ const message = useMessage();
 const dialog = useDialog();
 
 const mjOptions = [
-  { label: "公开", value: "public" }, { label: "内部", value: "internal" },
-  { label: "秘密", value: "confidential" }, { label: "机密", value: "secret" },
+  { label: "无", value: "无" }, { label: "秘密", value: "秘密" },
+  { label: "机密", value: "机密" }, { label: "绝密", value: "绝密" },
 ];
 const bgqxOptions = [
   { label: "永久", value: "permanent" }, { label: "长期", value: "long" }, { label: "短期", value: "short" },

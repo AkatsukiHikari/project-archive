@@ -11,10 +11,12 @@
         borderRight: '1px solid var(--semi-color-border)',
       }"
     >
-      <!-- Logo -->
+      <!-- Logo（点击回档案工作台首页） -->
       <div
-        class="flex items-center shrink-0 overflow-hidden transition-all duration-300"
+        class="flex items-center shrink-0 overflow-hidden transition-all duration-300 cursor-pointer"
         :style="{ padding: isCollapsed ? '12px 14px' : '12px 14px', height: '56px' }"
+        title="回到档案工作台"
+        @click="router.push('/archive')"
       >
         <LogoIcon :size="28" class="shrink-0" />
         <Transition name="logo-text">

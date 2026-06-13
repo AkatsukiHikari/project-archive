@@ -41,7 +41,7 @@ class CatalogRead(BaseModel):
 
 # ── 档案（临时库 / 正式库通用） ───────────────────────────────────────────────
 
-ArchiveMJ = Literal["public", "internal", "confidential", "secret"]
+ArchiveMJ = Literal["无", "秘密", "机密", "绝密"]
 ArchiveBGQX = Literal["permanent", "long", "short"]
 StagingStatus = Literal["draft", "pending_review", "rejected"]
 PermanentStatus = Literal["archived", "active", "restricted", "pending_destroy", "destroyed"]
@@ -57,7 +57,7 @@ class ArchiveCreate(BaseModel):
     ND: Optional[int] = None
     RZZ: Optional[str] = Field(default=None, max_length=200)
     DH: Optional[str] = Field(default=None, max_length=100)
-    MJ: ArchiveMJ = "public"
+    MJ: ArchiveMJ = "无"
     BGQX: ArchiveBGQX = "permanent"
     WJRQ: Optional[str] = None
     YS: Optional[int] = None
@@ -91,6 +91,9 @@ class ArchiveRead(BaseModel):
     YS: Optional[int] = None
     MJ: str
     BGQX: str
+    KFZT: Optional[str] = None  # 开放状态（暂存库无此列 → 未鉴定）
+    JDRQ: Optional[str] = None  # 最近开放鉴定日期
+    KFLY: Optional[str] = None  # 开放/划控理由
     status: str
     ext_fields: Optional[dict[str, Any]] = None
     embedding_status: str

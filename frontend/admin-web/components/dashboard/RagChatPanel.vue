@@ -525,24 +525,21 @@ const onMessageCitations = (messageId: string, chips: CitationChip[]) => {
 const citationsFor = (id: string): CitationChip[] =>
   messageCitations.value.get(id) ?? [];
 
-// 在新浏览器标签打开档案原文阅览页（左元数据 / 中 PDF / 顶工具栏）。
-// /ai（portal layout）与阅览页（archive layout）分属不同 layout，开新标签后
-// /ai 原样保留，用户可随时切回继续追问。reader 页冷加载 ?id 即可。
+// 打开档案原文阅览页：站内路由统一走 router.push（系统内 Tab），不开浏览器新窗口
 const openArchiveTab = (query: Record<string, string>) => {
-  const href = router.resolve({ path: "/archive/reader", query }).href;
-  window.open(href, "_blank", "noopener");
+  router.push({ path: "/archive/reader", query });
 };
 
-// AI 答案里的 markdown 链接（如 [题名](/archive/reader?id=xxx)）→ 新标签打开，
-// 不在 /ai 页内导航（会顶掉聊天上下文）。
+// AI 答案里的 markdown 链接（如 [题名](/archive/reader?id=xxx)）：
+// 站内路径走 router.push；外部 http 链接才开新浏览器标签
 const onAnswerClick = (e: MouseEvent) => {
   const anchor = (e.target as HTMLElement)?.closest("a");
   if (!anchor) return;
   const href = anchor.getAttribute("href") ?? "";
   if (!href || href.startsWith("#")) return;
   e.preventDefault();
-  const url = href.startsWith("/") ? router.resolve(href).href : href;
-  window.open(url, "_blank", "noopener");
+  if (href.startsWith("/")) router.push(href);
+  else window.open(href, "_blank", "noopener");
 };
 
 const onCitationClick = (chip: CitationChip) => {
@@ -553,8 +550,7 @@ const onCitationClick = (chip: CitationChip) => {
   }
   // dify 类（无具体 archive_id）→ 退回查阅页做关键字检索
   if (chip.source_type === "dify" && chip.title) {
-    const href = router.resolve({ path: "/archive/utilization/reading", query: { q: chip.title } }).href;
-    window.open(href, "_blank", "noopener");
+    router.push({ path: "/archive/utilization/reading", query: { q: chip.title } });
     return;
   }
   // rule / ocr 类不跳转（popover 已展示规则正文，无对应档案条目）

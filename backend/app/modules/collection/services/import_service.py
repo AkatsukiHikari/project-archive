@@ -219,7 +219,7 @@ def build_archive_from_row(
         ND=int(std["ND"]) if std.get("ND", "").isdigit() else None,
         WJRQ=std.get("WJRQ"),
         YS=int(std["YS"]) if std.get("YS", "").isdigit() else None,
-        MJ=std.get("MJ", "public"),
+        MJ=std.get("MJ", "无"),
         BGQX=std.get("BGQX", "permanent"),
         ext_fields=ext or None,
     )

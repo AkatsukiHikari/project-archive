@@ -84,3 +84,17 @@ class SeqRepository:
         )
         result = await self._db.execute(stmt)
         return result.scalar_one()
+
+    async def raise_to(self, rule_id: uuid.UUID, scope_key: str, value: int) -> None:
+        """把计数器抬升到至少 value（批量重编档号后防止后续接收序号回头撞号）。"""
+        from sqlalchemy import func
+
+        stmt = (
+            insert(ArchiveNoSeq)
+            .values(rule_id=rule_id, scope_key=scope_key, current_seq=value)
+            .on_conflict_do_update(
+                constraint="uq_no_seq_rule_scope",
+                set_={"current_seq": func.greatest(ArchiveNoSeq.current_seq, value)},
+            )
+        )
+        await self._db.execute(stmt)

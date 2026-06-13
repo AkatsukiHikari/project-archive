@@ -6,3 +6,10 @@ export { default as ApplicationDetailPanel } from "./ApplicationDetailPanel.vue"
 export { default as RegisterApplicantModal } from "./RegisterApplicantModal.vue";
 export { default as DetectionReportPanel } from "./DetectionReportPanel.vue";
 export { default as BatchReportPanel } from "./BatchReportPanel.vue";
+export { default as KfztTag } from "./KfztTag.vue";
+export { default as AppraisalTaskStatusTag } from "./AppraisalTaskStatusTag.vue";
+export { default as AttachmentPanel } from "./AttachmentPanel.vue";
+export { default as BatchAttachWizard } from "./BatchAttachWizard.vue";
+export { default as AttachBatchPanel } from "./AttachBatchPanel.vue";
+export { default as RenumberWizard } from "./RenumberWizard.vue";
+export { default as BatchEditModal } from "./BatchEditModal.vue";

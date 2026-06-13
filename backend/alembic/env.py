@@ -36,6 +36,15 @@ from app.modules.ai_patch.models.ai_patch import AIPatch  # noqa: F401
 from app.modules.ai_eval.models.golden_set import GoldenSetItem  # noqa: F401
 from app.modules.ai_eval.models.eval_run import EvalRun, EvalRunItem  # noqa: F401
 from app.modules.ai_eval.models.annotation import Annotation  # noqa: F401
+from app.modules.statistics.models import StatAnnualReport  # noqa: F401
+from app.modules.repository.models.attach_batch import AttachBatch  # noqa: F401
+from app.modules.appraisal.models import (  # noqa: F401
+    AppraisalItem,
+    AppraisalPlan,
+    AppraisalSensitiveWord,
+    AppraisalStandard,
+    AppraisalTask,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

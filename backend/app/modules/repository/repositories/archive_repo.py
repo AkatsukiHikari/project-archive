@@ -51,10 +51,12 @@ class ArchiveRepository:
         )
         return result.scalar_one_or_none()
 
-    async def list_with_query(
-        self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
-    ) -> tuple[list[ArchiveStaging], int]:
-        conditions: list = [ArchiveStaging.is_deleted == False]
+    @staticmethod
+    def build_conditions(
+        query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
+    ) -> list:
+        """构建查询条件（list_with_query 与批量整理"按查询全量"共用）。"""
+        conditions: list = [ArchiveStaging.is_deleted == False]  # noqa: E712
         if tenant_id:
             conditions.append(ArchiveStaging.tenant_id == tenant_id)
         if query.fonds_id:
@@ -93,6 +95,12 @@ class ArchiveRepository:
             conditions.append(ArchiveStaging.WJRQ >= query.WJRQ_from)
         if query.WJRQ_to:
             conditions.append(ArchiveStaging.WJRQ <= query.WJRQ_to)
+        return conditions
+
+    async def list_with_query(
+        self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
+    ) -> tuple[list[ArchiveStaging], int]:
+        conditions = self.build_conditions(query, tenant_id)
 
         count_result = await self._db.execute(
             select(func.count()).select_from(ArchiveStaging).where(and_(*conditions))

@@ -24,7 +24,7 @@ DA/T 核心字段删减说明：
 import uuid
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, Integer, String
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,6 +41,9 @@ ARCHIVE_FIELD_MAP: dict[str, str] = {
     "YS":   "页数",
     "MJ":   "密级",
     "BGQX": "保管期限",
+    "KFZT": "开放状态",
+    "JDRQ": "鉴定日期",
+    "KFLY": "开放理由",
 }
 
 
@@ -124,8 +127,8 @@ class ArchiveStaging(BaseEntity):
     )
     YS: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="页数")
     MJ: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="public",
-        comment="密级: public | internal | confidential | secret"
+        String(20), nullable=False, default="无",
+        comment="密级: 无 | 秘密 | 机密 | 绝密（《保守国家秘密法》）"
     )
     BGQX: Mapped[str] = mapped_column(
         String(20), nullable=False, default="permanent",
@@ -151,7 +154,7 @@ class ArchiveStaging(BaseEntity):
     )
 
     def __init__(self, **kwargs: object) -> None:
-        kwargs.setdefault("MJ", "public")
+        kwargs.setdefault("MJ", "无")
         kwargs.setdefault("BGQX", "permanent")
         kwargs.setdefault("status", "draft")
         kwargs.setdefault("embedding_status", "pending")
@@ -215,10 +218,20 @@ class Archive(Base, AuditMixin):
     )
     YS: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, comment="页数")
     MJ: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="public", comment="密级"
+        String(20), nullable=False, default="无", comment="密级: 无 | 秘密 | 机密 | 绝密"
     )
     BGQX: Mapped[str] = mapped_column(
         String(20), nullable=False, default="permanent", comment="保管期限"
+    )
+    KFZT: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, index=True,
+        comment="开放状态: 开放 | 控制使用 | 延期开放 | 不开放（空=未鉴定）"
+    )
+    JDRQ: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, comment="最近开放鉴定日期 YYYY-MM-DD（下轮到期起算基准）"
+    )
+    KFLY: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, comment="开放/划控理由（最近一次鉴定结论快照）"
     )
 
     status: Mapped[str] = mapped_column(

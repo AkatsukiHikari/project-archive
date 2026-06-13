@@ -10,6 +10,8 @@
 - 4000-4099 : 四性检测 (Preservation)
 - 5000-5099 : 利用服务 (Utilization)
 - 6000-6099 : AI 模块 (AI Agent / Patch / Eval)
+- 7000-7099 : 档案鉴定 (Appraisal)
+- 8000-8099 : 档案统计 (Statistics)
 - 9000-9099 : 参数校验
 - 9999      : 系统内部错误
 """
@@ -68,6 +70,21 @@ class ErrorCode:
     AI_TOOL_AUTH_FAILED = 6007           # Tool 鉴权失败（X-User-Token 缺失/过期）
     AI_CAPABILITY_DISABLED = 6008        # 场景未启用 / 灰度未放开
     AI_QUOTA_EXCEEDED = 6009             # 租户 AI 配额超限
+
+    # ── 档案鉴定 (7000-7099) ──
+    APPRAISAL_PLAN_NOT_FOUND = 7000      # 鉴定计划不存在
+    APPRAISAL_TASK_NOT_FOUND = 7001      # 鉴定任务不存在
+    APPRAISAL_ITEM_NOT_FOUND = 7002      # 鉴定明细不存在
+    APPRAISAL_STATE_CONFLICT = 7003      # 状态流转冲突（任务/计划当前状态不允许该操作）
+    APPRAISAL_NO_ARCHIVES = 7004         # 圈定范围内无到期档案
+    APPRAISAL_ITEMS_UNDECIDED = 7005     # 仍有未给出结论的明细，不能提交
+    APPRAISAL_STANDARD_NOT_FOUND = 7006  # 鉴定标准条款不存在
+    APPRAISAL_NOT_ASSIGNEE = 7007        # 非任务鉴定员，不能操作
+    APPRAISAL_NOT_REVIEWER = 7008        # 非计划审核员，不能审核
+
+    # ── 档案统计 (8000-8099) ──
+    STAT_REPORT_NOT_FOUND = 8000   # 年报不存在
+    STAT_REPORT_FINALIZED = 8001   # 年报已定稿，不能修改/重算
 
     # ── 参数校验 (9000-9099) ──
     VALIDATION_ERROR = 9000

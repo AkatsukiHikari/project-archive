@@ -245,6 +245,8 @@ import { CrudModal, ProTable } from "@/components/ui";
 import {
   AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
 } from "@/components/archive";
+import { AppraisalAPI } from "@/api/appraisal";
+import type { ArchiveConclusion } from "@/api/appraisal";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 
@@ -306,6 +308,16 @@ const categoryOptions = computed(() =>
 const categoryNameById = computed<Record<string, string>>(() =>
   Object.fromEntries(categoryList.value.map((c) => [c.id, `${c.code} - ${c.name}`])),
 );
+// 门类扩展字段 拼音码 → 中文标签
+const extLabel = computed<Record<string, string>>(() => {
+  const m: Record<string, string> = {};
+  for (const cat of categoryList.value) {
+    for (const fld of cat.field_schema ?? []) {
+      if (fld.name && fld.label) m[fld.name] = fld.label;
+    }
+  }
+  return m;
+});
 
 // ── 查询状态 ─────────────────────────────────────────────────────────────────
 const advanced = ref(false);
@@ -450,6 +462,7 @@ const columns = computed<DataTableColumns<Archive>>(() => [
 // ── 详情 / 挂接抽屉 ──────────────────────────────────────────────────────────
 const detailVisible = ref(false);
 const detailRow = ref<Archive | null>(null);
+const conclusion = ref<ArchiveConclusion | null>(null);
 const attachVisible = ref(false);
 const attachRow = ref<Archive | null>(null);
 
@@ -467,23 +480,31 @@ const detailFields = computed(() => {
     { label: "密级", value: securityLabel[r.MJ] ?? r.MJ },
     { label: "保管期限", value: retentionLabel[r.BGQX] ?? r.BGQX },
     { label: "开放状态", value: r.KFZT ?? "未鉴定" },
-    { label: "鉴定日期", value: r.JDRQ },
-    { label: "开放理由", value: r.KFLY },
+    ...(conclusion.value ? [
+      { label: "鉴定日期", value: conclusion.value.appraised_at ?? "" },
+      { label: "开放理由", value: conclusion.value.reason ?? "" },
+      { label: "引用标准", value: conclusion.value.standard_code ?? "" },
+    ] : []),
     { label: "门类", value: categoryNameById.value[r.category_id] },
     { label: "整理状态", value: statusLabel[r.status] ?? r.status },
   ];
-  // 门类扩展字段全部展开显示
+  // 门类扩展字段全部展开显示（拼音码 → 中文标签）
   const ext = Object.entries(r.ext_fields ?? {}).map(([k, v]) => ({
-    label: k,
+    label: extLabel.value[k] ?? k,
     value: v == null ? "" : String(v),
     mono: false,
   }));
   return [...base, ...ext];
 });
 
-function openDetail(row: Archive) {
+async function openDetail(row: Archive) {
   detailRow.value = row;
+  conclusion.value = null;
   detailVisible.value = true;
+  if (row.KFZT) {
+    const res = await AppraisalAPI.archiveConclusion(row.id);
+    if (res.code === 0) conclusion.value = res.data;
+  }
 }
 
 function openAttach(row: Archive) {

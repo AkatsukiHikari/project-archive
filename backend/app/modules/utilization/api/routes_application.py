@@ -5,6 +5,7 @@
 办理状态  POST /applications/{id}/complete | /cancel
 调阅篮    POST /applications/{id}/items, DELETE /applications/{id}/items/{item_id}
 """
+
 import uuid
 from typing import Optional
 
@@ -43,8 +44,10 @@ async def utilization_ledger_stats(
     """利用台账（统计报表）：按月/季/年的利用趋势 + 目的/方式/门类分布。"""
     svc = ApplicationService(db)
     data = await svc.ledger_stats(
-        current_user.tenant_id, granularity=granularity,
-        date_from=date_from, date_to=date_to,
+        current_user.tenant_id,
+        granularity=granularity,
+        date_from=date_from,
+        date_to=date_to,
     )
     return success(data)
 
@@ -62,8 +65,12 @@ async def utilization_ledger(
     """利用台账：逐条明细（谁、何时、以何方式/目的、查阅了哪件档案），可筛选/导出/打印。"""
     svc = ApplicationService(db)
     rows = await svc.ledger(
-        current_user.tenant_id, status=status, use_type=use_type,
-        keyword=keyword, date_from=date_from, date_to=date_to,
+        current_user.tenant_id,
+        status=status,
+        use_type=use_type,
+        keyword=keyword,
+        date_from=date_from,
+        date_to=date_to,
     )
     return success(rows)
 
@@ -89,8 +96,15 @@ async def list_applications(
     current_user: User = Depends(get_current_user),
 ):
     svc = ApplicationService(db)
-    rows = await svc.list(current_user.tenant_id, status=status or None, keyword=keyword, use_type=use_type or None)
-    return success([ApplicationOut.model_validate(r).model_dump(mode="json") for r in rows])
+    rows = await svc.list(
+        current_user.tenant_id,
+        status=status or None,
+        keyword=keyword,
+        use_type=use_type or None,
+    )
+    return success(
+        [ApplicationOut.model_validate(r).model_dump(mode="json") for r in rows]
+    )
 
 
 @router.get("/applications/{app_id}", response_model=ResponseModel[ApplicationDetail])
@@ -104,7 +118,28 @@ async def get_application(
     data = ApplicationOut.model_validate(app).model_dump(mode="json")
     data["item_count"] = count
     data["handler_name"] = handler_name
-    data["items"] = [ItemOut.model_validate(i).model_dump(mode="json") for i in items]
+
+    # 标注每件调阅档案是否有原文（无则前端禁用"原文"按钮）
+    from sqlalchemy import select as _select
+    from app.modules.repository.models.archive import ArchiveAttachment
+
+    archive_ids = [i.archive_id for i in items]
+    with_att: set = set()
+    if archive_ids:
+        rows = await db.execute(
+            _select(ArchiveAttachment.archive_id).where(
+                ArchiveAttachment.archive_id.in_(archive_ids),
+                ArchiveAttachment.is_deleted == False,  # noqa: E712
+            )
+        )
+        with_att = set(rows.scalars().all())
+
+    item_dicts = []
+    for i in items:
+        d = ItemOut.model_validate(i).model_dump(mode="json")
+        d["has_attachment"] = i.archive_id in with_att
+        item_dicts.append(d)
+    data["items"] = item_dicts
     return success(data)
 
 
@@ -121,7 +156,9 @@ async def update_application(
     return success(ApplicationOut.model_validate(app).model_dump(mode="json"))
 
 
-@router.post("/applications/{app_id}/complete", response_model=ResponseModel[ApplicationOut])
+@router.post(
+    "/applications/{app_id}/complete", response_model=ResponseModel[ApplicationOut]
+)
 async def complete_application(
     app_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -133,7 +170,9 @@ async def complete_application(
     return success(ApplicationOut.model_validate(app).model_dump(mode="json"))
 
 
-@router.post("/applications/{app_id}/cancel", response_model=ResponseModel[ApplicationOut])
+@router.post(
+    "/applications/{app_id}/cancel", response_model=ResponseModel[ApplicationOut]
+)
 async def cancel_application(
     app_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -158,7 +197,9 @@ async def add_items(
     return success({"added": added})
 
 
-@router.delete("/applications/{app_id}/items/{item_id}", response_model=ResponseModel[None])
+@router.delete(
+    "/applications/{app_id}/items/{item_id}", response_model=ResponseModel[None]
+)
 async def remove_item(
     app_id: uuid.UUID,
     item_id: uuid.UUID,
@@ -173,40 +214,83 @@ async def remove_item(
 
 # ── 借阅 / 复制 / 证明 办理动作 ──────────────────────────────────────────────
 
+
 def _out(app) -> dict:
     return ApplicationOut.model_validate(app).model_dump(mode="json")
 
 
-@router.post("/applications/{app_id}/lend", response_model=ResponseModel[ApplicationOut])
-async def lend(app_id: uuid.UUID, body: BorrowLendRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    app = await ApplicationService(db).lend(app_id, body.due_date, current_user.tenant_id)
+@router.post(
+    "/applications/{app_id}/lend", response_model=ResponseModel[ApplicationOut]
+)
+async def lend(
+    app_id: uuid.UUID,
+    body: BorrowLendRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    app = await ApplicationService(db).lend(
+        app_id, body.due_date, current_user.tenant_id, operator_id=current_user.id
+    )
     await db.commit()
     return success(_out(app))
 
 
-@router.post("/applications/{app_id}/renew", response_model=ResponseModel[ApplicationOut])
-async def renew(app_id: uuid.UUID, body: BorrowRenewRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    app = await ApplicationService(db).renew(app_id, body.due_date, current_user.tenant_id)
+@router.post(
+    "/applications/{app_id}/renew", response_model=ResponseModel[ApplicationOut]
+)
+async def renew(
+    app_id: uuid.UUID,
+    body: BorrowRenewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    app = await ApplicationService(db).renew(
+        app_id, body.due_date, current_user.tenant_id
+    )
     await db.commit()
     return success(_out(app))
 
 
-@router.post("/applications/{app_id}/return", response_model=ResponseModel[ApplicationOut])
-async def return_borrow(app_id: uuid.UUID, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@router.post(
+    "/applications/{app_id}/return", response_model=ResponseModel[ApplicationOut]
+)
+async def return_borrow(
+    app_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     app = await ApplicationService(db).return_borrow(app_id, current_user.tenant_id)
     await db.commit()
     return success(_out(app))
 
 
-@router.post("/applications/{app_id}/copy", response_model=ResponseModel[ApplicationOut])
-async def process_copy(app_id: uuid.UUID, body: CopyProcessRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    app = await ApplicationService(db).process_copy(app_id, body.copy_method, body.copies, body.fee, current_user.tenant_id)
+@router.post(
+    "/applications/{app_id}/copy", response_model=ResponseModel[ApplicationOut]
+)
+async def process_copy(
+    app_id: uuid.UUID,
+    body: CopyProcessRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    app = await ApplicationService(db).process_copy(
+        app_id, body.copy_method, body.copies, body.fee, current_user.tenant_id
+    )
     await db.commit()
     return success(_out(app))
 
 
-@router.post("/applications/{app_id}/issue-cert", response_model=ResponseModel[ApplicationOut])
-async def issue_cert(app_id: uuid.UUID, body: CertIssueRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    app = await ApplicationService(db).issue_cert(app_id, body.cert_content, current_user.tenant_id)
+@router.post(
+    "/applications/{app_id}/issue-cert", response_model=ResponseModel[ApplicationOut]
+)
+async def issue_cert(
+    app_id: uuid.UUID,
+    body: CertIssueRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    app = await ApplicationService(db).issue_cert(
+        app_id, body.cert_content, current_user.tenant_id
+    )
     await db.commit()
     return success(_out(app))

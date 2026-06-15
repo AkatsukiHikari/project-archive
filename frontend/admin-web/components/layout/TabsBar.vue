@@ -142,14 +142,22 @@ import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useTabsRouteStore, type TabItem } from "@/stores/tabsRoute";
 
-const props = withDefaults(defineProps<{ prefix?: string }>(), { prefix: "/admin" });
+const props = withDefaults(
+  defineProps<{ prefix?: string; extraPaths?: string[] }>(),
+  { prefix: "/admin", extraPaths: () => [] },
+);
 
 const router = useRouter();
 const tabsStore = useTabsRouteStore();
 
-/** 仅显示属于当前子系统前缀的 Tab */
+/** 显示属于当前子系统前缀的 Tab，外加 extraPaths 中跨子系统复用的页面（如 /ai） */
 const visibleTabs = computed(() =>
-  tabsStore.tabs.filter((t) => t.path === props.prefix || t.path.startsWith(props.prefix + "/")),
+  tabsStore.tabs.filter(
+    (t) =>
+      t.path === props.prefix
+      || t.path.startsWith(props.prefix + "/")
+      || props.extraPaths.includes(t.path),
+  ),
 );
 
 // ─── Tab element refs for scroll-into-view ────────────────────────────────

@@ -80,3 +80,6 @@ v1_router.include_router(workbench.router)
 
 from app.modules.statistics.api.routes_statistics import router as statistics_router
 v1_router.include_router(statistics_router)
+
+from app.modules.storage.api.routes_storage import router as storage_router
+v1_router.include_router(storage_router)

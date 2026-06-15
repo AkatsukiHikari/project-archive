@@ -46,6 +46,7 @@ def _build_doc(archive: ArchiveStaging) -> dict:
         "WJRQ": archive.WJRQ,
         "status": archive.status,
         "ext_fields": sanitized_ext,
+        "full_text": getattr(archive, "full_text", None),
         "tenant_id": str(archive.tenant_id) if archive.tenant_id else None,
         "create_time": archive.create_time.isoformat() if archive.create_time else None,
     }

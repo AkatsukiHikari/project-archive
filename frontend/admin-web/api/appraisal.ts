@@ -94,6 +94,15 @@ export interface AppraisalItem {
   reviewed_at?: string;
 }
 
+export interface ArchiveConclusion {
+  kfzt?: Kfzt | null;
+  reason?: string | null;
+  standard_code?: string | null;
+  appraised_at?: string | null;
+  plan_no?: string | null;
+  plan_name?: string | null;
+}
+
 export interface Page<T> {
   total: number;
   items: T[];
@@ -208,6 +217,12 @@ export const AppraisalAPI = {
 
   rejectTask: (taskId: string, reason: string) =>
     http.post<ApiResponse<AppraisalTask>, ApiResponse<AppraisalTask>>(`/appraisal/tasks/${taskId}/reject`, { reason }),
+
+  /** 档案最近一次审核通过的鉴定结论（开放理由/鉴定日期/引用标准，关联查询） */
+  archiveConclusion: (archiveId: string) =>
+    http.get<ApiResponse<ArchiveConclusion | null>, ApiResponse<ArchiveConclusion | null>>(
+      `/appraisal/archives/${archiveId}/conclusion`,
+    ),
 
   /** 鉴定台账（审核通过明细） */
   listLedger: (params?: {

@@ -11,5 +11,6 @@ export { default as AppraisalTaskStatusTag } from "./AppraisalTaskStatusTag.vue"
 export { default as AttachmentPanel } from "./AttachmentPanel.vue";
 export { default as BatchAttachWizard } from "./BatchAttachWizard.vue";
 export { default as AttachBatchPanel } from "./AttachBatchPanel.vue";
+export { default as VaultShelfGrid } from "./VaultShelfGrid.vue";
 export { default as RenumberWizard } from "./RenumberWizard.vue";
 export { default as BatchEditModal } from "./BatchEditModal.vue";

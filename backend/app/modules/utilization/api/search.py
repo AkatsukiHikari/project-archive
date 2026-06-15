@@ -29,6 +29,7 @@ async def search_archives(
     q: str = Query(..., min_length=1, max_length=200, description="检索关键词"),
     year: Optional[int] = Query(None, description="年度过滤"),
     fonds_code: Optional[str] = Query(None, description="全宗号过滤"),
+    public_only: bool = Query(False, description="仅返回无密级档案（社会公众查档）"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -37,8 +38,9 @@ async def search_archives(
     result = await search_items(
         query=q,
         tenant_id=tenant_id,
-        year=year,
-        fonds_code=fonds_code,
+        ND=year,
+        QZH=fonds_code,
+        public_only=public_only,
         skip=skip,
         limit=limit,
     )

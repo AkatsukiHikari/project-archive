@@ -193,11 +193,28 @@ class ApplicationService:
 
     # ── 借阅 / 复制 / 证明 办理动作 ────────────────────────────────
 
-    async def lend(self, app_id, due, tenant_id):
+    async def lend(self, app_id, due, tenant_id, operator_id=None):
         app = await self._require(app_id, tenant_id)
         app.borrowed_at = datetime.now(timezone.utc)
         app.due_date = due
         app.returned_at = None
+        await self._db.flush()
+
+        # 借阅联动：为调阅篮内每件档案生成出库记录（档案保管 → 出入库记录）
+        from app.modules.storage.services.inout_service import InoutService
+        from app.modules.utilization.models.application import UtilizationItem
+
+        items = (await self._db.execute(
+            select(UtilizationItem).where(UtilizationItem.application_id == app_id)
+        )).scalars().all()
+        await InoutService(self._db).on_borrow_lend(
+            app_id=app_id,
+            borrower=app.applicant_name,
+            items=[{"archive_id": it.archive_id, "DH": it.DH, "TM": it.TM} for it in items],
+            due=due,
+            user_id=operator_id,
+            tenant_id=tenant_id,
+        )
         await self._db.flush()
         return app
 
@@ -213,6 +230,11 @@ class ApplicationService:
         app.returned_at = now
         app.status = "completed"
         app.completed_at = now
+        await self._db.flush()
+
+        # 借阅联动：归还时回写对应出库记录为已归还
+        from app.modules.storage.services.inout_service import InoutService
+        await InoutService(self._db).on_borrow_return(app_id, tenant_id)
         await self._db.flush()
         return app
 

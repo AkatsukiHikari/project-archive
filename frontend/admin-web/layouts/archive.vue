@@ -15,8 +15,8 @@
       <div
         class="flex items-center shrink-0 overflow-hidden transition-all duration-300 cursor-pointer"
         :style="{ padding: isCollapsed ? '12px 14px' : '12px 14px', height: '56px' }"
-        title="回到档案工作台"
-        @click="router.push('/archive')"
+        title="返回平台首页"
+        @click="router.push('/')"
       >
         <LogoIcon :size="28" class="shrink-0" />
         <Transition name="logo-text">
@@ -105,7 +105,7 @@
         :style="{ left: isCollapsed ? '64px' : '240px' }"
       >
         <SystemHeader />
-        <TabsBar prefix="/archive" />
+        <TabsBar prefix="/archive" :extra-paths="['/ai']" />
       </div>
 
       <!-- 内容区 -->
@@ -156,7 +156,8 @@ onMounted(async () => {
 watch(
   () => route.path,
   (path) => {
-    if (!path.startsWith("/archive")) return;
+    // 档案子系统页 + AI 对话助手（portal 级功能，复用档案工作区标签）
+    if (!path.startsWith("/archive") && path !== "/ai") return;
     const breadcrumbs = route.meta.breadcrumb as { name: string; path: string }[] | undefined;
     const title = breadcrumbs?.[breadcrumbs.length - 1]?.name;
     tabsStore.openTab(path, title);

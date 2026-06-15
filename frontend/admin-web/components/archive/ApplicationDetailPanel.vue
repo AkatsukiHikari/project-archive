@@ -47,7 +47,9 @@
                 <span class="font-mono">{{ it.DH || "—" }}</span> · {{ it.ND || "—" }} 年
               </div>
             </div>
-            <NButton size="tiny" tertiary @click="openReader(it.archive_id)">原文</NButton>
+            <NButton size="tiny" tertiary :disabled="!it.has_attachment" @click="openReader(it.archive_id)">
+              {{ it.has_attachment ? "原文" : "无原文" }}
+            </NButton>
             <NButton
               v-if="detail.status === 'processing'"
               size="tiny"

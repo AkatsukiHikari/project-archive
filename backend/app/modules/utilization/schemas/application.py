@@ -107,6 +107,7 @@ class ItemOut(BaseModel):
     RZZ: Optional[str] = None
     ND: Optional[int] = None
     QZH: Optional[str] = None
+    has_attachment: bool = False  # 是否有原文（无则前端禁用"原文"按钮）
     create_time: datetime
 
 

@@ -19,11 +19,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.response import ResponseModel, success
 from app.core.security.permissions import require_permissions
 from app.infra.db.session import get_db
-from app.modules.appraisal.schemas.plan import (ItemDecide, ItemOut, ItemPage,
-                                                LedgerPage, PlanCreate,
-                                                PlanDetail, PlanOut,
-                                                ScopePreviewOut, TaskDetail,
-                                                TaskOut, TaskReject)
+from app.modules.appraisal.schemas.plan import (
+    ItemDecide,
+    ItemOut,
+    ItemPage,
+    LedgerPage,
+    PlanCreate,
+    PlanDetail,
+    PlanOut,
+    ScopePreviewOut,
+    TaskDetail,
+    TaskOut,
+    TaskReject,
+)
 from app.modules.appraisal.services.ai_engine import AiAppraisalEngine
 from app.modules.appraisal.services.plan_service import PlanService
 from app.modules.appraisal.services.task_service import TaskService
@@ -245,6 +253,23 @@ async def reject_task(
             await svc.get_task(task_id, current_user.tenant_id)
         ).model_dump(mode="json")
     )
+
+
+# ── 档案最近鉴定结论 ──────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/archives/{archive_id}/conclusion", response_model=ResponseModel[Optional[dict]]
+)
+async def archive_conclusion(
+    archive_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """档案最近一次审核通过的鉴定结论（开放理由/鉴定日期/引用标准等关联查询）。"""
+    svc = TaskService(db)
+    data = await svc.latest_conclusion(archive_id, current_user.tenant_id)
+    return success(data)
 
 
 # ── 台账 ──────────────────────────────────────────────────────────────────────

@@ -44,7 +44,9 @@ class CatalogRead(BaseModel):
 ArchiveMJ = Literal["无", "秘密", "机密", "绝密"]
 ArchiveBGQX = Literal["permanent", "long", "short"]
 StagingStatus = Literal["draft", "pending_review", "rejected"]
-PermanentStatus = Literal["archived", "active", "restricted", "pending_destroy", "destroyed"]
+PermanentStatus = Literal[
+    "archived", "active", "restricted", "pending_destroy", "destroyed"
+]
 
 
 class ArchiveCreate(BaseModel):
@@ -91,9 +93,7 @@ class ArchiveRead(BaseModel):
     YS: Optional[int] = None
     MJ: str
     BGQX: str
-    KFZT: Optional[str] = None  # 开放状态（暂存库无此列 → 未鉴定）
-    JDRQ: Optional[str] = None  # 最近开放鉴定日期
-    KFLY: Optional[str] = None  # 开放/划控理由
+    KFZT: Optional[str] = None  # 开放状态/当前访问标识（暂存库无此列 → 未鉴定）
     status: str
     ext_fields: Optional[dict[str, Any]] = None
     embedding_status: str
@@ -107,7 +107,9 @@ class ArchiveListQuery(BaseModel):
     catalog_id: Optional[uuid.UUID] = None
     category_id: Optional[uuid.UUID] = None
     ND: Optional[int] = None
-    keyword: Optional[str] = Field(default=None, description="题名/责任者/档号 综合关键字")
+    keyword: Optional[str] = Field(
+        default=None, description="题名/责任者/档号 综合关键字"
+    )
     MJ: Optional[str] = None
     status: Optional[str] = None
     # ── 高级组合检索字段（逐字段精确/范围） ──
@@ -124,6 +126,7 @@ class ArchiveListQuery(BaseModel):
 
 
 # ── 原文附件 ──────────────────────────────────────────────────────────────────
+
 
 class AttachmentCreate(BaseModel):
     archive_id: uuid.UUID

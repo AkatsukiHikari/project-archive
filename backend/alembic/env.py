@@ -38,6 +38,7 @@ from app.modules.ai_eval.models.eval_run import EvalRun, EvalRunItem  # noqa: F4
 from app.modules.ai_eval.models.annotation import Annotation  # noqa: F401
 from app.modules.statistics.models import StatAnnualReport  # noqa: F401
 from app.modules.repository.models.attach_batch import AttachBatch  # noqa: F401
+from app.modules.storage.models import StorageInout, StorageShelf, StorageVault  # noqa: F401
 from app.modules.appraisal.models import (  # noqa: F401
     AppraisalItem,
     AppraisalPlan,

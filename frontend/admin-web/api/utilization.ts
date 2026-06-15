@@ -51,6 +51,7 @@ export interface UtilItem {
   RZZ?: string | null;
   ND?: number | null;
   QZH?: string | null;
+  has_attachment?: boolean;
   create_time: string;
 }
 
@@ -111,7 +112,31 @@ export interface LedgerStats {
 
 const BASE = "/utilization/applications";
 
+export interface FullTextHit {
+  id: string;
+  DH?: string | null;
+  QZH?: string;
+  TM: string;
+  RZZ?: string | null;
+  ND?: number | null;
+  WJRQ?: string | null;
+  MJ?: string;
+  BGQX?: string;
+  catalog_id?: string;
+  score: number;
+  highlight?: { TM?: string[]; RZZ?: string[]; full_text?: string[] };
+}
+
+export interface FullTextResult {
+  total: number;
+  hits: FullTextHit[];
+  error?: string;
+}
+
 export const UtilizationAPI = {
+  /** ES 原文全文检索 */
+  search: (params: { q: string; year?: number; fonds_code?: string; public_only?: boolean; skip?: number; limit?: number }) =>
+    http.get<ApiResponse<FullTextResult>, ApiResponse<FullTextResult>>("/utilization/search", { params }),
   ledger: (params?: LedgerQuery) =>
     http.get<ApiResponse<UtilLedgerRow[]>, ApiResponse<UtilLedgerRow[]>>("/utilization/ledger", { params: params ?? {} }),
   ledgerStats: (params?: { granularity?: string; date_from?: string; date_to?: string }) =>

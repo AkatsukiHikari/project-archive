@@ -9,10 +9,18 @@ from app.infra.db.session import get_db
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
 from app.modules.repository.schemas.archive import (
-    ArchiveCreate, ArchiveListQuery, ArchiveRead, ArchiveUpdate,
-    CatalogCreate, CatalogRead, CatalogUpdate,
+    ArchiveCreate,
+    ArchiveListQuery,
+    ArchiveRead,
+    ArchiveUpdate,
+    CatalogCreate,
+    CatalogRead,
+    CatalogUpdate,
 )
-from app.modules.repository.services.archive_service import ArchiveService, CatalogService
+from app.modules.repository.services.archive_service import (
+    ArchiveService,
+    CatalogService,
+)
 from app.modules.repository.services.es_sync_service import delete_one, sync_one
 
 router = APIRouter(tags=["档案管理"])
@@ -35,7 +43,8 @@ async def _find_archive(db: AsyncSession, raw: str):
     if aid is not None:
         r = await db.execute(
             select(ArchiveStaging).where(
-                ArchiveStaging.id == aid, ArchiveStaging.is_deleted == False  # noqa: E712
+                ArchiveStaging.id == aid,
+                ArchiveStaging.is_deleted == False,  # noqa: E712
             )
         )
         obj = r.scalar_one_or_none()
@@ -47,7 +56,9 @@ async def _find_archive(db: AsyncSession, raw: str):
     # 按档号匹配
     r = await db.execute(
         select(ArchiveStaging)
-        .where(ArchiveStaging.DH == raw, ArchiveStaging.is_deleted == False)  # noqa: E712
+        .where(
+            ArchiveStaging.DH == raw, ArchiveStaging.is_deleted == False
+        )  # noqa: E712
         .limit(1)
     )
     obj = r.scalar_one_or_none()
@@ -58,6 +69,7 @@ async def _find_archive(db: AsyncSession, raw: str):
 
 
 # ── 目录 ──────────────────────────────────────────────────────────────────────
+
 
 @router.get("/archive/catalogs", response_model=ResponseModel[list[CatalogRead]])
 async def list_catalogs(
@@ -107,7 +119,88 @@ async def delete_catalog(
     return success()
 
 
+# ── 目录导航树（门类 → 全宗号 → 年度，逐层懒加载） ─────────────────────────────
+
+
+@router.get("/archive/records/nav", response_model=ResponseModel[list[dict]])
+async def archive_nav_tree(
+    level: str = Query(..., pattern="^(category|fonds|year)$"),
+    category_id: Optional[uuid.UUID] = Query(default=None),
+    fonds_id: Optional[uuid.UUID] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """档案查询的层级导航：门类→全宗号→年度，每级带条目计数，供老档案员点选过滤。
+
+    数据口径与档案查询字段检索一致（暂存库 ArchiveStaging）。
+    """
+    from sqlalchemy import func, select
+    from app.modules.repository.models.archive import ArchiveStaging
+    from app.modules.repository.models.category import ArchiveCategory
+
+    tenant_id = current_user.tenant_id
+    base_conds = [ArchiveStaging.is_deleted == False]  # noqa: E712
+    if tenant_id:
+        base_conds.append(ArchiveStaging.tenant_id == tenant_id)
+
+    if level == "category":
+        stmt = (
+            select(
+                ArchiveStaging.category_id,
+                ArchiveCategory.code,
+                ArchiveCategory.name,
+                func.count(),
+            )
+            .join(ArchiveCategory, ArchiveStaging.category_id == ArchiveCategory.id)
+            .where(*base_conds)
+            .group_by(ArchiveStaging.category_id, ArchiveCategory.code, ArchiveCategory.name)
+            .order_by(ArchiveCategory.code)
+        )
+        rows = (await db.execute(stmt)).all()
+        return success([
+            {"category_id": str(r[0]), "code": r[1], "name": r[2], "count": r[3]}
+            for r in rows
+        ])
+
+    if level == "fonds":
+        if not category_id:
+            return success([])
+        stmt = (
+            select(
+                ArchiveStaging.QZH,
+                ArchiveStaging.fonds_id,
+                func.count(),
+            )
+            .where(*base_conds, ArchiveStaging.category_id == category_id)
+            .group_by(ArchiveStaging.QZH, ArchiveStaging.fonds_id)
+            .order_by(ArchiveStaging.QZH)
+        )
+        rows = (await db.execute(stmt)).all()
+        return success([
+            {"qzh": r[0], "fonds_id": str(r[1]), "count": r[2]} for r in rows
+        ])
+
+    # level == "year"
+    if not category_id or not fonds_id:
+        return success([])
+    stmt = (
+        select(ArchiveStaging.ND, func.count())
+        .where(
+            *base_conds,
+            ArchiveStaging.category_id == category_id,
+            ArchiveStaging.fonds_id == fonds_id,
+        )
+        .group_by(ArchiveStaging.ND)
+        .order_by(ArchiveStaging.ND.desc().nulls_last())
+    )
+    rows = (await db.execute(stmt)).all()
+    return success([
+        {"year": r[0], "count": r[1]} for r in rows if r[0] is not None
+    ])
+
+
 # ── 档案 ──────────────────────────────────────────────────────────────────────
+
 
 @router.get("/archive/records", response_model=ResponseModel[dict])
 async def list_archives(
@@ -132,11 +225,23 @@ async def list_archives(
     current_user: User = Depends(get_current_user),
 ):
     query = ArchiveListQuery(
-        fonds_id=fonds_id, catalog_id=catalog_id, category_id=category_id,
-        ND=ND, keyword=keyword, MJ=MJ, status=status,
-        TM=TM, RZZ=RZZ, DH=DH, BGQX=BGQX,
-        ND_from=ND_from, ND_to=ND_to, WJRQ_from=WJRQ_from, WJRQ_to=WJRQ_to,
-        page=page, page_size=page_size,
+        fonds_id=fonds_id,
+        catalog_id=catalog_id,
+        category_id=category_id,
+        ND=ND,
+        keyword=keyword,
+        MJ=MJ,
+        status=status,
+        TM=TM,
+        RZZ=RZZ,
+        DH=DH,
+        BGQX=BGQX,
+        ND_from=ND_from,
+        ND_to=ND_to,
+        WJRQ_from=WJRQ_from,
+        WJRQ_to=WJRQ_to,
+        page=page,
+        page_size=page_size,
     )
     svc = ArchiveService(db)
     items, total = await svc.list_archives(query, tenant_id=current_user.tenant_id)
@@ -163,12 +268,14 @@ async def list_archives(
         d = ArchiveRead.model_validate(i).model_dump(mode="json")
         d["attachment_count"] = counts.get(i.id, 0)
         out.append(d)
-    return success({
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "items": out,
-    })
+    return success(
+        {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": out,
+        }
+    )
 
 
 @router.post("/archive/records", response_model=ResponseModel[ArchiveRead])
@@ -180,7 +287,7 @@ async def create_archive(
     svc = ArchiveService(db)
     item = await svc.create(data, tenant_id=current_user.tenant_id)
     await db.commit()
-    await sync_one(item)   # PG 提交后异步同步 ES（失败只记日志）
+    await sync_one(item)  # PG 提交后异步同步 ES（失败只记日志）
     return success(ArchiveRead.model_validate(item))
 
 
@@ -199,7 +306,10 @@ async def get_archive(
     return success(ArchiveRead.model_validate(item))
 
 
-@router.get("/archive/records/{archive_id}/attachments", response_model=ResponseModel[list[dict]])
+@router.get(
+    "/archive/records/{archive_id}/attachments",
+    response_model=ResponseModel[list[dict]],
+)
 async def list_archive_attachments(
     archive_id: str,
     db: AsyncSession = Depends(get_db),
@@ -232,7 +342,9 @@ async def list_archive_attachments(
     out: list[dict] = []
     for a in rows:
         try:
-            url = storage.get_presigned_url(a.storage_key, a.storage_bucket, expires_seconds=3600)
+            url = storage.get_presigned_url(
+                a.storage_key, a.storage_bucket, expires_seconds=3600
+            )
         except Exception:
             url = None
         item = AttachmentRead.model_validate(a).model_dump(mode="json")
@@ -251,7 +363,7 @@ async def update_archive(
     svc = ArchiveService(db)
     item = await svc.update(archive_id, data)
     await db.commit()
-    await sync_one(item)   # 更新后同步 ES
+    await sync_one(item)  # 更新后同步 ES
     return success(ArchiveRead.model_validate(item))
 
 
@@ -268,7 +380,10 @@ async def delete_archive(
     return success()
 
 
-@router.patch("/archive/records/{archive_id}/override-no", response_model=ResponseModel[ArchiveRead])
+@router.patch(
+    "/archive/records/{archive_id}/override-no",
+    response_model=ResponseModel[ArchiveRead],
+)
 async def override_archive_no(
     archive_id: uuid.UUID,
     DH: str = Body(..., embed=True),
@@ -285,13 +400,43 @@ async def override_archive_no(
 
 # ── ES 全量重建（管理员） ─────────────────────────────────────────────────────
 
+
 @router.post("/archive/admin/rebuild-es-index", response_model=ResponseModel[dict])
 async def rebuild_es_index(
+    sync: bool = Query(
+        False,
+        description="true=在当前进程内同步重建（暂存库+正式库），false=投递 Celery 异步任务",
+    ),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """触发 ES 全量重建任务（超级管理员）。"""
-    from app.modules.repository.tasks.es_rebuild import rebuild_archive_index
-    task = rebuild_archive_index.delay(
-        str(current_user.tenant_id) if current_user.tenant_id else None
-    )
-    return success({"task_id": task.id})
+    """ES 全量重建。
+
+    sync=True：在 API 进程内同步重建，覆盖暂存库 + 正式库（含 full_text 全文）。
+    sync=False：投递 Celery 异步任务（仅暂存库）。
+    """
+    if not sync:
+        from app.modules.repository.tasks.es_rebuild import rebuild_archive_index
+
+        task = rebuild_archive_index.delay(
+            str(current_user.tenant_id) if current_user.tenant_id else None
+        )
+        return success({"task_id": task.id})
+
+    from sqlalchemy import select
+    from app.modules.repository.models.archive import Archive, ArchiveStaging
+    from app.modules.repository.services.es_sync_service import bulk_sync
+
+    total = 0
+    for model in (ArchiveStaging, Archive):
+        rows = (
+            (
+                await db.execute(
+                    select(model).where(model.is_deleted == False)  # noqa: E712
+                )
+            )
+            .scalars()
+            .all()
+        )
+        total += await bulk_sync(rows)
+    return success({"reindexed": total, "mode": "sync"})

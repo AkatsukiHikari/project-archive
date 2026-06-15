@@ -197,8 +197,6 @@ export interface Archive {
   MJ: string;
   BGQX: string;
   KFZT?: string | null;
-  JDRQ?: string | null;
-  KFLY?: string | null;
   status: string;
   ext_fields?: Record<string, unknown>;
   embedding_status: string;
@@ -351,9 +349,19 @@ export interface ArchiveAttachment {
   url: string | null;
 }
 
+export interface NavCategory { category_id: string; code: string; name: string; count: number }
+export interface NavFonds { qzh: string; fonds_id: string; count: number }
+export interface NavYear { year: number; count: number }
+
 export const ArchiveAPI = {
   list: (params: ArchiveListParams) =>
     http.get<ApiResponse<ArchiveListResult>, ApiResponse<ArchiveListResult>>("/archive/records", { params }),
+  navCategories: () =>
+    http.get<ApiResponse<NavCategory[]>, ApiResponse<NavCategory[]>>("/archive/records/nav", { params: { level: "category" } }),
+  navFonds: (categoryId: string) =>
+    http.get<ApiResponse<NavFonds[]>, ApiResponse<NavFonds[]>>("/archive/records/nav", { params: { level: "fonds", category_id: categoryId } }),
+  navYears: (categoryId: string, fondsId: string) =>
+    http.get<ApiResponse<NavYear[]>, ApiResponse<NavYear[]>>("/archive/records/nav", { params: { level: "year", category_id: categoryId, fonds_id: fondsId } }),
   get: (id: string) => http.get<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`),
   attachments: (id: string) =>
     http.get<ApiResponse<ArchiveAttachment[]>, ApiResponse<ArchiveAttachment[]>>(`/archive/records/${id}/attachments`),

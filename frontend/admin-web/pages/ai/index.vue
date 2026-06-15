@@ -220,9 +220,9 @@ import {
 import ScenarioComingSoon from "@/components/business/ai/ScenarioComingSoon.vue";
 
 definePageMeta({
-  layout: "portal",
+  layout: "archive",
   middleware: "auth",
-  breadcrumb: [{ name: "AI 档案助手", path: "/ai" }],
+  breadcrumb: [{ name: "AI 对话助手", path: "/ai" }],
 });
 
 const router = useRouter();

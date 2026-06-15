@@ -47,6 +47,7 @@ MENU_TREE = [
             {"code": "platform:users",   "name": "用户管理",   "type": "MENU", "path": "/admin/users",         "icon": "heroicons:users",               "sort_order": 3},
             {"code": "platform:roles",   "name": "角色与权限", "type": "MENU", "path": "/admin/roles",         "icon": "heroicons:shield-check",        "sort_order": 4},
             {"code": "platform:menus",   "name": "菜单与权限", "type": "MENU", "path": "/admin/menus",         "icon": "heroicons:list-bullet",         "sort_order": 5},
+            {"code": "platform:dicts",   "name": "数据字典",   "type": "MENU", "path": "/admin/dicts",         "icon": "heroicons:book-open",           "sort_order": 6},
         ],
     },
     {
@@ -119,7 +120,7 @@ MENU_TREE = [
                 "icon": "heroicons:magnifying-glass-circle", "sort_order": 4,
                 "children": [
                     {"code": "archive.utilization.apply",       "name": "利用申请", "type": "MENU", "path": "/archive/utilization/apply",       "icon": "heroicons:document-plus",       "sort_order": 1},
-                    {"code": "archive.utilization.reading",     "name": "查阅登记", "type": "MENU", "path": "/archive/utilization/reading",     "icon": "heroicons:eye",                 "sort_order": 2},
+                    {"code": "archive.utilization.reading",     "name": "档案查询", "type": "MENU", "path": "/archive/utilization/reading",     "icon": "heroicons:magnifying-glass-circle", "sort_order": 2},
                     {"code": "archive.utilization.borrow",      "name": "借阅管理", "type": "MENU", "path": "/archive/utilization/borrow",      "icon": "heroicons:arrow-uturn-right",   "sort_order": 3},
                     {"code": "archive.utilization.copy",        "name": "复制申请", "type": "MENU", "path": "/archive/utilization/copy",        "icon": "heroicons:document-duplicate",  "sort_order": 4},
                     {"code": "archive.utilization.certificate", "name": "证明开具", "type": "MENU", "path": "/archive/utilization/certificate", "icon": "heroicons:identification",      "sort_order": 5},
@@ -196,8 +197,6 @@ MENU_TREE = [
                     {"code": "archive.settings.fonds",      "name": "全宗管理",   "type": "MENU", "path": "/archive/settings/fonds",      "icon": "heroicons:building-library", "sort_order": 1},
                     {"code": "archive.settings.categories", "name": "档案门类",   "type": "MENU", "path": "/archive/settings/categories", "icon": "heroicons:tag",              "sort_order": 2},
                     {"code": "archive.settings.norules",    "name": "档号规则",   "type": "MENU", "path": "/archive/settings/norules",    "icon": "heroicons:hashtag",          "sort_order": 3},
-                    {"code": "archive.settings.retention",  "name": "保管期限表", "type": "MENU", "path": "/archive/settings/retention",  "icon": "heroicons:calendar-days",    "sort_order": 4},
-                    {"code": "archive.settings.metadata",   "name": "元数据方案", "type": "MENU", "path": "/archive/settings/metadata",   "icon": "heroicons:variable",         "sort_order": 5},
                 ],
             },
         ],

@@ -1,17 +1,19 @@
 """鉴定任务：鉴定员核对结论 → 提交 → 审核员审核 → 结论回写档案。"""
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.error_code import ErrorCode
-from app.common.exceptions.base import (AuthorizationException,
-                                        NotFoundException, ValidationException)
-from app.modules.appraisal.models import (AppraisalItem, AppraisalPlan,
-                                          AppraisalTask)
+from app.common.exceptions.base import (
+    AuthorizationException,
+    NotFoundException,
+    ValidationException,
+)
+from app.modules.appraisal.models import AppraisalItem, AppraisalPlan, AppraisalTask
 from app.modules.appraisal.schemas.plan import ItemDecide
 from app.modules.appraisal.services.plan_service import PlanService
 from app.modules.iam.models.user import User
@@ -263,7 +265,11 @@ class TaskService:
         return task
 
     async def _writeback_archives(self, task: AppraisalTask) -> None:
-        """审核通过：结论回写正式库（开放状态/鉴定日期/理由）。"""
+        """审核通过：仅回写档案的当前开放状态（KFZT）。
+
+        鉴定日期/理由/引用标准属于鉴定过程元数据，留在 appr_task/appr_item，
+        不冗余到档案表；需要时按 archive_id 关联查最近一条审核通过的鉴定明细。
+        """
         items = (
             (
                 await self.db.execute(
@@ -276,16 +282,50 @@ class TaskService:
             .scalars()
             .all()
         )
-        today = date.today().isoformat()
         for item in items:
             stmt = (
                 update(Archive)
                 .where(Archive.id == item.archive_id)
-                .values(KFZT=item.final_kfzt, JDRQ=today, KFLY=item.final_reason)
+                .values(KFZT=item.final_kfzt)
             )
             if item.ND is not None:
                 stmt = stmt.where(Archive.ND == item.ND)  # 分区裁剪
             await self.db.execute(stmt)
+
+    # ── 档案最近鉴定结论（按 archive_id 关联查，替代档案表的 JDRQ/KFLY 快照）──
+
+    async def latest_conclusion(
+        self, archive_id: uuid.UUID, tenant_id: Optional[uuid.UUID]
+    ) -> Optional[dict]:
+        """某档案最近一条审核通过的鉴定结论：开放状态/理由/引用标准/鉴定日期/所属计划。"""
+        stmt = (
+            select(AppraisalItem, AppraisalTask, AppraisalPlan)
+            .join(AppraisalTask, AppraisalItem.task_id == AppraisalTask.id)
+            .join(AppraisalPlan, AppraisalItem.plan_id == AppraisalPlan.id)
+            .where(
+                AppraisalItem.archive_id == archive_id,
+                AppraisalItem.is_deleted.is_(False),
+                AppraisalTask.status == "approved",
+            )
+            .order_by(AppraisalTask.reviewed_at.desc())
+            .limit(1)
+        )
+        if tenant_id:
+            stmt = stmt.where(AppraisalItem.tenant_id == tenant_id)
+        row = (await self.db.execute(stmt)).first()
+        if not row:
+            return None
+        item, task, plan = row
+        return {
+            "kfzt": item.final_kfzt,
+            "reason": item.final_reason,
+            "standard_code": item.final_standard_code,
+            "appraised_at": (
+                task.reviewed_at.date().isoformat() if task.reviewed_at else None
+            ),
+            "plan_no": plan.plan_no,
+            "plan_name": plan.name,
+        }
 
     # ── 鉴定台账（审核通过的明细）─────────────────────────────────────────────
 

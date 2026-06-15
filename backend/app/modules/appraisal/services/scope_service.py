@@ -1,7 +1,7 @@
 """开放鉴定到期圈定。
 
 判断一件档案是否到了该鉴定的时间：
-  基准日 = 最近鉴定日期 JDRQ → 成文/文件日期 WJRQ → 年度 ND 年末 → 归档时间
+  基准日 = 最近鉴定日期(派生自审核通过的鉴定记录) → 成文/文件日期 WJRQ → 年度 ND 年末 → 归档时间
   到期   = 基准日 + 保管期限年数 ≤ 今天
 
 保管期限年数从 BGQX 字典解析（"30年"→30）；"永久"或解析不到数字的，
@@ -15,7 +15,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.appraisal.models import AppraisalItem, AppraisalTask
@@ -78,6 +78,7 @@ class ScopeService:
         """全量扫描到期档案（排除已在进行中鉴定任务里的档案）。"""
         years_map = await self.load_bgqx_years()
         in_progress = await self._archive_ids_in_active_tasks(tenant_id)
+        last_appraised = await self._last_appraised_map(tenant_id)
 
         stmt = select(Archive).where(
             Archive.is_deleted.is_(False),
@@ -93,10 +94,37 @@ class ScopeService:
         for archive in (await self.db.execute(stmt)).scalars():
             if archive.id in in_progress:
                 continue
-            result = self._evaluate_due(archive, years_map, today)
+            result = self._evaluate_due(
+                archive, years_map, today, last_appraised.get(archive.id)
+            )
             if result is not None:
                 due.append(result)
         return due
+
+    async def _last_appraised_map(
+        self, tenant_id: Optional[uuid.UUID]
+    ) -> dict[uuid.UUID, date]:
+        """各档案最近一次"审核通过鉴定"的日期（鉴定过程元数据派生，非档案静态列）。"""
+        stmt = (
+            select(
+                AppraisalItem.archive_id,
+                func.max(AppraisalTask.reviewed_at),
+            )
+            .join(AppraisalTask, AppraisalItem.task_id == AppraisalTask.id)
+            .where(
+                AppraisalItem.is_deleted.is_(False),
+                AppraisalTask.status == "approved",
+                AppraisalTask.reviewed_at.is_not(None),
+            )
+            .group_by(AppraisalItem.archive_id)
+        )
+        if tenant_id:
+            stmt = stmt.where(AppraisalItem.tenant_id == tenant_id)
+        result: dict[uuid.UUID, date] = {}
+        for archive_id, reviewed_at in (await self.db.execute(stmt)).all():
+            if reviewed_at is not None:
+                result[archive_id] = reviewed_at.date()
+        return result
 
     async def _archive_ids_in_active_tasks(
         self, tenant_id: Optional[uuid.UUID]
@@ -120,8 +148,9 @@ class ScopeService:
         archive: Archive,
         years_map: dict[str, Optional[int]],
         today: date,
+        last_appraised: Optional[date] = None,
     ) -> Optional[DueArchive]:
-        base_date, basis_label = self._base_date(archive)
+        base_date, basis_label = self._base_date(archive, last_appraised)
         if base_date is None:
             return None
 
@@ -140,11 +169,12 @@ class ScopeService:
         return DueArchive(archive, base_date, years, basis_label)
 
     @staticmethod
-    def _base_date(archive: Archive) -> tuple[Optional[date], str]:
-        """基准日：JDRQ → WJRQ → ND 年末 → 归档时间。"""
-        parsed = _parse_partial_date(archive.JDRQ)
-        if parsed:
-            return parsed, "上次鉴定"
+    def _base_date(
+        archive: Archive, last_appraised: Optional[date] = None
+    ) -> tuple[Optional[date], str]:
+        """基准日：最近鉴定日期(派生自鉴定记录) → WJRQ 成文日期 → ND 年末 → 归档时间。"""
+        if last_appraised is not None:
+            return last_appraised, "上次鉴定"
         parsed = _parse_partial_date(archive.WJRQ)
         if parsed:
             return parsed, "成文日期"

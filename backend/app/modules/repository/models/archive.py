@@ -272,6 +272,12 @@ class Archive(Base, AuditMixin):
     full_text: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="原文 OCR 全文（供全文检索）"
     )
+    shelf_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="所在架位（库房物理存放位置，无 DB FK；空=未上架）",
+    )
     embedding_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending"
     )

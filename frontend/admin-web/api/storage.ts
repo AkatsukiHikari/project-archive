@@ -131,4 +131,32 @@ export const StorageAPI = {
   returnInout: (id: string) => http.post<ApiResponse<InoutRecord>, ApiResponse<InoutRecord>>(`/storage/inout/${id}/return`),
 
   ledger: () => http.get<ApiResponse<StorageLedger>, ApiResponse<StorageLedger>>("/storage/ledger"),
+
+  // 架位管理
+  getShelf: (id: string) => http.get<ApiResponse<ShelfDetail>, ApiResponse<ShelfDetail>>(`/storage/shelves/${id}`),
+  updateShelf: (id: string, data: { capacity?: number; label?: string }) =>
+    http.put<ApiResponse<null>, ApiResponse<null>>(`/storage/shelves/${id}`, data),
+  assignToShelf: (id: string, archiveIds: string[]) =>
+    http.post<ApiResponse<{ assigned: number }>, ApiResponse<{ assigned: number }>>(`/storage/shelves/${id}/assign`, { archive_ids: archiveIds }),
+  unassignFromShelf: (archiveIds: string[]) =>
+    http.post<ApiResponse<{ unassigned: number }>, ApiResponse<{ unassigned: number }>>("/storage/shelves/unassign", { archive_ids: archiveIds }),
+  unshelved: (keyword?: string) =>
+    http.get<ApiResponse<ShelfArchive[]>, ApiResponse<ShelfArchive[]>>("/storage/unshelved", { params: keyword ? { keyword } : {} }),
 };
+
+export interface ShelfArchive {
+  id: string;
+  DH?: string | null;
+  TM: string;
+  ND?: number | null;
+  QZH?: string | null;
+}
+
+export interface ShelfDetail {
+  id: string;
+  code: string;
+  capacity: number;
+  used: number;
+  label?: string | null;
+  archives: ShelfArchive[];
+}

@@ -89,15 +89,33 @@
           <NButton size="small" tertiary type="error" @click="confirmDelete(detail)">删除</NButton>
         </div>
 
-        <VaultShelfGrid
-          v-if="detail.shelves"
-          :shelves="detail.shelves"
-          :rows="detail.rows"
-          :columns="detail.columns"
-          @pick="onShelfPick"
-        />
+        <ClientOnly>
+          <VaultShelf3D
+            v-if="detail.shelves"
+            :shelves="detail.shelves"
+            :rows="detail.rows"
+            :columns="detail.columns"
+            :layers="detail.layers"
+            @pick="onShelfPick"
+          />
+          <template #fallback>
+            <div class="rounded-xl flex items-center justify-center" style="height:460px;background:#0a1020;color:#5a6c9e">
+              三维库房加载中…
+            </div>
+          </template>
+        </ClientOnly>
+        <p class="text-center text-[12px] m-0" style="color:var(--semi-color-text-3)">
+          点击架位可管理其档案（上架 / 下架 / 改容量）
+        </p>
       </div>
     </NModal>
+
+    <!-- 架位管理抽屉 -->
+    <ShelfManageDrawer
+      v-model:show="shelfDrawer"
+      :shelf-id="activeShelfId"
+      @changed="reloadDetail"
+    />
 
     <!-- 新建 / 编辑库房 -->
     <NModal
@@ -135,7 +153,7 @@
 import { computed, h, onMounted, reactive, ref } from "vue";
 import { NButton, NInput, NInputNumber, NModal, NProgress, NSelect, NTag, useDialog, useMessage } from "naive-ui";
 import { AdminPageHeader, KpiCard } from "@/components/admin";
-import { VaultShelfGrid } from "@/components/archive";
+import { ShelfManageDrawer, VaultShelf3D } from "@/components/archive";
 import { StorageAPI } from "@/api/storage";
 import type { Shelf, Vault, VaultStatus } from "@/api/storage";
 
@@ -202,9 +220,21 @@ async function openDetail(v: Vault) {
   }
 }
 
+async function reloadDetail() {
+  if (detail.value) {
+    const res = await StorageAPI.getVault(detail.value.id);
+    if (res.code === 0) detail.value = res.data;
+  }
+  load();  // 同步刷新库房卡片占用率
+}
+
+// ── 架位管理抽屉 ──
+const shelfDrawer = ref(false);
+const activeShelfId = ref<string | null>(null);
+
 function onShelfPick(s: Shelf) {
-  const p = s.capacity ? Math.round((s.used / s.capacity) * 100) : 0;
-  message.info(`架位 ${s.code}：${s.used}/${s.capacity}（${p}%）${s.label ? " · " + s.label : ""}`);
+  activeShelfId.value = s.id;
+  shelfDrawer.value = true;
 }
 
 // ── 新建 / 编辑 ──

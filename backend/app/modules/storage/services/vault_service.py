@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.error_code import ErrorCode
 from app.common.exceptions.base import NotFoundException, ValidationException
+from app.modules.repository.models.archive import Archive
 from app.modules.storage.models import StorageInout, StorageShelf, StorageVault
 from app.modules.storage.schemas.vault import VaultCreate, VaultUpdate
 
@@ -15,6 +16,40 @@ from app.modules.storage.schemas.vault import VaultCreate, VaultUpdate
 class VaultService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    # ── 占用率实时统计（按档案 shelf_id 关联，不再用手填的 used 列）──────────────
+
+    async def _vault_used_map(
+        self, tenant_id: Optional[uuid.UUID]
+    ) -> dict[uuid.UUID, int]:
+        """各库房实放档案件数 = 该库房所有架位上关联的档案数。"""
+        stmt = (
+            select(StorageShelf.vault_id, func.count(Archive.id))
+            .join(Archive, Archive.shelf_id == StorageShelf.id)
+            .where(
+                StorageShelf.is_deleted.is_(False),
+                Archive.is_deleted.is_(False),
+                Archive.status != "destroyed",
+            )
+            .group_by(StorageShelf.vault_id)
+        )
+        if tenant_id:
+            stmt = stmt.where(StorageShelf.tenant_id == tenant_id)
+        return {r[0]: r[1] for r in (await self.db.execute(stmt)).all()}
+
+    async def _shelf_used_map(self, vault_id: uuid.UUID) -> dict[uuid.UUID, int]:
+        """某库房各架位实放档案件数。"""
+        stmt = (
+            select(Archive.shelf_id, func.count())
+            .join(StorageShelf, Archive.shelf_id == StorageShelf.id)
+            .where(
+                StorageShelf.vault_id == vault_id,
+                Archive.is_deleted.is_(False),
+                Archive.status != "destroyed",
+            )
+            .group_by(Archive.shelf_id)
+        )
+        return {r[0]: r[1] for r in (await self.db.execute(stmt)).all()}
 
     # ── 库房 ──────────────────────────────────────────────────────────────────
 
@@ -25,7 +60,8 @@ class VaultService:
         vaults = (
             (await self.db.execute(stmt.order_by(StorageVault.code))).scalars().all()
         )
-        return [self._vault_dict(v) for v in vaults]
+        used_map = await self._vault_used_map(tenant_id)
+        return [self._vault_dict(v, used_map.get(v.id, 0)) for v in vaults]
 
     async def get_vault(
         self, vault_id: uuid.UUID, tenant_id: Optional[uuid.UUID]
@@ -45,7 +81,9 @@ class VaultService:
             .scalars()
             .all()
         )
-        data = self._vault_dict(vault)
+        shelf_used = await self._shelf_used_map(vault.id)
+        vault_used = sum(shelf_used.values())
+        data = self._vault_dict(vault, vault_used)
         data["shelves"] = [
             {
                 "id": s.id,
@@ -53,7 +91,7 @@ class VaultService:
                 "row_index": s.row_index,
                 "col_index": s.col_index,
                 "capacity": s.capacity,
-                "used": s.used,
+                "used": shelf_used.get(s.id, 0),
                 "label": s.label,
             }
             for s in shelves
@@ -157,7 +195,7 @@ class VaultService:
         return vault
 
     @staticmethod
-    def _vault_dict(v: StorageVault) -> dict:
+    def _vault_dict(v: StorageVault, used: int) -> dict:
         return {
             "id": v.id,
             "code": v.code,
@@ -168,14 +206,138 @@ class VaultService:
             "columns": v.columns,
             "layers": v.layers,
             "capacity": v.capacity,
-            "used": v.used,
+            "used": used,
             "temperature": v.temperature,
             "humidity": v.humidity,
             "status": v.status,
             "manager_id": v.manager_id,
             "notes": v.notes,
-            "fill_rate": round(v.used / v.capacity * 100, 1) if v.capacity else 0.0,
+            "fill_rate": round(used / v.capacity * 100, 1) if v.capacity else 0.0,
         }
+
+    # ── 架位管理 ──────────────────────────────────────────────────────────────
+
+    async def shelf_detail(
+        self, shelf_id: uuid.UUID, tenant_id: Optional[uuid.UUID]
+    ) -> dict:
+        """架位详情：容量/已用 + 该架位上的档案清单。"""
+        shelf = await self._require_shelf(shelf_id, tenant_id)
+        rows = (
+            (
+                await self.db.execute(
+                    select(Archive)
+                    .where(
+                        Archive.shelf_id == shelf_id,
+                        Archive.is_deleted.is_(False),
+                        Archive.status != "destroyed",
+                    )
+                    .order_by(Archive.DH.asc().nulls_last())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return {
+            "id": shelf.id,
+            "code": shelf.code,
+            "capacity": shelf.capacity,
+            "used": len(rows),
+            "label": shelf.label,
+            "archives": [
+                {"id": a.id, "DH": a.DH, "TM": a.TM, "ND": a.ND, "QZH": a.QZH}
+                for a in rows
+            ],
+        }
+
+    async def update_shelf(
+        self,
+        shelf_id: uuid.UUID,
+        tenant_id: Optional[uuid.UUID],
+        capacity: Optional[int] = None,
+        label: Optional[str] = None,
+    ) -> StorageShelf:
+        shelf = await self._require_shelf(shelf_id, tenant_id)
+        if capacity is not None:
+            shelf.capacity = capacity
+        if label is not None:
+            shelf.label = label
+        await self.db.flush()
+        return shelf
+
+    async def assign_archives(
+        self,
+        shelf_id: uuid.UUID,
+        archive_ids: list[uuid.UUID],
+        tenant_id: Optional[uuid.UUID],
+    ) -> int:
+        """上架：把档案放到该架位。"""
+        from sqlalchemy import update
+
+        await self._require_shelf(shelf_id, tenant_id)
+        result = await self.db.execute(
+            update(Archive)
+            .where(Archive.id.in_(archive_ids), Archive.is_deleted.is_(False))
+            .values(shelf_id=shelf_id)
+        )
+        return result.rowcount or 0
+
+    async def unassign_archives(
+        self, archive_ids: list[uuid.UUID], tenant_id: Optional[uuid.UUID]
+    ) -> int:
+        """下架：清除档案的架位关联。"""
+        from sqlalchemy import update
+
+        result = await self.db.execute(
+            update(Archive)
+            .where(Archive.id.in_(archive_ids), Archive.is_deleted.is_(False))
+            .values(shelf_id=None)
+        )
+        return result.rowcount or 0
+
+    async def list_unshelved(
+        self,
+        tenant_id: Optional[uuid.UUID],
+        keyword: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """待上架档案：正式库中尚未关联架位的档案，供上架挑选。"""
+        stmt = select(Archive).where(
+            Archive.is_deleted.is_(False),
+            Archive.status != "destroyed",
+            Archive.shelf_id.is_(None),
+        )
+        if tenant_id:
+            stmt = stmt.where(Archive.tenant_id == tenant_id)
+        if keyword:
+            like = f"%{keyword}%"
+            stmt = stmt.where(Archive.TM.ilike(like) | Archive.DH.ilike(like))
+        rows = (
+            (
+                await self.db.execute(
+                    stmt.order_by(Archive.DH.asc().nulls_last()).limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return [
+            {"id": a.id, "DH": a.DH, "TM": a.TM, "ND": a.ND, "QZH": a.QZH} for a in rows
+        ]
+
+    async def _require_shelf(
+        self, shelf_id: uuid.UUID, tenant_id: Optional[uuid.UUID]
+    ) -> StorageShelf:
+        stmt = select(StorageShelf).where(
+            StorageShelf.id == shelf_id, StorageShelf.is_deleted.is_(False)
+        )
+        if tenant_id:
+            stmt = stmt.where(StorageShelf.tenant_id == tenant_id)
+        shelf = (await self.db.execute(stmt)).scalars().first()
+        if not shelf:
+            raise NotFoundException(
+                code=ErrorCode.VAULT_NOT_FOUND, message="架位不存在"
+            )
+        return shelf
 
     # ── 保管台账 ──────────────────────────────────────────────────────────────
 

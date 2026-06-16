@@ -10,7 +10,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import ResponseModel, success
@@ -59,7 +59,7 @@ async def create_vault(
     svc = VaultService(db)
     vault = await svc.create_vault(body, current_user.tenant_id)
     await db.commit()
-    data = svc._vault_dict(vault)
+    data = svc._vault_dict(vault, 0)
     return success(VaultOut.model_validate(data).model_dump(mode="json"))
 
 
@@ -73,8 +73,84 @@ async def update_vault(
     svc = VaultService(db)
     vault = await svc.update_vault(vault_id, body, current_user.tenant_id)
     await db.commit()
-    data = svc._vault_dict(vault)
+    used = (await svc._vault_used_map(current_user.tenant_id)).get(vault.id, 0)
+    data = svc._vault_dict(vault, used)
     return success(VaultOut.model_validate(data).model_dump(mode="json"))
+
+
+# ── 架位管理 ──────────────────────────────────────────────────────────────────
+
+
+@router.get("/shelves/{shelf_id}", response_model=ResponseModel[dict])
+async def get_shelf(
+    shelf_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = VaultService(db)
+    return success(await svc.shelf_detail(shelf_id, current_user.tenant_id))
+
+
+@router.put("/shelves/{shelf_id}", response_model=ResponseModel[None])
+async def update_shelf(
+    shelf_id: uuid.UUID,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = VaultService(db)
+    await svc.update_shelf(
+        shelf_id,
+        current_user.tenant_id,
+        capacity=body.get("capacity"),
+        label=body.get("label"),
+    )
+    await db.commit()
+    return success(None)
+
+
+@router.post("/shelves/{shelf_id}/assign", response_model=ResponseModel[dict])
+async def assign_to_shelf(
+    shelf_id: uuid.UUID,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """上架：把档案放到该架位。body: {archive_ids: [...]}"""
+    svc = VaultService(db)
+    ids = [uuid.UUID(x) for x in body.get("archive_ids", [])]
+    n = await svc.assign_archives(shelf_id, ids, current_user.tenant_id)
+    await db.commit()
+    return success({"assigned": n})
+
+
+@router.get("/unshelved", response_model=ResponseModel[list[dict]])
+async def list_unshelved(
+    keyword: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """待上架档案（正式库中未关联架位的）。"""
+    svc = VaultService(db)
+    rows = await svc.list_unshelved(
+        current_user.tenant_id, keyword=keyword, limit=limit
+    )
+    return success([{**r, "id": str(r["id"])} for r in rows])
+
+
+@router.post("/shelves/unassign", response_model=ResponseModel[dict])
+async def unassign_from_shelf(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """下架：清除档案的架位关联。body: {archive_ids: [...]}"""
+    svc = VaultService(db)
+    ids = [uuid.UUID(x) for x in body.get("archive_ids", [])]
+    n = await svc.unassign_archives(ids, current_user.tenant_id)
+    await db.commit()
+    return success({"unassigned": n})
 
 
 @router.delete("/vaults/{vault_id}", response_model=ResponseModel[None])

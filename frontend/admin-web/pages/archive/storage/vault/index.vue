@@ -99,7 +99,7 @@
             @pick="onShelfPick"
           />
           <template #fallback>
-            <div class="rounded-xl flex items-center justify-center" style="height:460px;background:#0a1020;color:#5a6c9e">
+            <div class="rounded-xl flex items-center justify-center" style="height:460px;background:#1c2742;color:#8fa0c4">
               三维库房加载中…
             </div>
           </template>

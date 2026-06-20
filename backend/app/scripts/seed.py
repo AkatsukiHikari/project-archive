@@ -186,7 +186,8 @@ MENU_TREE = [
                 "icon": "heroicons:academic-cap", "sort_order": 7,
                 "children": [
                     {"code": "archive.research.project",     "name": "编研项目", "type": "MENU", "path": "/archive/research/project",     "icon": "heroicons:folder-open",       "sort_order": 1},
-                    {"code": "archive.research.compilation", "name": "专题汇编", "type": "MENU", "path": "/archive/research/compilation", "icon": "heroicons:book-open",         "sort_order": 2},
+                    {"code": "archive.research.compilation", "name": "编研成果", "type": "MENU", "path": "/archive/research/compilation", "icon": "heroicons:book-open",         "sort_order": 2},
+                    {"code": "archive.research.template",    "name": "编研模板", "type": "MENU", "path": "/archive/research/template",    "icon": "heroicons:document-duplicate", "sort_order": 3},
                 ],
             },
             # ── 基础配置 ──────────────────────────────────────────────────────────

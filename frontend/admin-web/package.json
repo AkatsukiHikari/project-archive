@@ -18,6 +18,8 @@
     "@nuxt/icon": "2.2.1",
     "@nuxt/image": "2.0.0",
     "@pinia/nuxt": "^0.11.3",
+    "@umoteam/editor": "^10.2.1",
+    "@umoteam/umo-editor-nuxt": "^0.1.2",
     "@vueuse/core": "^14.2.1",
     "ai": "^6.0.146",
     "axios": "^1.13.5",

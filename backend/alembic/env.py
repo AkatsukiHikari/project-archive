@@ -39,6 +39,13 @@ from app.modules.ai_eval.models.annotation import Annotation  # noqa: F401
 from app.modules.statistics.models import StatAnnualReport  # noqa: F401
 from app.modules.repository.models.attach_batch import AttachBatch  # noqa: F401
 from app.modules.storage.models import StorageInout, StorageShelf, StorageVault  # noqa: F401
+from app.modules.research.models import (  # noqa: F401
+    ResearchMaterial,
+    ResearchProject,
+    ResearchResult,
+    ResearchResultArchive,
+    ResearchTemplate,
+)
 from app.modules.appraisal.models import (  # noqa: F401
     AppraisalItem,
     AppraisalPlan,

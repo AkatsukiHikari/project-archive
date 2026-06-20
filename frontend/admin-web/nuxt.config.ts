@@ -14,11 +14,17 @@ export default defineNuxtConfig({
     "@nuxt/fonts",
     "@nuxt/image",
     "shadcn-nuxt",
+    "@umoteam/umo-editor-nuxt",
   ],
 
   shadcn: {
     prefix: "",
     componentDir: "./components/ui",
+  },
+
+  // 编研在线文档编辑器（UmoEditor）默认中文
+  umoEditor: {
+    locale: "zh-CN",
   },
 
   pinia: {
@@ -52,6 +58,11 @@ export default defineNuxtConfig({
           changeOrigin: true,
           autoRewrite: true,
         },
+        // 本地存储静态资源（编研图片/附件经 StorageAdapter 落到后端 /static）
+        "/static": {
+          target: "http://localhost:8000",
+          changeOrigin: true,
+        },
       },
     },
   },
@@ -61,5 +72,5 @@ export default defineNuxtConfig({
     transpile: ["vue-sonner", "naive-ui", "@css-render/vue3-ssr"],
   },
 
-  css: ["~/assets/css/daisy-semi-sync.css"],
+  css: ["~/assets/css/daisy-semi-sync.css", "@umoteam/editor/style"],
 });

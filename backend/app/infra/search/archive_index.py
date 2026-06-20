@@ -25,6 +25,7 @@ async def index_item(item: ArchiveStaging) -> None:
     client = get_es_client()
     doc = {
         "id": str(item.id),
+        "doc_source": "staging",
         "DH": item.DH,
         "QZH": item.QZH,
         "TM": item.TM,
@@ -34,6 +35,7 @@ async def index_item(item: ArchiveStaging) -> None:
         "MJ": item.MJ,
         "BGQX": item.BGQX,
         "catalog_id": str(item.catalog_id),
+        "category_id": str(item.category_id) if item.category_id else None,
         "status": item.status,
         "tenant_id": str(item.tenant_id) if item.tenant_id else None,
         "ext_fields": item.ext_fields,
@@ -148,3 +150,135 @@ async def search_items(
     except Exception as exc:
         logger.error("ES 搜索失败 query='%s': %s", query, exc)
         return {"total": 0, "hits": [], "error": "搜索服务暂时不可用"}
+
+
+# ── 超级查询：字段/全文 + 分面聚合（NDL 风格）────────────────────────────────────
+
+# 分面字段 → ES 聚合字段（结构化字段用 .keyword 子字段，年度为数值）
+FACET_FIELDS: dict[str, str] = {
+    "QZH": "QZH.keyword",
+    "ND": "ND",
+    "RZZ": "RZZ.keyword",
+    "MJ": "MJ.keyword",
+    "BGQX": "BGQX.keyword",
+    "category_id": "category_id.keyword",
+}
+
+_SUPER_SOURCE = [
+    "id",
+    "DH",
+    "QZH",
+    "TM",
+    "RZZ",
+    "ND",
+    "WJRQ",
+    "MJ",
+    "BGQX",
+    "category_id",
+    "create_time",
+]
+
+
+def _keyword_clause(keyword: str, mode: str) -> dict:
+    """字段检索：题名/责任者/档号（精确，不做 token-OR 否则档号会命中全部）；
+    全文检索：OCR 原文 full_text（可模糊召回）。两者均走 ES。"""
+    if mode == "fulltext":
+        should = [
+            {"match_phrase": {"full_text": {"query": keyword, "boost": 8, "slop": 1}}},
+            {"match": {"full_text": {"query": keyword}}},
+            {"match_phrase": {"TM": {"query": keyword, "boost": 4}}},
+        ]
+    else:
+        # 题名/责任者用短语精确匹配；档号用子串通配（大小写不敏感）。
+        should = [
+            {"match_phrase": {"TM": {"query": keyword, "boost": 10}}},
+            {"match_phrase": {"RZZ": {"query": keyword, "boost": 6}}},
+            {
+                "wildcard": {
+                    "DH.keyword": {
+                        "value": f"*{keyword}*",
+                        "case_insensitive": True,
+                    }
+                }
+            },
+        ]
+    return {"bool": {"should": should, "minimum_should_match": 1}}
+
+
+async def super_search(
+    keyword: str | None = None,
+    mode: str = "field",
+    filters: dict[str, list] | None = None,
+    tenant_id: str | None = None,
+    public_only: bool = False,
+    skip: int = 0,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """超级查询：关键字(字段/全文) + 分面聚合 + 高亮 + 分页，全部走 ES。
+
+    返回 {"total", "hits": [...highlight], "facets": {field: [{value, count}]}}
+    分面在当前过滤(关键字 + 已选分面)下重算，实现逐层下钻。
+    """
+    client = get_es_client()
+    filters = filters or {}
+
+    must: list[dict] = []
+    if keyword:
+        must.append(_keyword_clause(keyword, mode))
+
+    # 仅检索正式库馆藏（排除暂存库草稿）
+    filter_clauses: list[dict] = [{"term": {"doc_source.keyword": "formal"}}]
+    if tenant_id:
+        filter_clauses.append({"term": {"tenant_id": tenant_id}})
+    if public_only:
+        filter_clauses.append({"term": {"MJ.keyword": "无"}})
+    for name, values in filters.items():
+        field = FACET_FIELDS.get(name)
+        if field and values:
+            filter_clauses.append({"terms": {field: values}})
+
+    # 全文模式：把整段 OCR 原文(full_text)带回，前端整段展示 + 命中标红
+    source_fields = _SUPER_SOURCE + (["full_text"] if mode == "fulltext" else [])
+
+    es_query = {
+        "query": {
+            "bool": {"must": must or [{"match_all": {}}], "filter": filter_clauses}
+        },
+        "aggs": {
+            f"facet_{name}": {"terms": {"field": field, "size": 30}}
+            for name, field in FACET_FIELDS.items()
+        },
+        "highlight": {
+            "fields": {"TM": {}, "RZZ": {}},
+            "pre_tags": ["<em>"],
+            "post_tags": ["</em>"],
+        },
+        "from": skip,
+        "size": limit,
+        "_source": source_fields,
+    }
+
+    try:
+        resp = await client.search(index=ARCHIVE_INDEX, body=es_query)
+    except Exception as exc:
+        logger.error("ES 超级查询失败 keyword='%s': %s", keyword, exc)
+        return {"total": 0, "hits": [], "facets": {}, "error": "搜索服务暂时不可用"}
+
+    facets: dict[str, list] = {}
+    aggs = resp.get("aggregations", {})
+    for name in FACET_FIELDS:
+        buckets = aggs.get(f"facet_{name}", {}).get("buckets", [])
+        facets[name] = [{"value": b["key"], "count": b["doc_count"]} for b in buckets]
+
+    return {
+        "total": resp["hits"]["total"]["value"],
+        "hits": [
+            {
+                **hit["_source"],
+                "score": hit["_score"],
+                "highlight": hit.get("highlight", {}),
+            }
+            for hit in resp["hits"]["hits"]
+        ],
+        "facets": facets,
+    }

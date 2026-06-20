@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.bootstrap.lifespan import lifespan
 from app.common.exceptions.base import BaseAPIException
-from app.common.exceptions.handler import api_exception_handler, generic_exception_handler
+from app.common.exceptions.handler import (
+    api_exception_handler,
+    generic_exception_handler,
+)
 
 
 def create_app() -> FastAPI:
@@ -59,16 +62,31 @@ def create_app() -> FastAPI:
 
         if not is_healthy:
             health_status["status"] = "error"
-            return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=health_status)
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=health_status
+            )
 
         return health_status
 
     # API 路由注册
     from app.api.v1.router import v1_router
+
     app.include_router(v1_router, prefix=settings.API_PREFIX)
+
+    # 超级查询（公开检索，按登录态分级，不走 v1 全局登录依赖）
+    from app.modules.utilization.api.routes_super_search import (
+        router as super_search_router,
+    )
+
+    app.include_router(
+        super_search_router,
+        prefix=f"{settings.API_PREFIX}/v1/super-search",
+        tags=["super-search"],
+    )
 
     # Dify → 后端 Tool 回调（不走用户登录态，靠 X-Service-Token + X-User-Token 双重验证）
     from app.modules.ai.api.routes_tool import router as ai_tool_router
+
     app.include_router(
         ai_tool_router,
         prefix=f"{settings.API_PREFIX}/v1/ai/internal",
@@ -77,16 +95,19 @@ def create_app() -> FastAPI:
 
     # WebSocket 路由（独立于 API 版本）
     from app.api.v1 import ws
+
     app.include_router(ws.router, prefix="/ws", tags=["websocket"])
 
     # OAuth2 SSO 路由（不在 /api 版本管理下）
     from app.modules.oauth.api.routes import router as oauth_router
+
     app.include_router(oauth_router, prefix="/oauth", tags=["oauth"])
 
     # 静态文件服务（仅本地开发 local 模式），生产环境由 Nginx / MinIO / CDN 接管
     if settings.STORAGE_TYPE.lower() == "local":
         from fastapi.staticfiles import StaticFiles
         from pathlib import Path
+
         storage_root = Path(settings.STORAGE_LOCAL_ROOT)
         storage_root.mkdir(parents=True, exist_ok=True)
         app.mount("/static", StaticFiles(directory=str(storage_root)), name="static")

@@ -9,6 +9,7 @@
 
 专业档案隐私字段（requires_privacy_guard=True 的门类）在 ES 中存脱敏版本。
 """
+
 import logging
 from typing import Sequence
 
@@ -35,9 +36,13 @@ def _build_doc(archive: ArchiveStaging) -> dict:
 
     return {
         "id": str(archive.id),
+        "doc_source": (
+            "formal" if archive.__class__.__name__ == "Archive" else "staging"
+        ),
         "DH": archive.DH,
         "QZH": archive.QZH,
         "catalog_id": str(archive.catalog_id) if archive.catalog_id else None,
+        "category_id": str(archive.category_id) if archive.category_id else None,
         "ND": archive.ND,
         "TM": archive.TM,
         "RZZ": archive.RZZ,
@@ -56,7 +61,9 @@ async def sync_one(archive: ArchiveStaging) -> None:
     """索引单条档案（新增或覆盖）。失败只记日志，不抛异常。"""
     client: AsyncElasticsearch = get_es_client()
     try:
-        await client.index(index=ARCHIVE_INDEX, id=str(archive.id), document=_build_doc(archive))
+        await client.index(
+            index=ARCHIVE_INDEX, id=str(archive.id), document=_build_doc(archive)
+        )
     except Exception as exc:
         logger.warning("ES sync_one 失败 id=%s: %s", archive.id, exc)
 

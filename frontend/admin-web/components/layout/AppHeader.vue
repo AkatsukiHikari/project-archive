@@ -20,7 +20,7 @@
       </NuxtLink>
 
       <!-- 全局搜索 -->
-      <div class="flex-1 max-w-2xl mx-8 hidden md:block">
+      <div v-if="showSearch" class="flex-1 max-w-2xl mx-8 hidden md:block">
         <div class="relative group">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <MagnifyingGlassIcon
@@ -29,14 +29,16 @@
             />
           </div>
           <input
+            v-model="globalKeyword"
             type="text"
-            placeholder="搜索档案、档号或系统功能..."
+            placeholder="输入关键词，回车打开档案检索…"
             class="w-full h-9 pl-9 pr-12 text-sm rounded-lg border transition-all outline-none"
             style="
               background: var(--semi-color-fill-0);
               border-color: var(--semi-color-border);
               color: var(--semi-color-text-0);
             "
+            @keyup.enter="openSuperSearch"
           />
           <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
             <span
@@ -54,7 +56,19 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { MagnifyingGlassIcon } from "@heroicons/vue/24/outline";
 import LogoIcon from "@/components/common/LogoIcon.vue";
 import HeaderActions from "./HeaderActions.vue";
+
+// showSearch=false 时隐藏顶栏检索框（如档案检索页自身已有大检索框，避免重复）
+withDefaults(defineProps<{ showSearch?: boolean }>(), { showSearch: true });
+
+// 全局检索框：回车在「浏览器新标签」打开超级查询页（其余导航走 vue tabs）
+const globalKeyword = ref("");
+function openSuperSearch() {
+  const kw = globalKeyword.value.trim();
+  const url = `/search?mode=field${kw ? `&keyword=${encodeURIComponent(kw)}` : ""}`;
+  window.open(url, "_blank", "noopener");
+}
 </script>

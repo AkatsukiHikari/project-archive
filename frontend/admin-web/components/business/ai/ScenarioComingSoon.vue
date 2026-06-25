@@ -66,7 +66,12 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ScenarioInfo } from "@/api/ai";
+
+interface ScenarioInfo {
+  code: string;
+  name: string;
+  description?: string;
+}
 
 interface Props {
   scenario: ScenarioInfo | null;

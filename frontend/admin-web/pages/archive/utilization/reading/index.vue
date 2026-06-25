@@ -192,17 +192,19 @@
         <ApplicationDetailPanel :app-id="appId" :show-actions="false" @changed="reloadApp" />
       </NDrawerContent>
     </NDrawer>
+
+    <ArchiveInterpretDrawer v-model:show="interpretShow" :archive-id="interpretId" :title="interpretTitle" />
   </div>
 </template>
 
 <script setup lang="tsx">
-import { ref, reactive, computed, onMounted, h } from "vue";
+import { ref, reactive, computed, onMounted, watch, h } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { NInput, NInputNumber, NSelect, NButton, NPagination, NTag, NCheckbox, NDrawer, NDrawerContent, NTree, useMessage, useDialog } from "naive-ui";
 import type { DataTableColumns, TreeOption } from "naive-ui";
 import { AdminPageHeader } from "@/components/admin";
 import { ProTable } from "@/components/ui";
-import { PersonAvatar, ApplicationDetailPanel } from "@/components/archive";
+import { PersonAvatar, ApplicationDetailPanel, ArchiveInterpretDrawer } from "@/components/archive";
 import { FondsAPI, CategoryAPI, ArchiveAPI } from "@/api/repository";
 import type { Fonds, ArchiveCategory, Archive, ArchiveListParams } from "@/api/repository";
 import { UtilizationAPI } from "@/api/utilization";
@@ -453,6 +455,20 @@ async function load() {
   }
 }
 function search() { page.value = 1; load(); }
+
+// 从路由 query 带入检索条件（AI 引用点击：?DH=档号 或 ?q=关键字）
+function applyRouteQuery(): boolean {
+  const dh = route.query.DH ? String(route.query.DH) : "";
+  const q = route.query.q ? String(route.query.q) : "";
+  if (!dh && !q) return false;
+  mode.value = "field";
+  selectedNavKeys.value = [];
+  navScopeLabel.value = "";
+  form.DH = dh;
+  keyword.value = dh ? "" : q;
+  page.value = 1;
+  return true;
+}
 function reset() {
   keyword.value = "";
   Object.assign(form, { keyword: "", TM: "", RZZ: "", DH: "", fonds_id: undefined, category_id: undefined, MJ: undefined, BGQX: undefined, ND_from: undefined, ND_to: undefined });
@@ -629,10 +645,14 @@ function openReader(id?: string) {
   if (aid) router.push(`/archive/reader?id=${aid}`);
 }
 function openReaderFor(r: Archive) { router.push(`/archive/reader?id=${r.id}`); }
+const interpretShow = ref(false);
+const interpretId = ref<string | null>(null);
+const interpretTitle = ref("");
 function askAI(r: Archive | null) {
   if (!r) return;
-  const label = r.TM || r.DH || "这份档案";
-  router.push({ path: "/ai", query: { archive_id: r.id, q: `请帮我解读这份档案：${label}` } });
+  interpretId.value = r.id;
+  interpretTitle.value = `${r.DH || ""} ${r.TM || ""}`.trim();
+  interpretShow.value = true;
 }
 
 onMounted(async () => {
@@ -649,7 +669,14 @@ onMounted(async () => {
   }
   extLabel.value = labels;
   await reloadApp();
+  applyRouteQuery();
   await load();
   await loadNavRoot();
 });
+
+// 已打开的查阅页 Tab 再次被 AI 引用点击（同路径换 query，不重新挂载）→ 监听重查
+watch(
+  () => [route.query.DH, route.query.q],
+  () => { if (applyRouteQuery()) load(); },
+);
 </script>

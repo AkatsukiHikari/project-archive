@@ -519,16 +519,17 @@ const messageCitations = ref<Map<string, CitationChip[]>>(new Map());
 const router = useRouter();
 
 const onMessageCitations = (messageId: string, chips: CitationChip[]) => {
+  // ES 命中的 meta 引用（带档号、可跳转查阅页）优先；
+  // 不被随后 Dify 知识库召回的 dify 引用覆盖。
+  const existing = messageCitations.value.get(messageId) ?? [];
+  const existingHasMeta = existing.some((c) => c.source_type === "meta");
+  const incomingHasMeta = chips.some((c) => c.source_type === "meta");
+  if (existingHasMeta && !incomingHasMeta) return;
   messageCitations.value = new Map(messageCitations.value).set(messageId, chips);
 };
 
 const citationsFor = (id: string): CitationChip[] =>
   messageCitations.value.get(id) ?? [];
-
-// 打开档案原文阅览页：站内路由统一走 router.push（系统内 Tab），不开浏览器新窗口
-const openArchiveTab = (query: Record<string, string>) => {
-  router.push({ path: "/archive/reader", query });
-};
 
 // AI 答案里的 markdown 链接（如 [题名](/archive/reader?id=xxx)）：
 // 站内路径走 router.push；外部 http 链接才开新浏览器标签
@@ -543,9 +544,13 @@ const onAnswerClick = (e: MouseEvent) => {
 };
 
 const onCitationClick = (chip: CitationChip) => {
-  // meta 类（命中具体档案）→ 用 archive_id 精确定位原文
-  if (chip.source_type === "meta" && chip.source_id) {
-    openArchiveTab({ id: chip.source_id });
+  // meta 类（命中具体档案）→ 打开查阅页并按档号自动检索；无档号回退按题名检索
+  if (chip.source_type === "meta") {
+    const dh = (chip.extra?.DH as string) || "";
+    router.push({
+      path: "/archive/utilization/reading",
+      query: dh ? { DH: dh } : { q: chip.title },
+    });
     return;
   }
   // dify 类（无具体 archive_id）→ 退回查阅页做关键字检索

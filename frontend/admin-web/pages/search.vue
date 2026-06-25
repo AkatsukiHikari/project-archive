@@ -119,6 +119,8 @@
         </section>
       </div>
     </div>
+
+    <ArchiveInterpretDrawer v-model:show="interpretShow" :archive-id="interpretId" :title="interpretTitle" />
   </div>
 </template>
 
@@ -127,6 +129,7 @@ import { computed, h, onMounted, reactive, ref } from "vue";
 import { NButton, NDataTable, NInput, NTag } from "naive-ui";
 import type { DataTableColumns } from "naive-ui";
 import { SuperSearchAPI, type FacetValue, type SearchHit, type SearchMode } from "@/api/superSearch";
+import { ArchiveInterpretDrawer } from "@/components/archive";
 
 definePageMeta({ layout: "search" });
 useHead({ title: "档案检索" });
@@ -227,9 +230,12 @@ function mjCell(r: SearchHit) {
 }
 
 function actionCell(r: SearchHit) {
-  return r.has_source
-    ? h(NButton, { size: "tiny", tertiary: true, type: "primary", onClick: () => openReader(r.id) }, { default: () => "查看原文" })
-    : h("span", { class: "text-xs", style: "color: var(--semi-color-text-3)" }, "无原文");
+  return h("div", { class: "flex items-center gap-1" }, [
+    r.has_source
+      ? h(NButton, { size: "tiny", tertiary: true, onClick: () => openReader(r.id) }, { default: () => "原文" })
+      : h("span", { class: "text-xs", style: "color: var(--semi-color-text-3)" }, "无原文"),
+    h(NButton, { size: "tiny", tertiary: true, type: "primary", onClick: () => openInterpret(r) }, { default: () => "AI 解读" }),
+  ]);
 }
 
 // 字段检索表头：结构化字段铺开
@@ -242,7 +248,7 @@ const fieldColumns: DataTableColumns<SearchHit> = [
   { title: "门类", key: "category_id", width: 130, ellipsis: { tooltip: true }, render: (r) => catName(r.category_id) },
   { title: "密级", key: "MJ", width: 76, render: mjCell },
   { title: "保管期限", key: "BGQX", width: 90, render: (r) => r.BGQX || "—" },
-  { title: "操作", key: "actions", width: 96, render: actionCell },
+  { title: "操作", key: "actions", width: 150, render: actionCell },
 ];
 
 // 全文检索表头：突出"命中内容（原文）"
@@ -263,7 +269,7 @@ const fulltextColumns: DataTableColumns<SearchHit> = [
   { title: "年度", key: "ND", width: 70, render: (r) => r.ND || "—" },
   { title: "全宗号", key: "QZH", width: 84, render: (r) => r.QZH || "—" },
   { title: "密级", key: "MJ", width: 76, render: mjCell },
-  { title: "操作", key: "actions", width: 96, render: actionCell },
+  { title: "操作", key: "actions", width: 150, render: actionCell },
 ];
 
 const activeColumns = computed(() => {
@@ -353,6 +359,16 @@ function resetAll() {
 
 function openReader(id: string) {
   window.open(`/archive/reader?id=${id}`, "_blank", "noopener");
+}
+
+// ── AI 解读 ───────────────────────────────────────────────────────────────────
+const interpretShow = ref(false);
+const interpretId = ref<string | null>(null);
+const interpretTitle = ref("");
+function openInterpret(r: SearchHit) {
+  interpretId.value = r.id;
+  interpretTitle.value = `${r.DH || ""} ${r.TM}`.trim();
+  interpretShow.value = true;
 }
 
 onMounted(() => {

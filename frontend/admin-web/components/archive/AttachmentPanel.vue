@@ -57,8 +57,8 @@
           <template v-if="att.page_count"> · {{ att.page_count }} 页</template>
         </p>
       </div>
-      <NButton v-if="att.url" size="tiny" quaternary tag="a" :href="att.url" target="_blank">
-        预览
+      <NButton v-if="att.url" size="tiny" quaternary @click="viewSource">
+        查看原文
       </NButton>
       <NButton v-if="!att.is_primary" size="tiny" quaternary @click="makePrimary(att)">
         设为主件
@@ -67,18 +67,32 @@
         删除
       </NButton>
     </div>
+
+    <NDrawer v-model:show="showViewer" :width="viewerWidth" placement="right">
+      <NDrawerContent :body-content-style="{ padding: 0, height: '100%' }" closable>
+        <template #header>档案原文</template>
+        <ArchiveSourceViewer :archive-id="archiveId" />
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import { NButton, NTag, NUpload, NUploadDragger, useDialog, useMessage } from "naive-ui";
+import { NButton, NDrawer, NDrawerContent, NTag, NUpload, NUploadDragger, useDialog, useMessage } from "naive-ui";
 import type { UploadFileInfo } from "naive-ui";
 import { ArchiveAPI, OrganizeAPI } from "@/api/repository";
 import type { ArchiveAttachment } from "@/api/repository";
+import ArchiveSourceViewer from "./ArchiveSourceViewer.vue";
 
 const props = defineProps<{ archiveId: string }>();
 const emit = defineEmits<{ changed: [] }>();
+
+const showViewer = ref(false);
+function viewSource() {
+  showViewer.value = true;
+}
+const viewerWidth = typeof window !== "undefined" ? Math.round(window.innerWidth * 0.66) : 900;
 
 const message = useMessage();
 const dialog = useDialog();
@@ -110,7 +124,7 @@ async function onFilesChange({ fileList }: { fileList: UploadFileInfo[] }) {
       else message.error(`${file.name}：${res.message}`);
     }
     if (ok) {
-      message.success(`已挂接 ${ok} 个原文`);
+      message.success(`已挂接 ${ok} 个原文，PDF 正在后台 OCR 识别（进度见 AI → OCR 任务）`);
       await load();
       emit("changed");
     }

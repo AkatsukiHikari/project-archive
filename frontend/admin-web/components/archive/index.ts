@@ -20,5 +20,6 @@ export { default as ResearchTypeTag } from "./ResearchTypeTag.vue";
 export { default as ResultStatusTag } from "./ResultStatusTag.vue";
 export { default as ArchivePickerModal } from "./ArchivePickerModal.vue";
 export { default as ArchiveSourceViewer } from "./ArchiveSourceViewer.vue";
+export { default as ArchiveInterpretDrawer } from "./ArchiveInterpretDrawer.vue";
 export { default as ResearchResultEditor } from "./ResearchResultEditor.vue";
 export { default as ResearchTemplateEditor } from "./ResearchTemplateEditor.vue";

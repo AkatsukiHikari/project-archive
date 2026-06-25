@@ -48,6 +48,7 @@ const route = useRoute();
 const SUBSYSTEM_NAMES: Record<string, { name: string; path: string }> = {
   "/admin":   { name: "平台基础管理", path: "/admin" },
   "/archive": { name: "档案管理系统", path: "/archive" },
+  "/ai":      { name: "AI 档案助手", path: "/ai" },
 };
 
 const breadcrumbs = computed(() => {

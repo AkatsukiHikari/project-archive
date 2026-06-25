@@ -105,7 +105,7 @@
         :style="{ left: isCollapsed ? '64px' : '240px' }"
       >
         <SystemHeader />
-        <TabsBar prefix="/archive" :extra-paths="['/ai']" />
+        <TabsBar prefix="/archive" :extra-paths="['/ai', '/ai/knowledge', '/ai/ocr']" />
       </div>
 
       <!-- 内容区 -->
@@ -157,7 +157,7 @@ watch(
   () => route.path,
   (path) => {
     // 档案子系统页 + AI 对话助手（portal 级功能，复用档案工作区标签）
-    if (!path.startsWith("/archive") && path !== "/ai") return;
+    if (!path.startsWith("/archive") && !path.startsWith("/ai")) return;
     const breadcrumbs = route.meta.breadcrumb as { name: string; path: string }[] | undefined;
     const title = breadcrumbs?.[breadcrumbs.length - 1]?.name;
     tabsStore.openTab(path, title);
@@ -229,7 +229,7 @@ const menuOptions = computed<MenuOption[]>(() => {
         m.type !== "BUTTON" &&
         m.is_visible &&
         (m as { is_deleted?: boolean }).is_deleted !== true &&
-        m.code.startsWith("archive."),
+        (m.code.startsWith("archive.") || m.code === "ai" || m.code.startsWith("ai:")),
     )
     .sort((a, b) => a.sort_order - b.sort_order);
 

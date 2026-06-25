@@ -160,6 +160,14 @@
       </NDrawerContent>
     </NDrawer>
 
+    <!-- ── 查看原文抽屉 ───────────────────────────────────── -->
+    <NDrawer v-model:show="viewerShow" :width="920" placement="right">
+      <NDrawerContent :body-content-style="{ padding: 0, height: '100%' }" closable>
+        <template #header>档案原文</template>
+        <ArchiveSourceViewer :archive-id="viewerArchiveId" :title="viewerTitle" :dh="viewerDh" />
+      </NDrawerContent>
+    </NDrawer>
+
     <!-- 新增 / 编辑 -->
     <CrudModal
       v-model:visible="modalVisible"
@@ -224,12 +232,14 @@
       :selected-ids="selectedIds"
       @done="onOrganizeDone"
     />
+
+    <ArchiveInterpretDrawer v-model:show="interpretShow" :archive-id="interpretId" :title="interpretTitle" />
   </div>
 </template>
 
 <script setup lang="tsx">
 import { computed, h, onMounted, reactive, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import {
   NButton, NCheckbox, NDrawer, NDrawerContent, NForm, NFormItem, NInput,
   NInputNumber, NPagination, NSelect, NTag,
@@ -243,7 +253,7 @@ import type {
 import { AdminPageHeader } from "@/components/admin";
 import { CrudModal, ProTable } from "@/components/ui";
 import {
-  AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
+  ArchiveInterpretDrawer, ArchiveSourceViewer, AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
 } from "@/components/archive";
 import { AppraisalAPI } from "@/api/appraisal";
 import type { ArchiveConclusion } from "@/api/appraisal";
@@ -252,7 +262,6 @@ definePageMeta({ layout: "archive", middleware: "auth" });
 
 const message = useMessage();
 const dialog = useDialog();
-const router = useRouter();
 const route = useRoute();
 
 type SlotsCtx = { slots: { default?: () => unknown } };
@@ -442,8 +451,8 @@ const columns = computed<DataTableColumns<Archive>>(() => [
   {
     title: "原文", key: "attachment_count", width: 70,
     render: (r) => (r.attachment_count
-      ? h("span", { class: "inline-flex items-center gap-0.5 text-[12px]", style: "color:oklch(var(--su))" },
-          [h("span", "📎"), String(r.attachment_count)])
+      ? h(NButton, { size: "tiny", text: true, type: "success", onClick: () => openViewer(r) },
+          { default: () => `${r.attachment_count} 份` })
       : h("span", { class: "text-[11.5px]", style: "color:var(--semi-color-text-3)" }, "无")),
   },
   {
@@ -451,10 +460,13 @@ const columns = computed<DataTableColumns<Archive>>(() => [
     render: (r) => h("span", { class: "text-[12px]" }, statusLabel[r.status] ?? r.status),
   },
   {
-    title: "操作", key: "actions", width: 130,
+    title: "操作", key: "actions", width: 200,
     render: (r) => [
       h(NButton, { size: "tiny", tertiary: true, class: "mr-1", onClick: () => openDetail(r) }, { default: () => "详情" }),
-      h(NButton, { size: "tiny", tertiary: true, type: "primary", onClick: () => openAttach(r) }, { default: () => "挂接" }),
+      h(NButton, { size: "tiny", tertiary: true, type: "primary", class: "mr-1", onClick: () => openAttach(r) }, { default: () => "挂接" }),
+      ...(r.attachment_count
+        ? [h(NButton, { size: "tiny", tertiary: true, type: "success", onClick: () => openViewer(r) }, { default: () => "查看原文" })]
+        : []),
     ],
   },
 ]);
@@ -512,9 +524,26 @@ function openAttach(row: Archive) {
   attachVisible.value = true;
 }
 
+// ── 查看原文 ──────────────────────────────────────────────────────────────────
+const viewerShow = ref(false);
+const viewerArchiveId = ref<string | null>(null);
+const viewerTitle = ref("");
+const viewerDh = ref("");
+function openViewer(row: Archive) {
+  viewerArchiveId.value = row.id;
+  viewerTitle.value = row.TM || "";
+  viewerDh.value = row.DH || "";
+  viewerShow.value = true;
+}
+
+const interpretShow = ref(false);
+const interpretId = ref<string | null>(null);
+const interpretTitle = ref("");
 function askAI(row: Archive | null) {
   if (!row) return;
-  router.push({ path: "/ai", query: { archive_id: row.id, q: `请帮我解读这份档案：${row.TM}` } });
+  interpretId.value = row.id;
+  interpretTitle.value = `${row.DH || ""} ${row.TM || ""}`.trim();
+  interpretShow.value = true;
 }
 
 // ── 新增 / 编辑 ──────────────────────────────────────────────────────────────

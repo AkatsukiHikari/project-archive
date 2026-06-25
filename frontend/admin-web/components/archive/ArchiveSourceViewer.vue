@@ -35,28 +35,36 @@
         <div class="flex items-center gap-2 px-3 py-2 shrink-0 border-b border-gray-200">
           <Icon name="heroicons:sparkles" class="w-4 h-4 text-indigo-600" />
           <span class="text-[13px] font-semibold">OCR 全文</span>
-          <span v-if="hasText" class="text-[11px] text-gray-400">约 {{ totalChars }} 字</span>
+          <span v-if="ocrText" class="text-[11px] text-green-600">已识别 · {{ ocrText.length }} 字</span>
+          <span v-else-if="hasText" class="text-[11px] text-gray-400">PDF 文本层 · {{ totalChars }} 字</span>
           <div class="flex-1" />
-          <NButton text size="tiny" :disabled="!hasText" @click="copyAll">
+          <NButton text size="tiny" :disabled="!ocrText && !hasText" @click="copyAll">
             <template #icon><Icon name="heroicons:clipboard-document" class="w-4 h-4" /></template>
             复制全文
           </NButton>
         </div>
         <div class="flex-1 min-h-0 overflow-y-auto px-3 py-2">
-          <div v-if="extracting" class="flex items-center gap-2 py-6 text-[12px] text-gray-400"><NSpin size="small" /> 正在提取全文…</div>
+          <!-- 优先展示存下的 MinerU OCR 全文 -->
+          <p
+            v-if="ocrText"
+            class="text-[12.5px] leading-relaxed whitespace-pre-wrap break-words text-gray-700 select-text"
+          >{{ ocrText }}</p>
+          <template v-else-if="extracting">
+            <div class="flex items-center gap-2 py-6 text-[12px] text-gray-400"><NSpin size="small" /> 正在提取 PDF 文本层…</div>
+          </template>
           <template v-else-if="hasText">
+            <p class="text-[11px] text-amber-600 mb-2">（以下为 PDF 文本层提取，非 MinerU OCR 结果）</p>
             <p
               v-for="pt in pageTexts"
               :key="pt.page"
               class="text-[12.5px] leading-relaxed whitespace-pre-wrap break-words text-gray-700 mb-3 select-text"
             >{{ pt.text }}</p>
           </template>
-          <div v-else-if="pdfUrl" class="flex flex-col items-center gap-2 py-8 text-center text-gray-400">
-            <Icon name="heroicons:photo" class="w-8 h-8" />
-            <p class="text-[12px]">该原文无文本层（疑为扫描件）</p>
-            <p class="text-[11px]">写作时可直接参照左侧 PDF 影像</p>
+          <div v-else class="flex flex-col items-center gap-2 py-8 text-center text-gray-400">
+            <Icon name="heroicons:document-magnifying-glass" class="w-8 h-8" />
+            <p class="text-[12px]">该档案尚未 OCR 识别</p>
+            <p class="text-[11px]">挂接 PDF 会自动后台识别，或到「AI → OCR 任务」手动触发/查看进度</p>
           </div>
-          <div v-else class="py-8 text-center text-[12px] text-gray-400">无原文可提取</div>
         </div>
       </aside>
     </div>
@@ -68,6 +76,7 @@ import { computed, ref, watch } from "vue";
 import { NButton, NSelect, NSpin, useMessage } from "naive-ui";
 import VuePdfEmbed from "vue-pdf-embed";
 import { ArchiveAPI, type ArchiveAttachment } from "@/api/repository";
+import { AiAdminAPI } from "@/api/ai";
 
 const props = defineProps<{ archiveId: string | null; title?: string; dh?: string }>();
 const emit = defineEmits<{ (e: "insert-cite"): void }>();
@@ -90,6 +99,9 @@ const extracting = ref(false);
 const pageTexts = ref<PageText[]>([]);
 let pdfDoc: PdfDocProxy | null = null;
 
+// 存下的 MinerU OCR 全文（权威，优先展示）
+const ocrText = ref("");
+
 const hasText = computed(() => pageTexts.value.some((p) => p.text.trim().length > 0));
 const totalChars = computed(() => pageTexts.value.reduce((s, p) => s + p.text.length, 0));
 const fullText = computed(() => pageTexts.value.map((p) => p.text).join("\n\n"));
@@ -99,10 +111,18 @@ async function load() {
   loading.value = true;
   pageTexts.value = [];
   pdfDoc = null;
+  ocrText.value = "";
   try {
     const res = await ArchiveAPI.attachments(props.archiveId);
     attachments.value = (res.data ?? []).filter((a) => a.url);
     activeKey.value = attachments.value[0]?.id ?? "";
+    // 取存下的 OCR 全文（MinerU 结果）
+    try {
+      const t = await AiAdminAPI.ocrText(props.archiveId);
+      ocrText.value = t.data.full_text || "";
+    } catch {
+      ocrText.value = "";
+    }
   } finally {
     loading.value = false;
   }
@@ -132,7 +152,7 @@ async function extractText() {
 
 async function copyAll() {
   try {
-    await navigator.clipboard.writeText(fullText.value);
+    await navigator.clipboard.writeText(ocrText.value || fullText.value);
     message.success("全文已复制，可粘贴到正文");
   } catch {
     message.error("复制失败，请手动选择");

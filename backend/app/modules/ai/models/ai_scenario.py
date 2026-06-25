@@ -12,10 +12,12 @@ HITL 闸门（gate）= ``auto`` / ``review`` / ``manual``：
 - review  进审核队列，等人点（默认）
 - manual  带"高风险"标记置顶，必须二审签
 """
+
 import uuid
 from typing import Any
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import (Boolean, ForeignKey, Index, String, Text,
+                        UniqueConstraint)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,7 +29,9 @@ class AIScenario(BaseEntity):
 
     __tablename__ = "ai_scenario"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "scenario_code", name="uq_ai_scenario_tenant_code"),
+        UniqueConstraint(
+            "tenant_id", "scenario_code", name="uq_ai_scenario_tenant_code"
+        ),
         Index("ix_ai_scenario_tenant", "tenant_id"),
     )
 
@@ -45,10 +49,16 @@ class AIScenario(BaseEntity):
     name: Mapped[str] = mapped_column(String(64), nullable=False, comment="显示名称")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="说明")
     enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false", comment="是否启用"
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="是否启用",
     )
     dify_app_id: Mapped[str | None] = mapped_column(
-        String(64), nullable=True, comment="对应 Dify App ID（主 Chatflow 或子 Workflow）"
+        String(64),
+        nullable=True,
+        comment="对应 Dify App ID（主 Chatflow 或子 Workflow）",
     )
     dify_workflow_id: Mapped[str | None] = mapped_column(
         String(64), nullable=True, comment="子 Workflow ID（如适用）"

@@ -8,10 +8,10 @@
 这不是"AI 回答"，只是把命中 chunk 的标题 + 片段顺序拼出来，前端引用 chip 仍然有效。
 风格遵循设计稿 §3.2：无证据则拒答；不编造、不超出引用范围。
 """
+
 from __future__ import annotations
 
 from app.modules.ai.services.retrieval_service import RetrievedChunk
-
 
 _REFUSE_NO_EVIDENCE = (
     "未在知识库中找到与此问题相关的档案或业务规则。"

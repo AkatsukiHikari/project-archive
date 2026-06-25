@@ -4,13 +4,15 @@ draft 能力：拟稿助手
 输入：query（草稿类型 + 上下文）
 处理：识别草稿类型，准备模板素材 + 检索相关档案给 LLM 节点
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ai.services.capabilities.types import CapabilityContext, CapabilityResult
-from app.modules.ai.services.retrieval_service import RetrievalService, RetrieveFilter
-
+from app.modules.ai.services.capabilities.types import (CapabilityContext,
+                                                        CapabilityResult)
+from app.modules.ai.services.retrieval_service import (RetrievalService,
+                                                       RetrieveFilter)
 
 DRAFT_TEMPLATES = {
     "鉴定": "档案鉴定意见",
@@ -28,10 +30,14 @@ def _detect_type(query: str) -> str:
     return "档案业务公文"
 
 
-async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> CapabilityResult:
+async def run(
+    *, db: AsyncSession, ctx: CapabilityContext, query: str
+) -> CapabilityResult:
     draft_type = _detect_type(query)
     svc = RetrievalService(db)
-    filt = RetrieveFilter(tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id)
+    filt = RetrieveFilter(
+        tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id
+    )
 
     refs = await svc.retrieve(query=query, kb_type="rules", top_k=2, filt=filt)
     archives = await svc.retrieve(query=query, kb_type="meta", top_k=3, filt=filt)
@@ -49,14 +55,22 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
     for a in archives:
         lines.append(f"- {a.title}")
     lines.append("")
-    lines.append(f"请按【{draft_type}】的公文规范生成：标题 / 正文（分条款，引用要准确）/ 落款建议。")
+    lines.append(
+        f"请按【{draft_type}】的公文规范生成：标题 / 正文（分条款，引用要准确）/ 落款建议。"
+    )
     lines.append("⚠ 草稿不替代正式签发，请落到草稿夹后人工修改、走审批。")
 
     citations = [
         {
-            "chunk_id": c.chunk_id, "source_type": c.source_type, "source_id": c.source_id,
-            "title": c.title, "snippet": c.snippet, "score": c.score,
-            "secret_level": c.secret_level, "tenant_id": c.tenant_id, "extra": c.extra,
+            "chunk_id": c.chunk_id,
+            "source_type": c.source_type,
+            "source_id": c.source_id,
+            "title": c.title,
+            "snippet": c.snippet,
+            "score": c.score,
+            "secret_level": c.secret_level,
+            "tenant_id": c.tenant_id,
+            "extra": c.extra,
         }
         for c in (refs + archives)
     ]
@@ -64,5 +78,9 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
         status="ok",
         answer="\n".join(lines),
         citations=citations,
-        detail={"draft_type": draft_type, "refs_count": len(refs), "archives_count": len(archives)},
+        detail={
+            "draft_type": draft_type,
+            "refs_count": len(refs),
+            "archives_count": len(archives),
+        },
     )

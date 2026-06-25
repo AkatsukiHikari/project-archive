@@ -12,6 +12,7 @@
 2. 启用：DB 里对应行 ``enabled=true``（6008）
 3. 档位：用户传入的 ``model_tier`` 必须在 ``model_mapping`` keys 里（默认回退到 ``default_model_tier``）
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,18 +27,17 @@ from app.common.exceptions.base import BaseAPIException
 from app.core.config import settings
 from app.modules.ai.models.ai_scenario import AIScenario
 
-
 # 全部 9 个 AI 能力码（见设计稿 §2）
 ALL_SCENARIO_CODES: frozenset[str] = frozenset(
     {
-        "qa",         # ① RAG 智能问答
-        "search",     # ④ 自然语言检索
-        "summary",    # ⑤ 档案摘要/综述
-        "attach",     # ② 档案自动挂接
-        "catalog",    # ③ AI 自动编目
-        "fournat",    # ⑥ 四性检测辅助
-        "draft",      # ⑦ 审稿/拟稿
-        "relate",     # ⑨ 跨档案关联分析
+        "qa",  # ① RAG 智能问答
+        "search",  # ④ 自然语言检索
+        "summary",  # ⑤ 档案摘要/综述
+        "attach",  # ② 档案自动挂接
+        "catalog",  # ③ AI 自动编目
+        "fournat",  # ⑥ 四性检测辅助
+        "draft",  # ⑦ 审稿/拟稿
+        "relate",  # ⑨ 跨档案关联分析
         "kb_manage",  # ⑧ 知识库交互管理
     }
 )
@@ -113,7 +113,11 @@ class ScenarioRouter:
 
         # 租户未单独配置：按 settings 兜底（P1 阶段不强求每个租户 seed）
         if row is None:
-            tier = model_tier if model_tier in VALID_MODEL_TIERS else settings.AI_DEFAULT_MODEL_TIER
+            tier = (
+                model_tier
+                if model_tier in VALID_MODEL_TIERS
+                else settings.AI_DEFAULT_MODEL_TIER
+            )
             return ResolvedScenario(
                 scenario_code=scenario_code,
                 scenario_id=uuid.UUID(int=0),
@@ -168,7 +172,9 @@ class ScenarioRouter:
 
     @staticmethod
     def _resolve_tier(row: AIScenario, requested: str | None) -> str:
-        candidate = requested or row.default_model_tier or settings.AI_DEFAULT_MODEL_TIER
+        candidate = (
+            requested or row.default_model_tier or settings.AI_DEFAULT_MODEL_TIER
+        )
         if candidate not in VALID_MODEL_TIERS:
             return row.default_model_tier or settings.AI_DEFAULT_MODEL_TIER
         return candidate

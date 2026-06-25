@@ -3,13 +3,15 @@ fournat 能力：四性检测建议（建议态，最低优先级）
 
 P1 仅做骨架：对给定档案 / 主题给出四性维度的"可能风险"提示。
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ai.services.capabilities.types import CapabilityContext, CapabilityResult
-from app.modules.ai.services.retrieval_service import RetrievalService, RetrieveFilter
-
+from app.modules.ai.services.capabilities.types import (CapabilityContext,
+                                                        CapabilityResult)
+from app.modules.ai.services.retrieval_service import (RetrievalService,
+                                                       RetrieveFilter)
 
 _DIMENSIONS = [
     ("真实性", "来源 / 责任者 / 时间链"),
@@ -19,15 +21,23 @@ _DIMENSIONS = [
 ]
 
 
-async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> CapabilityResult:
+async def run(
+    *, db: AsyncSession, ctx: CapabilityContext, query: str
+) -> CapabilityResult:
     svc = RetrievalService(db)
-    filt = RetrieveFilter(tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id)
-    rules = await svc.retrieve(query=query + " 四性 检测", kb_type="rules", top_k=4, filt=filt)
+    filt = RetrieveFilter(
+        tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id
+    )
+    rules = await svc.retrieve(
+        query=query + " 四性 检测", kb_type="rules", top_k=4, filt=filt
+    )
 
     lines = ["【四性检测风险提示（建议态，仅供参考）】", "", f"对象：{query}", ""]
     for name, hint in _DIMENSIONS:
         lines.append(f"◆ {name}（{hint}）")
-        lines.append(f"  · 可能风险：请人工核对【责任者签章 / 文件元数据 / 来源系统】是否齐备。")
+        lines.append(
+            f"  · 可能风险：请人工核对【责任者签章 / 文件元数据 / 来源系统】是否齐备。"
+        )
         lines.append("")
     if rules:
         lines.append("【可参照的业务规则】")
@@ -38,9 +48,15 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
 
     citations = [
         {
-            "chunk_id": c.chunk_id, "source_type": c.source_type, "source_id": c.source_id,
-            "title": c.title, "snippet": c.snippet, "score": c.score,
-            "secret_level": c.secret_level, "tenant_id": c.tenant_id, "extra": c.extra,
+            "chunk_id": c.chunk_id,
+            "source_type": c.source_type,
+            "source_id": c.source_id,
+            "title": c.title,
+            "snippet": c.snippet,
+            "score": c.score,
+            "secret_level": c.secret_level,
+            "tenant_id": c.tenant_id,
+            "extra": c.extra,
         }
         for c in rules
     ]

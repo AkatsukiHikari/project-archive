@@ -36,10 +36,10 @@ class Settings(BaseSettings):
     AWS_BUCKET_NAME: str = "sams-archive"
 
     # MINIO / MinIO 私有对象存储
-    MINIO_ENDPOINT: str = "localhost:9000"      # host:port（不含协议）
+    MINIO_ENDPOINT: str = "localhost:9000"  # host:port（不含协议）
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_SECURE: bool = False                  # True = HTTPS
+    MINIO_SECURE: bool = False  # True = HTTPS
     # 浏览器可直接访问的 MinIO 公网 URL（与 MINIO_ENDPOINT 一致或 CDN 域名）
     MINIO_PUBLIC_URL: str = "http://localhost:9000"
 
@@ -54,8 +54,8 @@ class Settings(BaseSettings):
 
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = [
-        "http://localhost:3000",   # admin-web dev
-        "http://localhost:3001",   # public-portal dev
+        "http://localhost:3000",  # admin-web dev
+        "http://localhost:3001",  # public-portal dev
     ]
 
     # ── OAuth2 SSO ──
@@ -90,6 +90,15 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 768
     DIFY_BASE_URL: str = "http://localhost/v1"
     DIFY_API_KEY: str = ""
+
+    # ── AI 重构（全部经 Dify；MinerU 已作为 Dify 工具配好，后端不直连）──
+    # OCR：后端触发 Dify「OCR 工作流」(工作流内部用你配好的 MinerU 节点)
+    DIFY_OCR_WORKFLOW_KEY: str = ""
+    # 档案问答：Dify「问答 Chatflow」(知识库检索节点 + DeepSeek)，结合后端 ES 精确条目
+    DIFY_QA_API_KEY: str = ""
+    # 知识库(dataset)：系统把档案全文+条目同步进去，与 ES 精确检索结合提升正确率
+    DIFY_DATASET_API_KEY: str = ""
+    DIFY_ARCHIVE_DATASET_ID: str = ""
 
     # 旧方案（9 个独立 chatbot；保留作为兜底，不删）
     DIFY_API_KEY_QA: str = ""
@@ -128,7 +137,9 @@ class Settings(BaseSettings):
 
     # ── AI Agent 系统（P1 引入；见 docs/superpowers/specs/2026-05-11-archive-ai-agent-design.md） ──
     # 启用的能力码列表，逗号分隔；9 个场景全部开启
-    AI_ENABLED_CAPABILITIES: str = "qa,search,summary,attach,catalog,fournat,draft,relate,kb_manage"
+    AI_ENABLED_CAPABILITIES: str = (
+        "qa,search,summary,attach,catalog,fournat,draft,relate,kb_manage"
+    )
     # 默认模型档位：快 / 准 / 思考
     AI_DEFAULT_MODEL_TIER: str = "准"
     # Tool 回调 token 有效期（秒），用于 Dify → 后端工具调用时恢复用户身份。

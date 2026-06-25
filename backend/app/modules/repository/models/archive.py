@@ -272,6 +272,9 @@ class Archive(Base, AuditMixin):
     full_text: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="原文 OCR 全文（供全文检索）"
     )
+    kb_doc_id: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, comment="同步到 Dify 知识库的文档 ID（增量更新用）"
+    )
     shelf_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,

@@ -20,36 +20,28 @@ from app.common.exceptions.base import BaseAPIException
 from app.common.response import ResponseModel
 from app.core.config import settings
 from app.infra.db.session import get_db
-from app.modules.ai.models.ai_scenario import AIScenario
+from app.modules.ai._tenant_helper import \
+    ensure_tenant_id as _ensure_tenant_id  # noqa: E402
 from app.modules.ai.constants import AUDIT_AI_CHAT_QUERY
+from app.modules.ai.models.ai_scenario import AIScenario
 from app.modules.ai.models.ai_session import AISession
-from app.modules.ai.schemas.chat import (
-    ChatRequest,
-    ScenarioInfo,
-    ScenarioListResponse,
-    SessionItem,
-    SessionListResponse,
-)
+from app.modules.ai.schemas.chat import (ChatRequest, ScenarioInfo,
+                                         ScenarioListResponse, SessionItem,
+                                         SessionListResponse)
 from app.modules.ai.services.answer_synth import synthesize_answer
 from app.modules.ai.services.dify_service import dify_service
 from app.modules.ai.services.retrieval_service import (
-    RetrievalService,
-    RetrievalUnavailableError,
-    RetrieveFilter,
-)
-from app.modules.ai.services.scenario_router import (
-    ALL_SCENARIO_CODES,
-    ScenarioRouter,
-)
+    RetrievalService, RetrievalUnavailableError, RetrieveFilter)
+from app.modules.ai.services.scenario_router import (ALL_SCENARIO_CODES,
+                                                     ScenarioRouter)
 from app.modules.ai.services.session_service import SessionService
 from app.modules.ai.services.user_token import sign_user_token
-from app.modules.audit.repositories.audit_repository import SQLAlchemyAuditRepository
+from app.modules.audit.repositories.audit_repository import \
+    SQLAlchemyAuditRepository
 from app.modules.audit.schemas.audit_log import AuditLogCreate
 from app.modules.audit.services.audit_service import AuditService
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
-
-from app.modules.ai._tenant_helper import ensure_tenant_id as _ensure_tenant_id  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -80,16 +72,15 @@ async def list_scenarios(
     db: AsyncSession = Depends(get_db),
 ) -> ResponseModel[ScenarioListResponse]:
     enabled_codes = {
-        c.strip() for c in (settings.AI_ENABLED_CAPABILITIES or "").split(",") if c.strip()
+        c.strip()
+        for c in (settings.AI_ENABLED_CAPABILITIES or "").split(",")
+        if c.strip()
     }
     tenant_id = await _ensure_tenant_id(db, current_user)
 
-    stmt = (
-        select(AIScenario)
-        .where(
-            AIScenario.tenant_id == tenant_id,
-            AIScenario.is_deleted.is_(False),
-        )
+    stmt = select(AIScenario).where(
+        AIScenario.tenant_id == tenant_id,
+        AIScenario.is_deleted.is_(False),
     )
     rows = (await db.execute(stmt)).scalars().all()
     row_by_code: dict[str, AIScenario] = {row.scenario_code: row for row in rows}
@@ -105,7 +96,8 @@ async def list_scenarios(
                     name=row.name or display_name,
                     description=row.description or description,
                     enabled=row.enabled and code in enabled_codes,
-                    default_model_tier=row.default_model_tier or settings.AI_DEFAULT_MODEL_TIER,
+                    default_model_tier=row.default_model_tier
+                    or settings.AI_DEFAULT_MODEL_TIER,
                     gate=row.gate,
                     citation_required=row.citation_required,
                 )
@@ -125,7 +117,17 @@ async def list_scenarios(
             )
 
     # 按"价值递增 + 风险递增"原始顺序排（与设计稿一致）
-    order = ["qa", "search", "summary", "attach", "catalog", "kb_manage", "fournat", "draft", "relate"]
+    order = [
+        "qa",
+        "search",
+        "summary",
+        "attach",
+        "catalog",
+        "kb_manage",
+        "fournat",
+        "draft",
+        "relate",
+    ]
     scenarios.sort(key=lambda s: order.index(s.code) if s.code in order else 999)
 
     return ResponseModel(
@@ -210,8 +212,10 @@ async def chat(
         logger.warning("AI 查询审计日志写入失败", exc_info=True)
 
     # 用户密级：superadmin 强制最高（看所有档案）；其他用户走 user.secret_level（缺省 0）
-    user_secret_level = 4 if getattr(current_user, "is_superadmin", False) else int(
-        getattr(current_user, "secret_level", 0) or 0
+    user_secret_level = (
+        4
+        if getattr(current_user, "is_superadmin", False)
+        else int(getattr(current_user, "secret_level", 0) or 0)
     )
 
     # ── 后端检索（chat 入口先跑一遍，把 citations 注入到 SSE，不再依赖 Dify retriever） ──
@@ -224,8 +228,12 @@ async def chat(
     # 同时跑 rules + meta，两类引用合并。引用是"锦上添花"，ES 不可用时容忍降级为空，
     # 让聊天仍能流式；真正的故障提示由 dispatch_text → LLM 那条主链路给出，不在此重复报错。
     try:
-        rule_hits = await retrieval_svc.retrieve(query=body.query, kb_type="rules", top_k=3, filt=filt)
-        meta_hits = await retrieval_svc.retrieve(query=body.query, kb_type="meta", top_k=3, filt=filt)
+        rule_hits = await retrieval_svc.retrieve(
+            query=body.query, kb_type="rules", top_k=3, filt=filt
+        )
+        meta_hits = await retrieval_svc.retrieve(
+            query=body.query, kb_type="meta", top_k=3, filt=filt
+        )
     except RetrievalUnavailableError:
         logger.warning("chat 引用检索：ES 不可用，本轮引用降级为空")
         rule_hits, meta_hits = [], []
@@ -262,7 +270,10 @@ async def chat(
         if citations_payload:
             yield (
                 "data: "
-                + json.dumps({"event": "citations", "citations": citations_payload}, ensure_ascii=False)
+                + json.dumps(
+                    {"event": "citations", "citations": citations_payload},
+                    ensure_ascii=False,
+                )
                 + "\n\n"
             )
 
@@ -272,12 +283,18 @@ async def chat(
             answer = synthesize_answer(query=body.query, chunks=all_hits)
             yield (
                 "data: "
-                + json.dumps({"event": "message", "answer": answer, "conversation_id": ""}, ensure_ascii=False)
+                + json.dumps(
+                    {"event": "message", "answer": answer, "conversation_id": ""},
+                    ensure_ascii=False,
+                )
                 + "\n\n"
             )
             yield (
                 "data: "
-                + json.dumps({"event": "message_end", "conversation_id": "", "metadata": {}}, ensure_ascii=False)
+                + json.dumps(
+                    {"event": "message_end", "conversation_id": "", "metadata": {}},
+                    ensure_ascii=False,
+                )
                 + "\n\n"
             )
             try:
@@ -347,6 +364,7 @@ async def chat(
 
 # ── AI 会话历史（替代前端 localStorage） ──────────────────────────────────
 
+
 def _to_session_item(row: AISession) -> SessionItem:
     return SessionItem(
         id=str(row.id),
@@ -377,8 +395,14 @@ async def list_sessions(
         AISession.user_id == current_user.id,
         AISession.is_deleted.is_(False),
     )
-    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
-    stmt = base.order_by(AISession.update_time.desc()).offset((page - 1) * size).limit(size)
+    total = (
+        await db.execute(select(func.count()).select_from(base.subquery()))
+    ).scalar_one()
+    stmt = (
+        base.order_by(AISession.update_time.desc())
+        .offset((page - 1) * size)
+        .limit(size)
+    )
     rows = (await db.execute(stmt)).scalars().all()
     return ResponseModel(
         data=SessionListResponse(total=total, items=[_to_session_item(r) for r in rows])

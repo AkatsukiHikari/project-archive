@@ -20,18 +20,19 @@ from app.infra.db.session import get_db
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
 from app.modules.repository.schemas.archive import AttachmentRead
-from app.modules.repository.schemas.organize import (ArchiveToFormalRequest,
-                                                     ArchiveToFormalResult,
-                                                     AttachBatchResult,
-                                                     AttachMatchPreview,
-                                                     AttachMatchRequest,
-                                                     BatchUpdateRequest,
-                                                     BatchUpdateResult,
-                                                     RenumberPreview,
-                                                     RenumberRequest,
-                                                     RenumberResult)
-from app.modules.repository.services.attachment_service import \
-    AttachmentService
+from app.modules.repository.schemas.organize import (
+    ArchiveToFormalRequest,
+    ArchiveToFormalResult,
+    AttachBatchResult,
+    AttachMatchPreview,
+    AttachMatchRequest,
+    BatchUpdateRequest,
+    BatchUpdateResult,
+    RenumberPreview,
+    RenumberRequest,
+    RenumberResult,
+)
+from app.modules.repository.services.attachment_service import AttachmentService
 from app.modules.repository.services.organize_service import OrganizeService
 
 router = APIRouter(prefix="/archive/organize", tags=["档案整理"])
@@ -117,6 +118,16 @@ async def attach_batch(
         payload, current_user.id, current_user.tenant_id, overwrite=overwrite
     )
     await db.commit()
+
+    # 挂接成功的档案 → 后台投递 OCR 作业（不阻塞本请求）
+    from app.modules.ai.services import ocr_job_service
+
+    for r in rows:
+        if r.get("status") == "attached" and r.get("archive_id"):
+            await ocr_job_service.enqueue(
+                db, r["archive_id"], current_user.id, current_user.tenant_id
+            )
+
     result = {
         "batch_no": batch.batch_no,
         "attached": batch.attached,
@@ -164,17 +175,19 @@ async def get_attach_batch(
     """挂接批次详情（逐文件明细）。"""
     svc = AttachmentService(db)
     batch = await svc.get_batch(batch_id, current_user.tenant_id)
-    return success({
-        "id": str(batch.id),
-        "batch_no": batch.batch_no,
-        "total": batch.total,
-        "attached": batch.attached,
-        "skipped": batch.skipped,
-        "not_found": batch.not_found,
-        "overwrite": batch.overwrite,
-        "create_time": batch.create_time.isoformat() if batch.create_time else None,
-        "rows": batch.rows or [],
-    })
+    return success(
+        {
+            "id": str(batch.id),
+            "batch_no": batch.batch_no,
+            "total": batch.total,
+            "attached": batch.attached,
+            "skipped": batch.skipped,
+            "not_found": batch.not_found,
+            "overwrite": batch.overwrite,
+            "create_time": batch.create_time.isoformat() if batch.create_time else None,
+            "rows": batch.rows or [],
+        }
+    )
 
 
 # ── 单条附件管理 ──────────────────────────────────────────────────────────────
@@ -189,15 +202,25 @@ async def upload_attachment(
     current_user: User = Depends(get_current_user),
 ):
     svc = AttachmentService(db)
+    filename = file.filename or "unnamed.pdf"
     attachment = await svc.upload(
         archive_id,
-        file.filename or "unnamed.pdf",
+        filename,
         await file.read(),
         current_user.id,
         current_user.tenant_id,
         is_primary=is_primary,
     )
     await db.commit()
+
+    # 挂接 PDF → 后台投递 OCR 作业（不阻塞本请求）
+    if filename.lower().endswith(".pdf"):
+        from app.modules.ai.services import ocr_job_service
+
+        await ocr_job_service.enqueue(
+            db, archive_id, current_user.id, current_user.tenant_id
+        )
+
     return success(AttachmentRead.model_validate(attachment).model_dump(mode="json"))
 
 

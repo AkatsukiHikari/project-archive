@@ -1,6 +1,7 @@
 """
 AI 聊天相关 Pydantic Schema
 """
+
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field

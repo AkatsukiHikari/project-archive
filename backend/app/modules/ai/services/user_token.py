@@ -11,6 +11,7 @@ AI 短 Token（X-User-Token）签发与验签
 - 这里要带额外 claim（scenario_code / tenant_id / secret_level），与登录态分开
 - 短 TTL（300s）天然防重放
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,7 +24,6 @@ from app.common.error_code import ErrorCode
 from app.common.exceptions.base import BaseAPIException
 from app.core.config import settings
 from app.core.security.token import ALGORITHM
-
 
 _TOKEN_TYPE = "ai_user_token"
 

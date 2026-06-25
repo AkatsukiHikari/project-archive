@@ -1,4 +1,5 @@
 """能力调用共用类型。"""
+
 from __future__ import annotations
 
 import uuid
@@ -20,9 +21,9 @@ class CapabilityContext:
 class CapabilityResult:
     """能力 service 统一返回结构。"""
 
-    status: str                 # "ok" / "rejected" / "not_implemented"
-    answer: str                  # 给 LLM 节点做最终格式化的"原始素材"或直接答案
+    status: str  # "ok" / "rejected" / "not_implemented"
+    answer: str  # 给 LLM 节点做最终格式化的"原始素材"或直接答案
     citations: list[dict[str, Any]] = field(default_factory=list)
     patch_id: uuid.UUID | None = None  # 写类能力产出的 staging patch id
     detail: dict[str, Any] = field(default_factory=dict)  # 能力特有的额外结构
-    reason: str | None = None    # rejected / not_implemented 时的说明
+    reason: str | None = None  # rejected / not_implemented 时的说明

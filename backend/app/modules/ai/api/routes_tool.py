@@ -10,6 +10,7 @@ AI Tool 回调路由（Dify → 后端）
 - POST /v1/ai/internal/retrieve         检索代理（meta / rules / ocr）
 - POST /v1/ai/internal/tool/dispatch    通用 Tool 分发占位（P3 写类能力扩这里）
 """
+
 from __future__ import annotations
 
 import json
@@ -28,29 +29,25 @@ from app.common.exceptions.base import BaseAPIException
 from app.common.response import ResponseModel
 from app.infra.db.session import get_db
 from app.modules.ai.constants import AUDIT_AI_TOOL_CALL
-from app.modules.ai.services.capabilities import dispatch as capability_dispatch
+from app.modules.ai.services.capabilities import \
+    dispatch as capability_dispatch
 from app.modules.ai.services.capabilities import get_capability
 from app.modules.ai.services.capabilities.types import CapabilityContext
 from app.modules.ai.services.retrieval_service import (
-    KBType,
-    RetrievalService,
-    RetrievalUnavailableError,
-    RetrieveFilter,
-)
-from app.modules.ai.services.user_token import (
-    AIUserTokenClaims,
-    verify_service_token,
-    verify_user_token,
-)
-from app.modules.audit.repositories.audit_repository import SQLAlchemyAuditRepository
+    KBType, RetrievalService, RetrievalUnavailableError, RetrieveFilter)
+from app.modules.ai.services.user_token import (AIUserTokenClaims,
+                                                verify_service_token,
+                                                verify_user_token)
+from app.modules.audit.repositories.audit_repository import \
+    SQLAlchemyAuditRepository
 from app.modules.audit.schemas.audit_log import AuditLogCreate
 from app.modules.audit.services.audit_service import AuditService
-
 
 router = APIRouter()
 
 
 # ── 凭证恢复依赖 ────────────────────────────────────────────────────────────
+
 
 async def restore_claims(
     x_user_token: str | None = Header(default=None, alias="X-User-Token"),
@@ -68,6 +65,7 @@ async def restore_claims(
 
 
 # ── /retrieve ──────────────────────────────────────────────────────────────
+
 
 class RetrieveRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
@@ -165,6 +163,7 @@ async def retrieve(
 
 # ── /tool/dispatch ─────────────────────────────────────────────────────────
 
+
 class ToolDispatchRequest(BaseModel):
     """通用 Tool 分发请求。"""
 
@@ -225,7 +224,10 @@ async def dispatch_tool(
 ) -> ResponseModel[ToolDispatchResponse]:
     # 容忍 Dify HTTP 节点的非标 body 形态
     raw = await request.body()
-    print(f"[dispatch] raw ({len(raw)} bytes): {raw.decode('utf-8', errors='replace')[:600]}", flush=True)
+    print(
+        f"[dispatch] raw ({len(raw)} bytes): {raw.decode('utf-8', errors='replace')[:600]}",
+        flush=True,
+    )
     try:
         payload = json.loads(raw) if raw else {}
     except json.JSONDecodeError:
@@ -291,7 +293,9 @@ async def dispatch_tool(
     return ResponseModel(
         data=ToolDispatchResponse(
             tool_name=resolved_code,
-            status="accepted" if result.status == "ok" else (result.status or "rejected"),
+            status=(
+                "accepted" if result.status == "ok" else (result.status or "rejected")
+            ),
             detail=result.reason,
             result={
                 "answer": result.answer,
@@ -354,7 +358,9 @@ async def dispatch_tool_text(
         result = await capability_dispatch(db=db, ctx=ctx, code=code, query=query)
     except RetrievalUnavailableError:
         # 检索后端故障：老实报"暂不可用"，绝不伪装成"查无此档"误导用户
-        logger.warning("dispatch_text 检索服务不可用 code=%s query=%r", code, query[:80])
+        logger.warning(
+            "dispatch_text 检索服务不可用 code=%s query=%r", code, query[:80]
+        )
         return PlainTextResponse(
             content="档案检索服务暂时不可用，请稍后重试。（系统已记录该故障）",
             media_type="text/markdown; charset=utf-8",
@@ -367,8 +373,10 @@ async def dispatch_tool_text(
 
 # ── /capability/{code}：子 Workflow 的 HTTP 节点直接调用 ──────────────────────
 
+
 class CapabilityRequest(BaseModel):
     """子 Workflow HTTP 节点请求体。"""
+
     query: str = Field(..., max_length=4096)
     tenant_id: str | None = Field(default=None, description="忽略，从 token 取")
 

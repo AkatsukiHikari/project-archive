@@ -29,6 +29,7 @@ celery_app = Celery(
         "app.modules.repository.tasks.es_rebuild",
         "app.modules.collection.tasks.import_task",
         "app.modules.preservation.tasks.detection",
+        "app.modules.ai.tasks.ocr_task",
     ],
 )
 

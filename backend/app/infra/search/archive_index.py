@@ -11,6 +11,7 @@
 """
 
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -176,17 +177,58 @@ _SUPER_SOURCE = [
     "BGQX",
     "category_id",
     "create_time",
+    "doc_source",
 ]
 
 
 def _keyword_clause(keyword: str, mode: str) -> dict:
     """字段检索：题名/责任者/档号（精确，不做 token-OR 否则档号会命中全部）；
-    全文检索：OCR 原文 full_text（可模糊召回）。两者均走 ES。"""
-    if mode == "fulltext":
+    全文检索：OCR 原文 full_text（可模糊召回）；
+    综合检索(qa)：AI 问答用，档号/题名/全文/责任者(姓名)/全宗号/年度/密级/保管期限 全覆盖。
+    均走 ES。"""
+    if mode == "qa":
+        # AI 问答综合召回：覆盖用户列的全部重要条件（KFZT 开放状态未入 ES，走 DB 统计）
         should = [
+            {
+                "wildcard": {
+                    "DH.keyword": {
+                        "value": f"*{keyword}*",
+                        "case_insensitive": True,
+                        "boost": 12,
+                    }
+                }
+            },
+            {"match_phrase": {"TM": {"query": keyword, "boost": 10}}},
+            {"match_phrase": {"full_text": {"query": keyword, "boost": 8, "slop": 1}}},
+            {
+                "multi_match": {
+                    "query": keyword,
+                    "fields": ["TM^4", "RZZ^3", "full_text^2", "QZH^2", "MJ", "BGQX"],
+                    "type": "best_fields",
+                }
+            },
+        ]
+        # 年度：从问句抽取 4 位年份，精确匹配 ND
+        for y in re.findall(r"(?:19|20)\d{2}", keyword):
+            should.append({"term": {"ND": int(y)}})
+        return {"bool": {"should": should, "minimum_should_match": 1}}
+    if mode == "fulltext":
+        # 短语命中排最前；match 分词 OR 召回，保证自然语言提问（如"2024财务"）
+        # 也能命中题名"2024年度财务凭证"这类非连续匹配；DH 通配兜底档号查询。
+        should = [
+            {
+                "wildcard": {
+                    "DH.keyword": {
+                        "value": f"*{keyword}*",
+                        "case_insensitive": True,
+                        "boost": 12,
+                    }
+                }
+            },
             {"match_phrase": {"full_text": {"query": keyword, "boost": 8, "slop": 1}}},
             {"match": {"full_text": {"query": keyword}}},
             {"match_phrase": {"TM": {"query": keyword, "boost": 4}}},
+            {"match": {"TM": {"query": keyword, "boost": 2}}},
         ]
     else:
         # 题名/责任者用短语精确匹配；档号用子串通配（大小写不敏感）。
@@ -211,6 +253,7 @@ async def super_search(
     filters: dict[str, list] | None = None,
     tenant_id: str | None = None,
     public_only: bool = False,
+    include_staging: bool = False,
     skip: int = 0,
     limit: int = 20,
 ) -> dict[str, Any]:
@@ -226,8 +269,10 @@ async def super_search(
     if keyword:
         must.append(_keyword_clause(keyword, mode))
 
-    # 仅检索正式库馆藏（排除暂存库草稿）
-    filter_clauses: list[dict] = [{"term": {"doc_source.keyword": "formal"}}]
+    # 默认仅检索正式库馆藏（排除暂存库草稿）；include_staging 时正式+暂存都检索
+    filter_clauses: list[dict] = []
+    if not include_staging:
+        filter_clauses.append({"term": {"doc_source.keyword": "formal"}})
     if tenant_id:
         filter_clauses.append({"term": {"tenant_id": tenant_id}})
     if public_only:
@@ -238,7 +283,9 @@ async def super_search(
             filter_clauses.append({"terms": {field: values}})
 
     # 全文模式：把整段 OCR 原文(full_text)带回，前端整段展示 + 命中标红
-    source_fields = _SUPER_SOURCE + (["full_text"] if mode == "fulltext" else [])
+    source_fields = _SUPER_SOURCE + (
+        ["full_text"] if mode in ("fulltext", "qa") else []
+    )
 
     es_query = {
         "query": {

@@ -7,7 +7,6 @@ from app.modules.notification.api import routes as notifications
 from app.modules.schedule.api import routes as schedules
 from app.modules.preservation.api import routes as preservation_routes
 from app.modules.collection.api import routes as collection_routes
-from app.modules.ai.api import routes as ai_routes
 from app.modules.repository.api import routes as repository_routes
 from app.modules.repository.api.routes_category import router as archive_category_router
 from app.modules.repository.api.routes_archive import router as archive_router
@@ -41,13 +40,8 @@ v1_router.include_router(schedules.router, prefix="/schedules", tags=["schedules
 v1_router.include_router(preservation_routes.router, prefix="/preservation/detections", tags=["preservation"])
 v1_router.include_router(collection_routes.router, prefix="/collection/sip", tags=["collection"])
 v1_router.include_router(stats.router, prefix="/stats", tags=["stats"])
-v1_router.include_router(ai_routes.router, prefix="/ai", tags=["ai"])
-from app.modules.ai_patch.api.routes_patch import router as ai_patch_router
-from app.modules.ai_eval.api.routes_eval import router as ai_eval_router
-from app.modules.ai.api.routes_kb import router as ai_kb_router
-v1_router.include_router(ai_patch_router, prefix="/ai/patches", tags=["ai-patch"])
-v1_router.include_router(ai_eval_router, prefix="/ai/eval", tags=["ai-eval"])
-v1_router.include_router(ai_kb_router, prefix="/ai/kb", tags=["ai-kb"])
+from app.modules.ai.api.routes_ai import router as ai_router
+v1_router.include_router(ai_router, prefix="/ai", tags=["ai"])
 v1_router.include_router(repository_routes.router, prefix="/repository", tags=["repository"])
 v1_router.include_router(archive_category_router)
 v1_router.include_router(archive_router)

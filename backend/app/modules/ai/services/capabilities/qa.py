@@ -4,17 +4,24 @@ qa 能力：RAG 问答
 输入：query
 处理：检索 rules + meta → 拼成证据 → 直接返回（LLM 节点用 prompt 把证据转成答案）
 """
+
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ai.services.capabilities.types import CapabilityContext, CapabilityResult
-from app.modules.ai.services.retrieval_service import RetrievalService, RetrieveFilter
+from app.modules.ai.services.capabilities.types import (CapabilityContext,
+                                                        CapabilityResult)
+from app.modules.ai.services.retrieval_service import (RetrievalService,
+                                                       RetrieveFilter)
 
 
-async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> CapabilityResult:
+async def run(
+    *, db: AsyncSession, ctx: CapabilityContext, query: str
+) -> CapabilityResult:
     svc = RetrievalService(db)
-    filt = RetrieveFilter(tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id)
+    filt = RetrieveFilter(
+        tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id
+    )
     rules = await svc.retrieve(query=query, kb_type="rules", top_k=4, filt=filt)
     metas = await svc.retrieve(query=query, kb_type="meta", top_k=3, filt=filt)
     hits = rules + metas

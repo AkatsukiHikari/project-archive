@@ -3,8 +3,8 @@ AI 模块常量
 
 集中存放跨服务/路由复用的字面量，避免散落各处魔法字符串。
 """
-from typing import Final
 
+from typing import Final
 
 # ── 审计动作码（写入 audit_log.action 列） ────────────────────────────
 # 见设计稿 §7.3：所有 AI 动作审计都带 scenario_code / model_tier / workflow_version / dify_message_id

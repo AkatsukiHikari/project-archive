@@ -9,6 +9,8 @@ Dify 内部的 LLM 包装层（A' 方案的"答案格式化"由子 Workflow 的 
   qa / search / summary / kb_manage / relate / catalog / attach / draft
   fournat 当前优先级低（实装在 fournat_service 但 dispatch 暂时返回 not_implemented）
 """
-from app.modules.ai.services.capabilities.dispatcher import dispatch, get_capability
+
+from app.modules.ai.services.capabilities.dispatcher import (dispatch,
+                                                             get_capability)
 
 __all__ = ["dispatch", "get_capability"]

@@ -134,6 +134,41 @@ class DifyService:
             logger.exception("Dify 流式请求异常")
             yield f'data: {{"event":"error","message":"AI服务异常: {str(e)}"}}\n\n'
 
+    async def upload_file(
+        self, content: bytes, filename: str, user_id: str, api_key: str
+    ) -> str:
+        """上传文件到 Dify，返回 upload_file_id（供工作流 file 入参引用）。"""
+        resp = await self._client.post(
+            f"{settings.DIFY_BASE_URL}/files/upload",
+            headers={"Authorization": f"Bearer {api_key}"},
+            files={"file": (filename, content)},
+            data={"user": user_id},
+            timeout=httpx.Timeout(connect=10.0, read=120.0, write=120.0, pool=10.0),
+        )
+        resp.raise_for_status()
+        return resp.json()["id"]
+
+    async def run_workflow(
+        self, inputs: dict, user_id: str, api_key: str, timeout_s: float = 600.0
+    ) -> dict:
+        """阻塞式跑工作流（OCR 这类耗时任务），返回 data.outputs。"""
+        resp = await self._client.post(
+            f"{settings.DIFY_BASE_URL}/workflows/run",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={"inputs": inputs, "response_mode": "blocking", "user": user_id},
+            timeout=httpx.Timeout(connect=10.0, read=timeout_s, write=30.0, pool=10.0),
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+        if data.get("status") != "succeeded":
+            raise RuntimeError(
+                f"工作流失败 status={data.get('status')} error={data.get('error')}"
+            )
+        return data.get("outputs") or {}
+
     async def close(self) -> None:
         """关闭 HTTP 客户端，释放连接"""
         await self._client.aclose()

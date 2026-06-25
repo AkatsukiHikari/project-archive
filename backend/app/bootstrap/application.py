@@ -84,15 +84,6 @@ def create_app() -> FastAPI:
         tags=["super-search"],
     )
 
-    # Dify → 后端 Tool 回调（不走用户登录态，靠 X-Service-Token + X-User-Token 双重验证）
-    from app.modules.ai.api.routes_tool import router as ai_tool_router
-
-    app.include_router(
-        ai_tool_router,
-        prefix=f"{settings.API_PREFIX}/v1/ai/internal",
-        tags=["ai-internal"],
-    )
-
     # WebSocket 路由（独立于 API 版本）
     from app.api.v1 import ws
 

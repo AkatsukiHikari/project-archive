@@ -10,6 +10,7 @@ P1：先把接口骨架立起来。真实的 chunk 权属查询要靠 retrieval_
 + archive / fonds / category 这一系列业务表，本期先做"形态校验 + tenant/密级粗粒度校验"，
 档案级细粒度校验留 P2 拉档案表落实。
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,9 +29,9 @@ class ValidationOutcome:
     """
 
     valid: bool
-    rejected: tuple[str, ...]    # 被拒绝的 chunk_id 列表
+    rejected: tuple[str, ...]  # 被拒绝的 chunk_id 列表
     accepted: tuple[dict[str, Any], ...]  # 合规的引用，原样回传给前端
-    reason: str | None = None    # 拒绝原因（人类可读）
+    reason: str | None = None  # 拒绝原因（人类可读）
 
 
 class CitationValidator:
@@ -79,7 +80,9 @@ class CitationValidator:
         if rejected:
             logger.warning(
                 "citation_validator 拦截越权引用：rejected=%s tenant=%s level=%d",
-                rejected, self._tenant_id, self._level,
+                rejected,
+                self._tenant_id,
+                self._level,
             )
             # 一票否决：越权一条就整段失败（设计稿明确）
             return ValidationOutcome(

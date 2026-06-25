@@ -6,6 +6,7 @@ AI 知识库管理 API
 
 设计稿 §4.2/⑧ "知识库交互管理"：P1 读侧暴露 + 重建触发；P3 写入走 ai_patch。
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -22,7 +23,6 @@ from app.modules.ai._tenant_helper import ensure_tenant_id
 from app.modules.ai.services.kb_sync_service import KBSyncService
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
-
 
 router = APIRouter()
 

@@ -4,25 +4,18 @@
 Dify 主 Chatflow 的 HTTP 节点 / 子 Workflow 的 HTTP 节点都打到后端的
 /v1/ai/internal/tool/dispatch + /v1/ai/internal/capability/{code}，最终都进入这里。
 """
+
 from __future__ import annotations
 
 from typing import Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ai.services.capabilities import (
-    attach,
-    catalog,
-    draft,
-    fournat,
-    kb_manage,
-    qa,
-    relate,
-    search,
-    summary,
-)
-from app.modules.ai.services.capabilities.types import CapabilityContext, CapabilityResult
-
+from app.modules.ai.services.capabilities import (attach, catalog, draft,
+                                                  fournat, kb_manage, qa,
+                                                  relate, search, summary)
+from app.modules.ai.services.capabilities.types import (CapabilityContext,
+                                                        CapabilityResult)
 
 CapabilityRunner = Callable[..., Awaitable[CapabilityResult]]
 

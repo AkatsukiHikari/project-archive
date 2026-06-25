@@ -32,11 +32,12 @@ MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 class MatchTarget:
     """档号匹配结果（暂存库或正式库的一条档案）。"""
 
-    __slots__ = ("archive_id", "TM", "source", "is_staging", "tenant_id")
+    __slots__ = ("archive_id", "TM", "DH", "source", "is_staging", "tenant_id")
 
-    def __init__(self, archive_id: uuid.UUID, tm: str, source: str, tenant_id):
+    def __init__(self, archive_id: uuid.UUID, tm: str, dh: str, source: str, tenant_id):
         self.archive_id = archive_id
         self.TM = tm
+        self.DH = dh  # 档号——挂接后附件统一以此命名
         self.source = source  # staging | formal
         self.is_staging = source == "staging"
         self.tenant_id = tenant_id
@@ -234,13 +235,15 @@ class AttachmentService:
         user_id: uuid.UUID,
         is_primary: bool,
     ) -> ArchiveAttachment:
-        key = f"archive/{target.archive_id}/{uuid.uuid4().hex[:8]}_{self._safe_name(filename)}"
+        # 挂接后统一以档号命名（无论上传时原文件名是什么）；无档号时兜底用原名
+        display_name = f"{target.DH}.{fmt}" if target.DH else filename
+        key = f"archive/{target.archive_id}/{uuid.uuid4().hex[:8]}_{self._safe_name(display_name)}"
         storage.save(io.BytesIO(content), key, ATTACHMENT_BUCKET, ALLOWED_FORMATS[fmt])
         return ArchiveAttachment(
             archive_id=target.archive_id,
             is_staging=target.is_staging,
             is_primary=is_primary,
-            original_name=filename[:500],
+            original_name=display_name[:500],
             storage_key=key,
             storage_bucket=ATTACHMENT_BUCKET,
             file_size=len(content),
@@ -293,14 +296,14 @@ class AttachmentService:
             stmt = stmt.where(ArchiveStaging.tenant_id == tenant_id)
         staging = (await self.db.execute(stmt.limit(1))).scalars().first()
         if staging:
-            return MatchTarget(staging.id, staging.TM, "staging", staging.tenant_id)
+            return MatchTarget(staging.id, staging.TM, staging.DH, "staging", staging.tenant_id)
 
         stmt = select(Archive).where(Archive.DH == dh, Archive.is_deleted.is_(False))
         if tenant_id:
             stmt = stmt.where(Archive.tenant_id == tenant_id)
         formal = (await self.db.execute(stmt.limit(1))).scalars().first()
         if formal:
-            return MatchTarget(formal.id, formal.TM, "formal", formal.tenant_id)
+            return MatchTarget(formal.id, formal.TM, formal.DH, "formal", formal.tenant_id)
         return None
 
     async def _find_by_id(
@@ -319,7 +322,7 @@ class AttachmentService:
             .first()
         )
         if staging:
-            return MatchTarget(staging.id, staging.TM, "staging", staging.tenant_id)
+            return MatchTarget(staging.id, staging.TM, staging.DH, "staging", staging.tenant_id)
         formal = (
             (
                 await self.db.execute(
@@ -332,7 +335,7 @@ class AttachmentService:
             .first()
         )
         if formal:
-            return MatchTarget(formal.id, formal.TM, "formal", formal.tenant_id)
+            return MatchTarget(formal.id, formal.TM, formal.DH, "formal", formal.tenant_id)
         return None
 
     async def _has_primary(self, archive_id: uuid.UUID) -> bool:

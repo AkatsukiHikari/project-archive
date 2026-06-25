@@ -4,6 +4,7 @@ relate 能力：跨档案关联
 输入：query（档号或主题）
 处理：检索相关 meta；按 score 排序；按全宗 / 年度分组，返回关联建议
 """
+
 from __future__ import annotations
 
 import re
@@ -11,16 +12,21 @@ from collections import defaultdict
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ai.services.capabilities.types import CapabilityContext, CapabilityResult
-from app.modules.ai.services.retrieval_service import RetrievalService, RetrieveFilter
-
+from app.modules.ai.services.capabilities.types import (CapabilityContext,
+                                                        CapabilityResult)
+from app.modules.ai.services.retrieval_service import (RetrievalService,
+                                                       RetrieveFilter)
 
 _DH_RE = re.compile(r"[JQ]\d{3}-[A-Z_]+-\d{4}-[YCD]-\d+")
 
 
-async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> CapabilityResult:
+async def run(
+    *, db: AsyncSession, ctx: CapabilityContext, query: str
+) -> CapabilityResult:
     svc = RetrievalService(db)
-    filt = RetrieveFilter(tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id)
+    filt = RetrieveFilter(
+        tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id
+    )
 
     # 如果用户提到具体档号，剥离档号后用其语义部分检索
     dh_match = _DH_RE.search(query)
@@ -58,7 +64,9 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
     for i, h in enumerate(hits, start=1):
         nd = (h.extra or {}).get("ND")
         dh = (h.extra or {}).get("DH")
-        lines.append(f"{i}. {h.title}（{dh or '—'} · {nd or '—'} 年 · 相关度 {h.score:.2f}）")
+        lines.append(
+            f"{i}. {h.title}（{dh or '—'} · {nd or '—'} 年 · 相关度 {h.score:.2f}）"
+        )
     lines.append("")
     lines.append("【关联维度统计】")
     lines.append(f"  · 涉及全宗：{len(by_qzh)} 个")
@@ -84,5 +92,9 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
         status="ok",
         answer="\n".join(lines),
         citations=citations,
-        detail={"target_dh": target_dh, "by_qzh": list(by_qzh.keys()), "by_year": list(by_year.keys())},
+        detail={
+            "target_dh": target_dh,
+            "by_qzh": list(by_qzh.keys()),
+            "by_year": list(by_year.keys()),
+        },
     )

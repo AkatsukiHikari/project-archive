@@ -30,15 +30,10 @@ from app.modules.collection.models.transfer import TransferBatch, TransferEntry 
 from app.modules.utilization.models.application import UtilizationApplication, UtilizationItem  # noqa: F401
 from app.modules.preservation.models.scheme import CheckItem, DetectionScheme, SchemeItem  # noqa: F401
 from app.modules.preservation.models.run import DetectionBatch, DetectionRun, DetectionResultItem  # noqa: F401
-from app.modules.ai.models.ai_scenario import AIScenario  # noqa: F401
-from app.modules.ai.models.ai_session import AISession  # noqa: F401
-from app.modules.ai_patch.models.ai_patch import AIPatch  # noqa: F401
-from app.modules.ai_eval.models.golden_set import GoldenSetItem  # noqa: F401
-from app.modules.ai_eval.models.eval_run import EvalRun, EvalRunItem  # noqa: F401
-from app.modules.ai_eval.models.annotation import Annotation  # noqa: F401
 from app.modules.statistics.models import StatAnnualReport  # noqa: F401
 from app.modules.repository.models.attach_batch import AttachBatch  # noqa: F401
 from app.modules.storage.models import StorageInout, StorageShelf, StorageVault  # noqa: F401
+from app.modules.ai.models.ocr_job import OcrJob  # noqa: F401
 from app.modules.research.models import (  # noqa: F401
     ResearchMaterial,
     ResearchProject,

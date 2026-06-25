@@ -7,6 +7,7 @@ AI 会话持久化服务
 
 流式响应结束（``message_end``）后回填 ``dify_conversation_id``，方便服务端日后拉历史。
 """
+
 from __future__ import annotations
 
 import uuid
@@ -69,7 +70,10 @@ class SessionService:
     async def attach_dify_conversation(
         self, *, session: AISession, dify_conversation_id: str
     ) -> None:
-        if dify_conversation_id and session.dify_conversation_id != dify_conversation_id:
+        if (
+            dify_conversation_id
+            and session.dify_conversation_id != dify_conversation_id
+        ):
             session.dify_conversation_id = dify_conversation_id
             await self._db.flush()
 

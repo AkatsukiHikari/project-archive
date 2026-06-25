@@ -7,6 +7,7 @@ AI 会话元数据表
 
 软删除沿用 BaseEntity 的 ``is_deleted``。
 """
+
 import uuid
 
 from sqlalchemy import ForeignKey, Index, Integer, String

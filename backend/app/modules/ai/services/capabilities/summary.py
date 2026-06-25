@@ -4,19 +4,26 @@ summary 能力：档案专题综述
 输入：query（主题）
 处理：先按主题做较大范围检索（top_k=10），按年度聚类，给 LLM 节点结构化素材
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ai.services.capabilities.types import CapabilityContext, CapabilityResult
-from app.modules.ai.services.retrieval_service import RetrievalService, RetrieveFilter
+from app.modules.ai.services.capabilities.types import (CapabilityContext,
+                                                        CapabilityResult)
+from app.modules.ai.services.retrieval_service import (RetrievalService,
+                                                       RetrieveFilter)
 
 
-async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> CapabilityResult:
+async def run(
+    *, db: AsyncSession, ctx: CapabilityContext, query: str
+) -> CapabilityResult:
     svc = RetrievalService(db)
-    filt = RetrieveFilter(tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id)
+    filt = RetrieveFilter(
+        tenant_id=ctx.tenant_id, secret_level=ctx.secret_level, user_id=ctx.user_id
+    )
     rules = await svc.retrieve(query=query, kb_type="rules", top_k=3, filt=filt)
     metas = await svc.retrieve(query=query, kb_type="meta", top_k=12, filt=filt)
     hits = rules + metas
@@ -41,7 +48,9 @@ async def run(*, db: AsyncSession, ctx: CapabilityContext, query: str) -> Capabi
     lines.append(f"【档案分布概览】共检索到 {len(metas)} 件档案，按年度分布如下：")
     for year in sorted(by_year.keys(), reverse=True):
         titles = by_year[year]
-        lines.append(f"  · {year} 年（{len(titles)} 件）: {' / '.join(titles[:3])}{' 等' if len(titles) > 3 else ''}")
+        lines.append(
+            f"  · {year} 年（{len(titles)} 件）: {' / '.join(titles[:3])}{' 等' if len(titles) > 3 else ''}"
+        )
     lines.append("")
     lines.append("【典型档案明细】")
     for m in metas[:6]:

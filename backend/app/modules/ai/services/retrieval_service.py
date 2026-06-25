@@ -12,6 +12,7 @@
 P1 阶段先打通"调用 → 注入 filter → 写审计 → 返回"通路，
 实际数据源对接（ES / pgvector）留到 P2 在 ``_retrieve_*`` 方法里替换。
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,12 +22,8 @@ from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infra.search.es_client import (
-    AI_RULES_INDEX,
-    ARCHIVE_INDEX,
-    SHARED_TENANT_ID,
-    get_es_client,
-)
+from app.infra.search.es_client import (AI_RULES_INDEX, ARCHIVE_INDEX,
+                                        SHARED_TENANT_ID, get_es_client)
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +37,6 @@ class RetrievalUnavailableError(RuntimeError):
     """
 
 
-
 # 用户 secret_level（int）→ 可见 MJ 字符串集合（DA/T 18 密级）
 # 0=公开 / 1=内部 / 2=秘密 / 3=机密 / 4=绝密；按"低看不到高"原则下游降级
 _MJ_BY_LEVEL: dict[int, tuple[str, ...]] = {
@@ -48,7 +44,18 @@ _MJ_BY_LEVEL: dict[int, tuple[str, ...]] = {
     1: ("public", "公开", "internal", "内部"),
     2: ("public", "公开", "internal", "内部", "secret", "秘密"),
     3: ("public", "公开", "internal", "内部", "secret", "秘密", "confidential", "机密"),
-    4: ("public", "公开", "internal", "内部", "secret", "秘密", "confidential", "机密", "top_secret", "绝密"),
+    4: (
+        "public",
+        "公开",
+        "internal",
+        "内部",
+        "secret",
+        "秘密",
+        "confidential",
+        "机密",
+        "top_secret",
+        "绝密",
+    ),
 }
 
 
@@ -58,11 +65,16 @@ def _allowed_mj(secret_level: int) -> tuple[str, ...]:
 
 # MJ 字符串 → 数值密级（用于回传 chunk.secret_level，供 citation_validator 校验）
 _MJ_TO_LEVEL: dict[str, int] = {
-    "public": 0, "公开": 0,
-    "internal": 1, "内部": 1,
-    "secret": 2, "秘密": 2,
-    "confidential": 3, "机密": 3,
-    "top_secret": 4, "绝密": 4,
+    "public": 0,
+    "公开": 0,
+    "internal": 1,
+    "内部": 1,
+    "secret": 2,
+    "秘密": 2,
+    "confidential": 3,
+    "机密": 3,
+    "top_secret": 4,
+    "绝密": 4,
 }
 
 
@@ -78,8 +90,8 @@ class RetrieveFilter:
     user_id: uuid.UUID
     category_ids: tuple[str, ...] = ()
     fonds_ids: tuple[str, ...] = ()
-    nd: int | None = None          # 年度精确过滤（自然语言里解析出的"2022年"）
-    qzh: str | None = None         # 全宗号精确过滤
+    nd: int | None = None  # 年度精确过滤（自然语言里解析出的"2022年"）
+    qzh: str | None = None  # 全宗号精确过滤
 
 
 @dataclass(frozen=True)
@@ -88,7 +100,7 @@ class RetrievedChunk:
 
     chunk_id: str
     source_type: str  # "meta" / "rule" / "ocr"
-    source_id: str    # archive_id / rule_id / ...
+    source_id: str  # archive_id / rule_id / ...
     title: str
     snippet: str
     score: float
@@ -162,7 +174,16 @@ class RetrievalService:
         # 有关键词 → 多字段匹配；纯结构化查询（如"查2022年的档案"去掉年度/停用词后为空）→ match_all
         q = (query or "").strip()
         must: list[dict[str, Any]] = (
-            [{"multi_match": {"query": q, "fields": ["TM^3", "RZZ^2"], "type": "best_fields", "fuzziness": "AUTO"}}]
+            [
+                {
+                    "multi_match": {
+                        "query": q,
+                        "fields": ["TM^3", "RZZ^2"],
+                        "type": "best_fields",
+                        "fuzziness": "AUTO",
+                    }
+                }
+            ]
             if q
             else [{"match_all": {}}]
         )
@@ -171,8 +192,16 @@ class RetrievalService:
             "query": {"bool": {"must": must, "filter": filters}},
             "size": top_k,
             "_source": [
-                "id", "DH", "QZH", "TM", "RZZ", "ND", "MJ",
-                "catalog_id", "tenant_id", "WJRQ",
+                "id",
+                "DH",
+                "QZH",
+                "TM",
+                "RZZ",
+                "ND",
+                "MJ",
+                "catalog_id",
+                "tenant_id",
+                "WJRQ",
             ],
         }
         # 纯结构化检索按年度倒序，给出稳定且符合直觉的顺序
@@ -199,12 +228,16 @@ class RetrievalService:
                     source_id=archive_id,
                     title=str(src.get("TM") or "(无题名)"),
                     snippet=" / ".join(
-                        str(x) for x in (src.get("DH"), src.get("QZH"), src.get("ND")) if x
+                        str(x)
+                        for x in (src.get("DH"), src.get("QZH"), src.get("ND"))
+                        if x
                     ),
                     score=float(hit.get("_score") or 0.0),
                     secret_level=level,
                     tenant_id=str(src.get("tenant_id") or filt.tenant_id),
-                    category_id=str(src.get("catalog_id")) if src.get("catalog_id") else None,
+                    category_id=(
+                        str(src.get("catalog_id")) if src.get("catalog_id") else None
+                    ),
                     extra={
                         "DH": src.get("DH"),
                         "QZH": src.get("QZH"),
@@ -247,8 +280,15 @@ class RetrievalService:
             },
             "size": top_k,
             "_source": [
-                "rule_id", "category", "title", "content", "tags",
-                "source", "version", "tenant_id", "secret_level",
+                "rule_id",
+                "category",
+                "title",
+                "content",
+                "tags",
+                "source",
+                "version",
+                "tenant_id",
+                "secret_level",
             ],
         }
         try:
@@ -274,7 +314,9 @@ class RetrievalService:
                     score=float(hit.get("_score") or 0.0),
                     secret_level=int(src.get("secret_level") or 0),
                     tenant_id=str(src.get("tenant_id") or SHARED_TENANT_ID),
-                    category_id=str(src.get("category")) if src.get("category") else None,
+                    category_id=(
+                        str(src.get("category")) if src.get("category") else None
+                    ),
                     extra={
                         "source": src.get("source"),
                         "version": src.get("version"),

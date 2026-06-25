@@ -8,6 +8,7 @@
 - ``get_stats(tenant_id)``  返回 ES 文档数 / DB 档案数 / 最近同步时间，供后台监控
 - ``rebuild_meta(tenant_id, batch_size)`` 全量重建：分批扫 DB 推 ES（幂等覆盖）
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,8 +32,8 @@ class KBStats:
 
     kb_type: str
     db_count: int
-    es_count: int | None      # ES 不可达时为 None
-    synced: bool              # db_count == es_count
+    es_count: int | None  # ES 不可达时为 None
+    synced: bool  # db_count == es_count
     last_synced_at: str | None  # 最近一次同步的时间戳（ISO）
     note: str | None = None
 
@@ -56,10 +57,22 @@ class KBSyncService:
         """返回各 KB 类型的状态。当前实装：meta（archive） + rules / ocr 占位。"""
         return [
             await self._meta_stats(tenant_id),
-            KBStats(kb_type="rules", db_count=0, es_count=0, synced=True, last_synced_at=None,
-                    note="L4 业务规则：暂用静态种子，无需同步"),
-            KBStats(kb_type="ocr",   db_count=0, es_count=None, synced=False, last_synced_at=None,
-                    note="L2 OCR 全文：P3 接入"),
+            KBStats(
+                kb_type="rules",
+                db_count=0,
+                es_count=0,
+                synced=True,
+                last_synced_at=None,
+                note="L4 业务规则：暂用静态种子，无需同步",
+            ),
+            KBStats(
+                kb_type="ocr",
+                db_count=0,
+                es_count=None,
+                synced=False,
+                last_synced_at=None,
+                note="L2 OCR 全文：P3 接入",
+            ),
         ]
 
     async def rebuild_meta(
@@ -90,7 +103,11 @@ class KBSyncService:
                 synced += ok
                 failed += len(batch) - ok
             except Exception:
-                logger.exception("kb_sync rebuild_meta 批次失败 offset=%d size=%d", offset, len(batch))
+                logger.exception(
+                    "kb_sync rebuild_meta 批次失败 offset=%d size=%d",
+                    offset,
+                    len(batch),
+                )
                 failed += len(batch)
 
             scanned += len(batch)
@@ -99,7 +116,11 @@ class KBSyncService:
         duration = int((time.time() - started) * 1000)
         logger.info(
             "kb_sync rebuild_meta done tenant=%s scanned=%d synced=%d failed=%d duration=%dms",
-            tenant_id, scanned, synced, failed, duration,
+            tenant_id,
+            scanned,
+            synced,
+            failed,
+            duration,
         )
         return RebuildResult(
             kb_type="meta",

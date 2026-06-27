@@ -350,6 +350,76 @@ def build_qa_chatflow(dataset_id):
     )
 
 
+def build_catalog_workflow():
+    """智能著录抽取：Start(全文+字段schema+当前条目) → DeepSeek 抽结构化JSON → End(text)。"""
+    start, llm, end = "node_start", "node_llm", "node_end"
+    prompt = (
+        "你是档案著录专家。请依据『档案原文全文』，按『目标字段定义』抽取每个字段的著录值。\n\n"
+        "目标字段定义(JSON，name=字段名/拼音缩写，label=中文名，type=类型，"
+        "required=是否必录，options=可选值列表)：\n{{#" + start + ".field_schema#}}\n\n"
+        "当前条目已有值(JSON，供参考，可能为空或有误)：\n{{#" + start + ".existing#}}\n\n"
+        "档案原文全文：\n{{#" + start + ".full_text#}}\n\n"
+        "【要求】\n"
+        "1. 只输出一个 JSON 对象，键为字段 name，值为对象 "
+        "{\"value\": 抽取值, \"confidence\": 0~100 整数, \"evidence\": 原文出处片段}。\n"
+        "2. type=select 的字段，value 必须取自该字段 options，否则留空。\n"
+        "3. 原文中找不到依据的字段，value 用空字符串、confidence=0。\n"
+        "4. 不要编造；日期统一 YYYY-MM-DD；不要输出 JSON 以外的任何文字。"
+    )
+    nodes = [
+        _node(
+            start,
+            "start",
+            {
+                "title": "Start",
+                "variables": [
+                    {"label": "原文全文", "variable": "full_text", "type": "paragraph",
+                     "required": True, "max_length": 48000, "options": []},
+                    {"label": "字段定义", "variable": "field_schema", "type": "paragraph",
+                     "required": True, "max_length": 8000, "options": []},
+                    {"label": "当前条目", "variable": "existing", "type": "paragraph",
+                     "required": False, "max_length": 8000, "options": []},
+                ],
+            },
+            80, 240,
+        ),
+        _node(
+            llm,
+            "llm",
+            {
+                "title": "DeepSeek 抽取",
+                "model": {
+                    "provider": DEEPSEEK_PROVIDER,
+                    "name": DEEPSEEK_MODEL,
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.1},
+                },
+                "prompt_template": [{"role": "system", "text": prompt}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "variables": [],
+            },
+            420, 240,
+        ),
+        _node(
+            end,
+            "end",
+            {"title": "End", "outputs": [{"variable": "text", "value_selector": [llm, "text"]}]},
+            760, 240,
+        ),
+    ]
+    edges = [_edge(start, llm, "start", "llm"), _edge(llm, end, "llm", "end")]
+    return _app(
+        "workflow",
+        "智能著录抽取",
+        "DeepSeek 从原文全文按字段schema抽结构化著录数据",
+        nodes,
+        edges,
+        icon="memo",
+        icon_bg="#DCFCE7",
+    )
+
+
 def _app(mode, name, desc, nodes, edges, icon, icon_bg):
     return {
         "app": {
@@ -395,10 +465,27 @@ def main():
     ap.add_argument("--all", action="store_true", help="删旧 + dataset + 两个 App")
     ap.add_argument("--purge", action="store_true", help="删除所有旧 App")
     ap.add_argument("--qa", help="重建问答 Chatflow（传 dataset_id），不动其它")
+    ap.add_argument("--catalog", action="store_true", help="建/重建 智能著录抽取工作流")
     args = ap.parse_args()
 
     dify = Dify()
     print(f"✓ 登录 {EMAIL}")
+
+    if args.catalog:
+        for a in dify.list_apps():
+            if a.get("name") == "智能著录抽取":
+                dify.delete_app(a["id"])
+        app_id = dify.import_app(
+            build_catalog_workflow(),
+            "智能著录抽取",
+            "catalog extract",
+            icon="memo",
+            icon_bg="#DCFCE7",
+        )
+        dify.publish(app_id)
+        print(f"✓ 智能著录工作流 app_id={app_id}")
+        print(f"  DIFY_CATALOG_WORKFLOW_KEY={dify.api_key(app_id)}")
+        return
 
     if args.qa:
         for a in dify.list_apps():

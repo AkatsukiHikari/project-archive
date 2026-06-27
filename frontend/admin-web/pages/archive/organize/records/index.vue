@@ -93,6 +93,10 @@
             <template #icon><Icon name="heroicons:archive-box-arrow-down" class="w-4 h-4" /></template>
             归档入库
           </NButton>
+          <NButton size="small" type="error" secondary @click="confirmBatchDelete">
+            <template #icon><Icon name="heroicons:trash" class="w-4 h-4" /></template>
+            批量删除
+          </NButton>
           <NButton size="small" quaternary @click="selectedIds = []">取消选择</NButton>
         </template>
       </div>
@@ -157,14 +161,6 @@
           <p class="text-[12.5px] m-0" style="color:var(--semi-color-text-2)">{{ attachRow.TM }}</p>
           <AttachmentPanel :archive-id="attachRow.id" @changed="loadArchives" />
         </div>
-      </NDrawerContent>
-    </NDrawer>
-
-    <!-- ── 查看原文抽屉 ───────────────────────────────────── -->
-    <NDrawer v-model:show="viewerShow" :width="920" placement="right">
-      <NDrawerContent :body-content-style="{ padding: 0, height: '100%' }" closable>
-        <template #header>档案原文</template>
-        <ArchiveSourceViewer :archive-id="viewerArchiveId" :title="viewerTitle" :dh="viewerDh" />
       </NDrawerContent>
     </NDrawer>
 
@@ -253,7 +249,7 @@ import type {
 import { AdminPageHeader } from "@/components/admin";
 import { CrudModal, ProTable } from "@/components/ui";
 import {
-  ArchiveInterpretDrawer, ArchiveSourceViewer, AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
+  ArchiveInterpretDrawer, AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
 } from "@/components/archive";
 import { AppraisalAPI } from "@/api/appraisal";
 import type { ArchiveConclusion } from "@/api/appraisal";
@@ -451,7 +447,7 @@ const columns = computed<DataTableColumns<Archive>>(() => [
   {
     title: "原文", key: "attachment_count", width: 70,
     render: (r) => (r.attachment_count
-      ? h(NButton, { size: "tiny", text: true, type: "success", onClick: () => openViewer(r) },
+      ? h(NButton, { size: "tiny", text: true, type: "primary", onClick: () => openViewer(r) },
           { default: () => `${r.attachment_count} 份` })
       : h("span", { class: "text-[11.5px]", style: "color:var(--semi-color-text-3)" }, "无")),
   },
@@ -460,13 +456,17 @@ const columns = computed<DataTableColumns<Archive>>(() => [
     render: (r) => h("span", { class: "text-[12px]" }, statusLabel[r.status] ?? r.status),
   },
   {
-    title: "操作", key: "actions", width: 200,
+    title: "操作", key: "actions", width: 264, fixed: "right" as const,
     render: (r) => [
       h(NButton, { size: "tiny", tertiary: true, class: "mr-1", onClick: () => openDetail(r) }, { default: () => "详情" }),
       h(NButton, { size: "tiny", tertiary: true, type: "primary", class: "mr-1", onClick: () => openAttach(r) }, { default: () => "挂接" }),
-      ...(r.attachment_count
-        ? [h(NButton, { size: "tiny", tertiary: true, type: "success", onClick: () => openViewer(r) }, { default: () => "查看原文" })]
-        : []),
+      h(NButton, {
+        size: "tiny", tertiary: true, type: "primary", class: "mr-1",
+        disabled: !r.attachment_count,
+        title: r.attachment_count ? "查看原文" : "该档案暂无数字化原文",
+        onClick: () => openViewer(r),
+      }, { default: () => "查看原文" }),
+      h(NButton, { size: "tiny", tertiary: true, type: "error", onClick: () => confirmDelete(r) }, { default: () => "删除" }),
     ],
   },
 ]);
@@ -524,16 +524,10 @@ function openAttach(row: Archive) {
   attachVisible.value = true;
 }
 
-// ── 查看原文 ──────────────────────────────────────────────────────────────────
-const viewerShow = ref(false);
-const viewerArchiveId = ref<string | null>(null);
-const viewerTitle = ref("");
-const viewerDh = ref("");
+// ── 查看原文：统一跳转 reader 页（与档案查询一致）──────────────────────────────
+const router = useRouter();
 function openViewer(row: Archive) {
-  viewerArchiveId.value = row.id;
-  viewerTitle.value = row.TM || "";
-  viewerDh.value = row.DH || "";
-  viewerShow.value = true;
+  router.push(`/archive/reader?id=${row.id}`);
 }
 
 const interpretShow = ref(false);
@@ -640,6 +634,22 @@ function confirmDelete(row: Archive) {
       await ArchiveAPI.remove(row.id);
       message.success("已删除");
       detailVisible.value = false;
+      await loadArchives();
+    },
+  });
+}
+
+function confirmBatchDelete() {
+  if (selectedIds.value.length === 0) return;
+  dialog.warning({
+    title: "批量删除确认",
+    content: `确认删除选中的 ${selectedIds.value.length} 条档案？删除后不可恢复。`,
+    positiveText: "删除",
+    negativeText: "取消",
+    onPositiveClick: async () => {
+      const res = await OrganizeAPI.batchDelete(selectedIds.value);
+      message.success(`已删除 ${res.data.deleted} 条`);
+      selectedIds.value = [];
       await loadArchives();
     },
   });

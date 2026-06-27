@@ -1,0 +1,277 @@
+<template>
+  <NDrawer :show="show" :width="1040" placement="right" @update:show="(v: boolean) => emit('update:show', v)">
+    <NDrawerContent :body-content-style="{ padding: 0, height: '100%' }" closable>
+      <template #header>
+        <div class="flex items-center gap-2">
+          <Icon name="heroicons:document-plus" class="w-5 h-5" style="color: oklch(var(--p))" />
+          <span>智能著录校正</span>
+          <code v-if="archive?.DH" class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-gray-100" style="color: oklch(var(--p))">{{ archive.DH }}</code>
+          <NTag v-if="archive" size="small" round :bordered="false" :type="archive.doc_source === 'formal' ? 'success' : 'default'">
+            {{ archive.doc_source === 'formal' ? '正式库' : '暂存库' }}
+          </NTag>
+        </div>
+      </template>
+
+      <div class="flex h-full min-h-0">
+        <!-- 左：原文全文（档案系统核心，直接展示 AI 所读原文）+ PDF 原件入口 -->
+        <div class="w-[460px] shrink-0 border-r flex flex-col min-h-0" style="border-color: var(--semi-color-border)">
+          <div class="flex items-center gap-2 px-3 py-2 shrink-0 border-b" style="border-color: var(--semi-color-border)">
+            <Icon name="heroicons:document-text" class="w-4 h-4" style="color: oklch(var(--p))" />
+            <span class="text-[13px] font-medium" style="color: var(--semi-color-text-0)">OCR 识别全文</span>
+            <span v-if="fullText" class="text-[11px] text-green-600">{{ fullText.length }} 字</span>
+            <div class="flex-1" />
+            <NButton text size="small" type="primary" :disabled="!archive" @click="openReader">
+              <template #icon><Icon name="heroicons:document-magnifying-glass" class="w-4 h-4" /></template>
+              查看原文
+            </NButton>
+          </div>
+          <div class="flex-1 overflow-auto px-3 py-2 text-[12.5px] whitespace-pre-wrap break-words leading-relaxed" style="color: var(--semi-color-text-1)">
+            <template v-if="fullText">{{ fullText }}</template>
+            <span v-else style="color: var(--semi-color-text-3)">该档案暂无识别全文。可在右侧「立即 OCR 识别」后查看。</span>
+          </div>
+        </div>
+
+        <!-- 右：著录表单 -->
+        <div class="flex-1 min-w-0 flex flex-col min-h-0">
+          <div v-if="loading" class="flex-1 flex items-center justify-center gap-2 text-sm" style="color: var(--semi-color-text-3)">
+            <NSpin size="small" /> AI 正在阅读原文并比对著录字段…
+          </div>
+
+          <!-- 未 OCR：就地识别 -->
+          <div v-else-if="needOcr" class="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <Icon name="heroicons:document-magnifying-glass" class="w-10 h-10" style="color: var(--semi-color-text-3)" />
+            <p class="text-sm" style="color: var(--semi-color-text-2)">该档案尚未识别原文全文，无法 AI 著录。</p>
+            <p v-if="ocrMsg" class="text-[12px]" :style="{ color: ocrFailed ? '#dc2626' : 'var(--semi-color-text-3)' }">{{ ocrMsg }}</p>
+            <NButton type="primary" :loading="ocrRunning" @click="runOcr">
+              <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
+              {{ ocrRunning ? '识别中…' : '立即 OCR 识别原文' }}
+            </NButton>
+            <p v-if="ocrRunning" class="text-[11px]" style="color: var(--semi-color-text-3)">扫描件识别较慢，请稍候，识别完成后将自动分析</p>
+          </div>
+
+          <div v-else-if="errorMsg" class="flex-1 flex items-center justify-center px-6 text-center text-sm" style="color: #dc2626">{{ errorMsg }}</div>
+
+          <template v-else>
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b shrink-0" style="border-color: var(--semi-color-border)">
+              <span class="text-[13px]" style="color: var(--semi-color-text-2)">
+                AI 建议 <strong style="color: oklch(var(--p))">{{ changedCount }}</strong> 项（绿点）· 阈值 {{ threshold }}% 已自动采用
+              </span>
+              <div class="flex-1" />
+              <NButton size="tiny" tertiary @click="applyAllAi">全部采用 AI</NButton>
+              <NButton size="tiny" tertiary @click="revertAll">还原</NButton>
+            </div>
+
+            <div class="flex-1 overflow-auto px-5 py-3 flex flex-col gap-3">
+              <div v-for="s in suggestions" :key="s.name" class="grid grid-cols-[100px_1fr] gap-3 items-start">
+                <label class="text-[13px] text-right pt-1.5" style="color: var(--semi-color-text-2)">
+                  <span v-if="s.changed" class="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style="background: oklch(var(--su))" />
+                  {{ s.label }}<span v-if="s.required" style="color:#dc2626">*</span>
+                </label>
+                <div class="flex flex-col gap-1">
+                  <NSelect
+                    v-if="s.options && s.options.length"
+                    :value="form[s.name]"
+                    :options="s.options.map((o) => ({ label: o, value: o }))"
+                    size="small" clearable
+                    @update:value="(v: string) => (form[s.name] = v ?? '')"
+                  />
+                  <NInput v-else :value="form[s.name]" size="small" @update:value="(v: string) => (form[s.name] = v)" />
+
+                  <!-- AI 提示行 -->
+                  <div v-if="s.changed" class="flex items-center gap-2 text-[11px]">
+                    <template v-if="form[s.name] === s.suggested">
+                      <NTag size="small" :type="s.kind === 'fill' ? 'info' : 'warning'" round :bordered="false">
+                        AI{{ s.kind === 'fill' ? '补足' : '更正' }} {{ s.confidence }}%<template v-if="s.similarity !== null"> · 似{{ s.similarity }}%</template>
+                      </NTag>
+                      <span v-if="s.current" style="color: var(--semi-color-text-3)">原值：{{ s.current }}</span>
+                      <a class="cursor-pointer" style="color: var(--semi-color-text-3)" @click="form[s.name] = s.current">撤销</a>
+                    </template>
+                    <template v-else>
+                      <span style="color: var(--semi-color-text-3)">AI 建议：<strong style="color: oklch(var(--p))">{{ s.suggested }}</strong>（{{ s.confidence }}%）</span>
+                      <a class="cursor-pointer" style="color: oklch(var(--p))" @click="form[s.name] = s.suggested">采用</a>
+                    </template>
+                    <span v-if="s.evidence" class="truncate" style="color: var(--semi-color-text-3)" :title="s.evidence">· 依据：{{ s.evidence }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 px-4 py-3 border-t shrink-0" style="border-color: var(--semi-color-border)">
+              <span class="text-[12px]" style="color: var(--semi-color-text-3)">将写入 {{ dirtyCount }} 个改动字段</span>
+              <div class="flex-1" />
+              <NButton size="small" @click="emit('update:show', false)">取消</NButton>
+              <NButton size="small" type="primary" :disabled="dirtyCount === 0" :loading="applying" @click="doApply">保存著录</NButton>
+            </div>
+          </template>
+        </div>
+      </div>
+    </NDrawerContent>
+
+  </NDrawer>
+</template>
+
+<script setup lang="ts">
+import { computed, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { NButton, NDrawer, NDrawerContent, NInput, NSelect, NSpin, NTag, useMessage } from "naive-ui";
+import { CatalogAPI, type FieldSuggestion } from "@/api/catalog";
+import { AiAdminAPI } from "@/api/ai";
+
+interface TargetArchive { id: string; doc_source: "staging" | "formal"; DH?: string; TM: string }
+
+const props = defineProps<{ show: boolean; archive: TargetArchive | null }>();
+const emit = defineEmits<{ (e: "update:show", v: boolean): void; (e: "applied"): void }>();
+
+const message = useMessage();
+const router = useRouter();
+
+function openReader() {
+  if (props.archive) router.push(`/archive/reader?id=${props.archive.id}`);
+}
+
+const loading = ref(false);
+const applying = ref(false);
+const needOcr = ref(false);
+const errorMsg = ref("");
+const threshold = ref(80);
+const fullText = ref("");
+const suggestions = ref<FieldSuggestion[]>([]);
+const form = reactive<Record<string, string>>({});
+
+// OCR 就地识别
+const ocrRunning = ref(false);
+const ocrFailed = ref(false);
+const ocrMsg = ref("");
+
+const changedCount = computed(() => suggestions.value.filter((s) => s.changed).length);
+const dirtyCount = computed(
+  () => suggestions.value.filter((s) => (form[s.name] ?? "").trim() !== (s.current ?? "").trim()).length,
+);
+
+function resetState() {
+  needOcr.value = false;
+  errorMsg.value = "";
+  ocrFailed.value = false;
+  ocrMsg.value = "";
+  fullText.value = "";
+  suggestions.value = [];
+  for (const k of Object.keys(form)) form[k] = "";
+}
+
+async function load() {
+  if (!props.archive) return;
+  loading.value = true;
+  resetState();
+  try {
+    const res = await CatalogAPI.suggest(props.archive.id, props.archive.doc_source);
+    const d = res.data;
+    if (!d.ok) {
+      if (d.reason === "need_ocr") needOcr.value = true;
+      else errorMsg.value = d.message || d.reason || "AI 著录失败";
+      return;
+    }
+    threshold.value = d.threshold ?? 80;
+    fullText.value = d.full_text || "";
+    // MJ/BGQX 是枚举编码字段（码与中文选项不一致），AI 不猜，留正常著录页处理
+    suggestions.value = (d.suggestions || []).filter((s) => !["MJ", "BGQX"].includes(s.name));
+    for (const s of suggestions.value) {
+      form[s.name] = s.changed && s.preselect ? s.suggested : s.current;
+    }
+  } catch {
+    errorMsg.value = "请求失败，请确认 AI 服务是否正常";
+  } finally {
+    loading.value = false;
+  }
+}
+
+function applyAllAi() {
+  for (const s of suggestions.value) if (s.changed) form[s.name] = s.suggested;
+}
+function revertAll() {
+  for (const s of suggestions.value) form[s.name] = s.current;
+}
+
+// ── 就地 OCR：触发 + 轮询作业状态，完成后自动重新分析 ──────────────────────────
+async function runOcr() {
+  if (!props.archive) return;
+  ocrRunning.value = true;
+  ocrFailed.value = false;
+  ocrMsg.value = "已提交识别任务…";
+  try {
+    const r = await AiAdminAPI.ocr(props.archive.id);
+    if (!r.data.ok) {
+      ocrFailed.value = true;
+      ocrMsg.value = r.data.reason || "该档案没有可识别的 PDF 原文";
+      ocrRunning.value = false;
+      return;
+    }
+    await pollOcr();
+  } catch {
+    ocrFailed.value = true;
+    ocrMsg.value = "OCR 触发失败";
+    ocrRunning.value = false;
+  }
+}
+
+async function pollOcr() {
+  const id = props.archive?.id;
+  if (!id) return;
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    if (!props.show || props.archive?.id !== id) return;
+    try {
+      const jobs = (await AiAdminAPI.ocrJobs({ limit: 100 })).data.items;
+      const job = jobs.find((j) => j.archive_id === id);
+      if (job?.status === "succeeded") {
+        ocrRunning.value = false;
+        ocrMsg.value = "";
+        await load();
+        return;
+      }
+      if (job?.status === "failed") {
+        ocrRunning.value = false;
+        ocrFailed.value = true;
+        ocrMsg.value = `OCR 失败：${job.error || "未知错误"}`;
+        return;
+      }
+    } catch {
+      /* 单次轮询失败忽略，继续 */
+    }
+  }
+  ocrRunning.value = false;
+  ocrFailed.value = true;
+  ocrMsg.value = "识别超时，可到「OCR 任务」页查看进度后重试";
+}
+
+async function doApply() {
+  if (!props.archive) return;
+  const adopted: Record<string, string> = {};
+  for (const s of suggestions.value) {
+    const v = (form[s.name] ?? "").trim();
+    if (v !== (s.current ?? "").trim()) adopted[s.name] = v;
+  }
+  if (!Object.keys(adopted).length) return;
+  applying.value = true;
+  try {
+    const res = await CatalogAPI.apply(props.archive.id, props.archive.doc_source, adopted);
+    if (res.data.ok) {
+      message.success(`已写入 ${res.data.changed ?? Object.keys(adopted).length} 个字段`);
+      emit("applied");
+      emit("update:show", false);
+    } else {
+      message.error(res.data.reason || "写入失败");
+    }
+  } catch {
+    message.error("写入失败");
+  } finally {
+    applying.value = false;
+  }
+}
+
+watch(
+  () => [props.show, props.archive?.id] as const,
+  ([show]) => {
+    if (show && props.archive) load();
+  },
+);
+</script>

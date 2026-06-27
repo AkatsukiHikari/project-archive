@@ -36,7 +36,6 @@
         >
           <Icon :name="m.icon" class="w-4 h-4 mr-1 inline-block align-text-bottom" />{{ m.label }}
         </button>
-        <NTag v-if="publicOnly" size="small" type="warning" round class="ml-1">仅检索可对外档案</NTag>
         <div class="flex-1" />
         <span class="text-sm text-gray-500">共 <strong>{{ total }}</strong> 条</span>
       </div>

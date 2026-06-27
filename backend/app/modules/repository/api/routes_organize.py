@@ -26,6 +26,7 @@ from app.modules.repository.schemas.organize import (
     AttachBatchResult,
     AttachMatchPreview,
     AttachMatchRequest,
+    BatchDeleteRequest,
     BatchUpdateRequest,
     BatchUpdateResult,
     RenumberPreview,
@@ -51,6 +52,26 @@ async def batch_update(
     updated = await svc.batch_update(body, current_user.tenant_id)
     await db.commit()
     return success({"updated": updated})
+
+
+@router.post("/records/batch-delete", response_model=ResponseModel[dict])
+async def batch_delete(
+    body: BatchDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """批量删除暂存库档案（软删 + 从 ES 移除）。"""
+    from app.modules.repository.services.es_sync_service import delete_one
+
+    svc = OrganizeService(db)
+    deleted = await svc.batch_delete(body.ids, current_user.tenant_id)
+    await db.commit()
+    for i in deleted:
+        try:
+            await delete_one(i)
+        except Exception:  # noqa: BLE001
+            pass
+    return success({"deleted": len(deleted)})
 
 
 # ── 批量重编档号 ──────────────────────────────────────────────────────────────

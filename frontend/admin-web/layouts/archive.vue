@@ -105,11 +105,11 @@
         :style="{ left: isCollapsed ? '64px' : '240px' }"
       >
         <SystemHeader />
-        <TabsBar prefix="/archive" :extra-paths="['/ai', '/ai/knowledge', '/ai/ocr']" />
+        <TabsBar prefix="/archive" :extra-paths="['/ai', '/ai/catalog', '/ai/knowledge', '/ai/ocr']" />
       </div>
 
       <!-- 内容区 -->
-      <main class="p-6 flex-1 w-full min-w-0 overflow-x-hidden">
+      <main class="px-6 py-3 flex-1 w-full min-w-0 overflow-x-hidden">
         <slot />
       </main>
 

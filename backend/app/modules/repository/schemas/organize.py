@@ -23,6 +23,10 @@ class BatchUpdateResult(BaseModel):
     updated: int
 
 
+class BatchDeleteRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1)
+
+
 # ── 批量重编档号 ──────────────────────────────────────────────────────────────
 
 

@@ -10,7 +10,7 @@
       <NButton v-if="pdfUrl" text size="small" @click="openRaw">
         <template #icon><Icon name="heroicons:arrow-top-right-on-square" class="w-4 h-4" /></template>
       </NButton>
-      <NButton size="small" type="primary" @click="emit('insert-cite')">
+      <NButton v-if="allowCite" size="small" type="primary" @click="emit('insert-cite')">
         <template #icon><Icon name="heroicons:link" class="w-4 h-4" /></template>
         引用此档案
       </NButton>
@@ -78,7 +78,10 @@ import VuePdfEmbed from "vue-pdf-embed";
 import { ArchiveAPI, type ArchiveAttachment } from "@/api/repository";
 import { AiAdminAPI } from "@/api/ai";
 
-const props = defineProps<{ archiveId: string | null; title?: string; dh?: string }>();
+const props = withDefaults(
+  defineProps<{ archiveId: string | null; title?: string; dh?: string; allowCite?: boolean }>(),
+  { title: "", dh: "", allowCite: true },
+);
 const emit = defineEmits<{ (e: "insert-cite"): void }>();
 const message = useMessage();
 

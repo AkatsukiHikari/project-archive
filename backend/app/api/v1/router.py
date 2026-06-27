@@ -42,6 +42,8 @@ v1_router.include_router(collection_routes.router, prefix="/collection/sip", tag
 v1_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 from app.modules.ai.api.routes_ai import router as ai_router
 v1_router.include_router(ai_router, prefix="/ai", tags=["ai"])
+from app.modules.ai.api.routes_catalog import router as ai_catalog_router
+v1_router.include_router(ai_catalog_router, prefix="/ai", tags=["ai"])
 v1_router.include_router(repository_routes.router, prefix="/repository", tags=["repository"])
 v1_router.include_router(archive_category_router)
 v1_router.include_router(archive_router)

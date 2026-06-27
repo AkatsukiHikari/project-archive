@@ -48,6 +48,18 @@ class OrganizeService:
             await sync_one(a)
         return len(archives)
 
+    # ── 批量删除（软删 + 从 ES 移除）──────────────────────────────────────────
+    async def batch_delete(
+        self, ids: list[uuid.UUID], tenant_id: Optional[uuid.UUID]
+    ) -> list[str]:
+        archives = await self._load_staging(ids, tenant_id)
+        deleted: list[str] = []
+        for a in archives:
+            a.is_deleted = True
+            deleted.append(str(a.id))
+        await self.db.flush()
+        return deleted
+
     # ── 批量重编档号 ──────────────────────────────────────────────────────────
 
     async def renumber_preview(

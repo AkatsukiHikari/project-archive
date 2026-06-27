@@ -470,6 +470,11 @@ export const OrganizeAPI = {
       "/archive/organize/records/batch", data,
     ),
 
+  batchDelete: (ids: string[]) =>
+    http.post<ApiResponse<{ deleted: number }>, ApiResponse<{ deleted: number }>>(
+      "/archive/organize/records/batch-delete", { ids },
+    ),
+
   renumberPreview: (data: RenumberPayload) =>
     http.post<ApiResponse<RenumberPreviewResult>, ApiResponse<RenumberPreviewResult>>(
       "/archive/organize/renumber/preview", data,

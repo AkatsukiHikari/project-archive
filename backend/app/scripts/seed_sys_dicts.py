@@ -20,6 +20,15 @@ from app.modules.iam.models.dict import SysDict, SysDictItem
 
 BUILTIN_DICTS: list[dict] = [
     {
+        "dict_type": "AI_CATALOG_CONFIG",
+        "dict_name": "智能著录配置",
+        "description": "智能著录 AI 补正的相似度/置信度阈值（百分比，≥此值自动预勾选）",
+        "sort_order": 5,
+        "items": [
+            {"item_value": "80", "item_label": "相似度/置信度阈值(%)", "is_default": True, "sort_order": 1},
+        ],
+    },
+    {
         "dict_type": "MJ",
         "dict_name": "密级",
         "description": "档案保密等级，依据《保守国家秘密法》",

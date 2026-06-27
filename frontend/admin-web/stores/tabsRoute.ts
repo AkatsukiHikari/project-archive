@@ -53,6 +53,7 @@ const ROUTE_TITLE_MAP: Record<string, string> = {
   "/archive/research/compilation": "编研成果",
   "/archive/research/template": "编研模板",
   "/ai": "档案智能问答",
+  "/ai/catalog": "智能著录",
   "/ai/knowledge": "AI 知识库",
   "/ai/ocr": "OCR 任务",
   "/archive/settings/fonds": "全宗管理",
@@ -68,14 +69,25 @@ export function getTabTitle(path: string): string {
 }
 
 export const useTabsRouteStore = defineStore("tabsRoute", {
-  state: (): { tabs: TabItem[]; activeTab: string } => ({
+  state: (): { tabs: TabItem[]; activeTab: string; generation: Record<string, number> } => ({
     tabs: [
       { path: "/admin", title: "工作台", closable: false },
     ],
     activeTab: "/admin",
+    // 每个路径的"代次号"：关闭 Tab 时 +1，使其 keep-alive 缓存失效（重开是干净新页）
+    generation: {},
   }),
 
   actions: {
+    /** keep-alive 用的页面 key：路径 + 代次号 */
+    pageKey(path: string): string {
+      return `${path}#${this.generation[path] ?? 0}`;
+    },
+
+    /** 关闭这些路径时 +1 代次，丢弃它们的 keep-alive 缓存 */
+    _bumpGen(paths: string[]) {
+      for (const p of paths) this.generation[p] = (this.generation[p] ?? 0) + 1;
+    },
     /**
      * 确保某路径对应的 Home 标签页存在且不可关闭。
      * 每个子系统在其 layout 挂载时调用一次，保证各子系统有独立的固定首页标签。
@@ -117,6 +129,7 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
       if (idx === -1) return null;
       if (!this.tabs[idx]?.closable) return null;
 
+      this._bumpGen([path]);
       this.tabs = this.tabs.filter((t) => t.path !== path);
 
       if (this.activeTab === path) {
@@ -131,6 +144,11 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
     closeOthers(path: string) {
       // 找出 path 属于哪个子系统（取第一个路径段作为前缀）
       const prefix = "/" + (path.split("/")[1] ?? "");
+      this._bumpGen(
+        this.tabs
+          .filter((t) => t.closable && t.path !== path && t.path.startsWith(prefix))
+          .map((t) => t.path),
+      );
       this.tabs = this.tabs.filter(
         (t) => !t.closable || t.path === path || !t.path.startsWith(prefix),
       );
@@ -145,6 +163,7 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
         .slice(idx + 1)
         .filter((t) => t.closable)
         .map((t) => t.path);
+      this._bumpGen(rightClosable);
       this.tabs = this.tabs.filter((t) => !rightClosable.includes(t.path));
       if (!this.tabs.find((t) => t.path === this.activeTab)) {
         this.activeTab = path;
@@ -153,6 +172,7 @@ export const useTabsRouteStore = defineStore("tabsRoute", {
 
     /** 关闭本子系统所有可关闭 Tab */
     closeAll() {
+      this._bumpGen(this.tabs.filter((t) => t.closable).map((t) => t.path));
       this.tabs = this.tabs.filter((t) => !t.closable);
       this.activeTab = this.tabs[0]?.path ?? "/admin";
     },

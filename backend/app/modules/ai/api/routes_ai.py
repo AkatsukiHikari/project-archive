@@ -12,6 +12,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.response import ResponseModel, success
@@ -20,6 +21,7 @@ from app.modules.ai.services import dify_kb, kb_sync, ocr_job_service
 from app.modules.ai.services.qa_service import QaService
 from app.modules.iam.api.dependencies import get_current_user
 from app.modules.iam.models.user import User
+from app.modules.repository.models.archive import Archive, ArchiveStaging
 
 router = APIRouter()
 
@@ -93,20 +95,31 @@ async def ocr_batch(
     return success({"queued": n})
 
 
-@router.get("/ocr/text/{archive_id}", response_model=ResponseModel[dict])
+@router.get("/ocr/text/{archive_ref}", response_model=ResponseModel[dict])
 async def ocr_text(
-    archive_id: uuid.UUID,
+    archive_ref: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """取档案存下的 OCR 全文（确认 OCR 结果 / 供查看原文界面展示）。"""
-    stmt = select(Archive).where(
-        Archive.id == archive_id, Archive.is_deleted.is_(False)
-    )
-    if current_user.tenant_id:
-        stmt = stmt.where(Archive.tenant_id == current_user.tenant_id)
-    a = (await db.execute(stmt)).scalars().first()
-    text = (a.full_text or "") if a else ""
+    """取档案存下的 OCR 全文（供查看原文界面展示）。
+
+    archive_ref 接受 UUID 或 档号(DH)；暂存库 + 正式库都查。
+    """
+    try:
+        aid = uuid.UUID(archive_ref)
+    except (ValueError, AttributeError, TypeError):
+        aid = None
+
+    text = ""
+    for model in (ArchiveStaging, Archive):
+        cond = (model.id == aid) if aid is not None else (model.DH == archive_ref)
+        stmt = select(model).where(cond, model.is_deleted.is_(False))
+        if current_user.tenant_id:
+            stmt = stmt.where(model.tenant_id == current_user.tenant_id)
+        a = (await db.execute(stmt)).scalars().first()
+        if a is not None:
+            text = a.full_text or ""
+            break
     return success({"full_text": text, "chars": len(text)})
 
 

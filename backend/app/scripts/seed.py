@@ -210,8 +210,9 @@ MENU_TREE = [
         "sort_order": 40,
         "children": [
             {"code": "ai:chat",      "name": "档案智能问答", "type": "MENU", "path": "/ai",           "icon": "heroicons:chat-bubble-left-ellipsis", "sort_order": 1},
-            {"code": "ai:knowledge", "name": "AI 知识库",   "type": "MENU", "path": "/ai/knowledge", "icon": "heroicons:book-open",                "sort_order": 2},
-            {"code": "ai:ocr",       "name": "OCR 任务",    "type": "MENU", "path": "/ai/ocr",       "icon": "heroicons:document-magnifying-glass", "sort_order": 3},
+            {"code": "ai:catalog",   "name": "智能著录",    "type": "MENU", "path": "/ai/catalog",   "icon": "heroicons:document-plus",            "sort_order": 2},
+            {"code": "ai:knowledge", "name": "AI 知识库",   "type": "MENU", "path": "/ai/knowledge", "icon": "heroicons:book-open",                "sort_order": 3},
+            {"code": "ai:ocr",       "name": "OCR 任务",    "type": "MENU", "path": "/ai/ocr",       "icon": "heroicons:document-magnifying-glass", "sort_order": 4},
         ],
     },
 ]

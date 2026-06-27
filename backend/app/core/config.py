@@ -96,6 +96,9 @@ class Settings(BaseSettings):
     DIFY_OCR_WORKFLOW_KEY: str = ""
     # 档案问答：Dify「问答 Chatflow」(知识库检索节点 + DeepSeek)，结合后端 ES 精确条目
     DIFY_QA_API_KEY: str = ""
+    # 智能著录：Dify「著录抽取工作流」(DeepSeek 从原文全文按字段 schema 抽结构化数据)
+    # 注：改 .env 后需重启进程才生效（--reload 只热载代码、不重读 .env）
+    DIFY_CATALOG_WORKFLOW_KEY: str = ""
     # 知识库(dataset)：系统把档案全文+条目同步进去，与 ES 精确检索结合提升正确率
     DIFY_DATASET_API_KEY: str = ""
     DIFY_ARCHIVE_DATASET_ID: str = ""

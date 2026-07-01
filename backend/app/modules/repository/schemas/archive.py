@@ -59,8 +59,9 @@ class ArchiveCreate(BaseModel):
     ND: Optional[int] = None
     RZZ: Optional[str] = Field(default=None, max_length=200)
     DH: Optional[str] = Field(default=None, max_length=100)
-    MJ: ArchiveMJ = "无"
-    BGQX: ArchiveBGQX = "permanent"
+    # MJ/BGQX 的合法取值由门类字段定义(field_schema/字典)决定，不再用 API Literal 写死
+    MJ: Optional[str] = Field(default="无", max_length=50)
+    BGQX: Optional[str] = Field(default="long", max_length=50)
     WJRQ: Optional[str] = None
     YS: Optional[int] = None
     ext_fields: Optional[dict[str, Any]] = None
@@ -70,8 +71,8 @@ class ArchiveUpdate(BaseModel):
     TM: Optional[str] = Field(default=None, max_length=512)
     RZZ: Optional[str] = Field(default=None, max_length=200)
     ND: Optional[int] = None
-    MJ: Optional[ArchiveMJ] = None
-    BGQX: Optional[ArchiveBGQX] = None
+    MJ: Optional[str] = Field(default=None, max_length=50)
+    BGQX: Optional[str] = Field(default=None, max_length=50)
     WJRQ: Optional[str] = None
     YS: Optional[int] = None
     DH: Optional[str] = Field(default=None, max_length=100)

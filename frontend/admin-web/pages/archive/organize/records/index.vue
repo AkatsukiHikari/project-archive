@@ -65,8 +65,10 @@
       </div>
     </div>
 
-    <!-- ── 结果表 ─────────────────────────────────────────── -->
-    <div class="pro-card p-4 flex-1 min-h-0 flex flex-col gap-3">
+    <!-- ── 目录导航 + 结果表 ─────────────────────────────── -->
+    <div class="flex gap-3 flex-1 min-h-0">
+      <CatalogNavTree @select="onNavScope" @clear="clearNavScope" />
+      <div class="pro-card p-4 flex-1 min-w-0 min-h-0 flex flex-col gap-3">
       <!-- 整理工具条 -->
       <div class="flex flex-wrap items-center gap-2">
         <NButton size="small" type="primary" @click="openModal(null)">
@@ -114,6 +116,7 @@
           @update:page="loadArchives"
           @update:page-size="loadArchives"
         />
+      </div>
       </div>
     </div>
 
@@ -169,49 +172,26 @@
       v-model:visible="modalVisible"
       :title="isEdit ? '编辑档案' : '新增著录'"
       :loading="saving"
-      :width="600"
+      :width="900"
       @confirm="submitForm"
     >
-      <NForm ref="formRef" :model="formData" :rules="rules" label-placement="left" :label-width="90">
-        <NFormItem path="fonds_id" label="全宗">
-          <NSelect v-model:value="formData.fonds_id" :options="fondsOptions" :disabled="isEdit" placeholder="选择全宗" @update:value="onFormFondsChange" />
-        </NFormItem>
-        <NFormItem path="catalog_id" label="目录">
-          <NSelect v-model:value="formData.catalog_id" :options="formCatalogOptions" placeholder="选择目录" :disabled="!formData.fonds_id || isEdit" />
-        </NFormItem>
-        <NFormItem path="category_id" label="门类">
-          <NSelect v-model:value="formData.category_id" :options="categoryOptions" placeholder="选择门类" />
-        </NFormItem>
-        <NFormItem path="TM" label="题名">
-          <NInput v-model:value="formData.TM" placeholder="档案题名（必填）" />
-        </NFormItem>
-        <NFormItem path="QZH" label="全宗号">
-          <NInput v-model:value="formData.QZH" placeholder="如 J001" />
-        </NFormItem>
-        <div class="grid grid-cols-2 gap-x-4">
-          <NFormItem path="RZZ" label="责任者">
-            <NInput v-model:value="formData.RZZ" placeholder="可选" />
+      <NForm ref="formRef" :model="formData" :rules="rules" label-placement="top">
+        <div class="grid grid-cols-3 gap-x-4">
+          <NFormItem path="fonds_id" label="全宗">
+            <NSelect v-model:value="formData.fonds_id" :options="fondsOptions" :disabled="isEdit" placeholder="选择全宗" filterable @update:value="onFormFondsChange" />
           </NFormItem>
-          <NFormItem path="ND" label="年度">
-            <NInputNumber v-model:value="formData.ND" placeholder="年度" class="w-full" />
+          <NFormItem path="catalog_id" label="目录">
+            <NSelect v-model:value="formData.catalog_id" :options="formCatalogOptions" placeholder="选择目录" :disabled="!formData.fonds_id || isEdit" />
           </NFormItem>
-          <NFormItem path="MJ" label="密级">
-            <NSelect v-model:value="formData.MJ" :options="mjOptions" class="w-full" />
-          </NFormItem>
-          <NFormItem path="BGQX" label="保管期限">
-            <NSelect v-model:value="formData.BGQX" :options="bgqxOptions" class="w-full" />
-          </NFormItem>
-          <NFormItem path="WJRQ" label="文件日期">
-            <NInput v-model:value="formData.WJRQ" placeholder="YYYY-MM-DD" />
-          </NFormItem>
-          <NFormItem path="YS" label="页数">
-            <NInputNumber v-model:value="formData.YS" placeholder="可选" class="w-full" />
+          <NFormItem path="category_id" label="门类">
+            <NSelect v-model:value="formData.category_id" :options="categoryOptions" placeholder="选择门类" filterable @update:value="onFormCategoryChange" />
           </NFormItem>
         </div>
-        <NFormItem label="档号">
-          <NInput v-model:value="formData.DH" placeholder="留空则自动生成（需配置档号规则）" />
-        </NFormItem>
       </NForm>
+      <!-- 按所选门类的字段定义 + 排版设计 渲染著录字段 -->
+      <div class="pt-3 mt-1 border-t" style="border-color: var(--semi-color-border)">
+        <ArchiveDynamicForm ref="dynFormRef" :category-id="formData.category_id" :model="formModel" />
+      </div>
     </CrudModal>
 
     <!-- 整理工具 -->
@@ -249,7 +229,7 @@ import type {
 import { AdminPageHeader } from "@/components/admin";
 import { CrudModal, ProTable } from "@/components/ui";
 import {
-  ArchiveInterpretDrawer, AttachmentPanel, BatchAttachWizard, BatchEditModal, KfztTag, RenumberWizard,
+  ArchiveDynamicForm, ArchiveInterpretDrawer, AttachmentPanel, BatchAttachWizard, BatchEditModal, CatalogNavTree, KfztTag, RenumberWizard,
 } from "@/components/archive";
 import { AppraisalAPI } from "@/api/appraisal";
 import type { ArchiveConclusion } from "@/api/appraisal";
@@ -361,6 +341,24 @@ const currentQuery = computed<Partial<ArchiveListParams>>(() => ({
   WJRQ_from: filter.WJRQ_from || undefined,
   WJRQ_to: filter.WJRQ_to || undefined,
 }));
+
+// 目录导航(门类/全宗/年度)→ 设过滤条件并重查
+function onNavScope(scope: { category_id?: string; fonds_id?: string; ND_from?: number; ND_to?: number }) {
+  filter.category_id = scope.category_id ?? null;
+  filter.fonds_id = scope.fonds_id ?? null;
+  filter.ND_from = scope.ND_from ?? null;
+  filter.ND_to = scope.ND_to ?? null;
+  filter.page = 1;
+  loadArchives();
+}
+function clearNavScope() {
+  filter.category_id = null;
+  filter.fonds_id = null;
+  filter.ND_from = null;
+  filter.ND_to = null;
+  filter.page = 1;
+  loadArchives();
+}
 
 async function loadArchives() {
   loading.value = true;
@@ -547,30 +545,46 @@ const editId = ref<string | null>(null);
 const saving = ref(false);
 const formRef = ref<FormInst | null>(null);
 
+// 结构字段（决定加载哪套门类 schema，本身不在 field_schema 里）
 const emptyForm = () => ({
   fonds_id: null as string | null,
   catalog_id: null as string | null,
   category_id: null as string | null,
-  TM: "", QZH: "", RZZ: "",
-  ND: new Date().getFullYear() as number | null,
-  WJRQ: "", YS: null as number | null,
-  MJ: "无", BGQX: "long", DH: "",
 });
 const formData = reactive(emptyForm());
+
+// 著录字段扁平模型（题名/全宗号/…/门类私有字段），交给 ArchiveDynamicForm 渲染+回写
+const formModel = ref<Record<string, unknown>>({});
+const dynFormRef = ref<{ validate: () => string[]; fieldNames: () => string[] } | null>(null);
+
+// 著录字段里映射到档案表列的 base 字段，其余进 ext_fields
+const BASE_COLUMNS = ["TM", "QZH", "RZZ", "ND", "MJ", "BGQX", "WJRQ", "YS", "DH"];
 
 const rules = {
   fonds_id: { required: true, message: "请选择全宗", trigger: ["change", "blur"] },
   catalog_id: { required: true, message: "请选择目录", trigger: ["change", "blur"] },
   category_id: { required: true, message: "请选择门类", trigger: ["change", "blur"] },
-  TM: { required: true, message: "请填写题名", trigger: "blur" },
-  QZH: { required: true, message: "请填写全宗号", trigger: "blur" },
 };
 
 async function onFormFondsChange(id: string | null) {
   formData.catalog_id = null;
   formCatalogs.value = id ? (await CatalogAPI.list(id)).data : [];
   const fonds = fondsList.value.find((f) => f.id === id);
-  if (fonds) formData.QZH = fonds.fonds_code;
+  if (fonds) formModel.value.QZH = fonds.fonds_code;
+}
+
+// 选门类 → 新增时自动填档号（有历史末位+1；无历史按门类档号规则生成第一条；用户可改）
+async function onFormCategoryChange(id: string | null) {
+  if (!id || isEdit.value) return;
+  try {
+    const res = await OrganizeAPI.nextDh(id, {
+      qzh: (formModel.value.QZH as string) || undefined,
+      nd: (formModel.value.ND as number) || undefined,
+      fonds_id: formData.fonds_id || undefined,
+      catalog_id: formData.catalog_id || undefined,
+    });
+    if (res.data?.dh) formModel.value.DH = res.data.dh;
+  } catch { /* 取不到不阻断 */ }
 }
 
 function openModal(row: Archive | null) {
@@ -579,40 +593,68 @@ function openModal(row: Archive | null) {
     editId.value = row.id;
     Object.assign(formData, {
       fonds_id: row.fonds_id, catalog_id: row.catalog_id, category_id: row.category_id,
+    });
+    formModel.value = {
       TM: row.TM, QZH: row.QZH, RZZ: row.RZZ ?? "", ND: row.ND ?? null,
       WJRQ: row.WJRQ ?? "", YS: row.YS ?? null, MJ: row.MJ, BGQX: row.BGQX, DH: row.DH ?? "",
-    });
+      ...(row.ext_fields ?? {}),
+    };
   } else {
     isEdit.value = false;
     editId.value = null;
     Object.assign(formData, emptyForm());
+    formModel.value = { ND: new Date().getFullYear() };  // 年度默认当年
     if (filter.fonds_id) {
       formData.fonds_id = filter.fonds_id;
       onFormFondsChange(filter.fonds_id);
     }
     if (filter.catalog_id) formData.catalog_id = filter.catalog_id;
+    if (filter.category_id) {
+      formData.category_id = filter.category_id;
+      onFormCategoryChange(filter.category_id);  // 预选门类时自动填档号
+    }
   }
   modalVisible.value = true;
 }
 
+/** 把扁平著录模型拆成 base 列 + ext_fields */
+function splitModel() {
+  const m = formModel.value;
+  const names = dynFormRef.value?.fieldNames() ?? Object.keys(m);
+  const ext: Record<string, unknown> = {};
+  for (const n of names) {
+    if (!BASE_COLUMNS.includes(n) && m[n] != null && m[n] !== "") ext[n] = m[n];
+  }
+  const s = (k: string) => (m[k] == null || m[k] === "" ? undefined : String(m[k]));
+  const n = (k: string) => (m[k] == null || m[k] === "" ? undefined : Number(m[k]));
+  return { m, ext, s, n };
+}
+
 async function submitForm() {
   await formRef.value?.validate();
+  const missing = dynFormRef.value?.validate() ?? [];
+  if (missing.length) {
+    message.error(`请填写必录字段：${missing.join("、")}`);
+    return;
+  }
+  const { ext, s, n } = splitModel();
   saving.value = true;
   try {
     if (isEdit.value && editId.value) {
       const payload: ArchiveUpdate = {
-        TM: formData.TM, RZZ: formData.RZZ || undefined, ND: formData.ND ?? undefined,
-        WJRQ: formData.WJRQ || undefined, YS: formData.YS ?? undefined,
-        MJ: formData.MJ, BGQX: formData.BGQX, DH: formData.DH || undefined,
+        TM: s("TM"), RZZ: s("RZZ"), ND: n("ND"), WJRQ: s("WJRQ"), YS: n("YS"),
+        MJ: s("MJ") as ArchiveUpdate["MJ"], BGQX: s("BGQX") as ArchiveUpdate["BGQX"],
+        DH: s("DH"), ext_fields: Object.keys(ext).length ? ext : undefined,
       };
       await ArchiveAPI.update(editId.value, payload);
       message.success("已更新");
     } else {
       const payload: ArchiveCreate = {
         fonds_id: formData.fonds_id!, catalog_id: formData.catalog_id!, category_id: formData.category_id!,
-        TM: formData.TM, QZH: formData.QZH, RZZ: formData.RZZ || undefined,
-        ND: formData.ND ?? undefined, WJRQ: formData.WJRQ || undefined, YS: formData.YS ?? undefined,
-        MJ: formData.MJ, BGQX: formData.BGQX, DH: formData.DH || undefined,
+        TM: s("TM") ?? "", QZH: s("QZH") ?? "", RZZ: s("RZZ"), ND: n("ND"),
+        WJRQ: s("WJRQ"), YS: n("YS"),
+        MJ: (s("MJ") ?? "无") as ArchiveCreate["MJ"], BGQX: (s("BGQX") ?? "long") as ArchiveCreate["BGQX"],
+        DH: s("DH"), ext_fields: Object.keys(ext).length ? ext : undefined,
       };
       await ArchiveAPI.create(payload);
       message.success("已创建");

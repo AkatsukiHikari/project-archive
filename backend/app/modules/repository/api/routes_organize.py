@@ -11,6 +11,7 @@
 """
 
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,24 @@ async def batch_update(
     updated = await svc.batch_update(body, current_user.tenant_id)
     await db.commit()
     return success({"updated": updated})
+
+
+@router.get("/next-dh", response_model=ResponseModel[dict])
+async def next_dh(
+    category_id: uuid.UUID,
+    qzh: Optional[str] = None,
+    nd: Optional[int] = None,
+    fonds_id: Optional[uuid.UUID] = None,
+    catalog_id: Optional[uuid.UUID] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """新增著录自动填档号：有历史→最新档号末位+1；无历史→按门类档号规则生成第一条。"""
+    svc = OrganizeService(db)
+    dh = await svc.next_dh(
+        category_id, qzh, nd, fonds_id, catalog_id, current_user.tenant_id
+    )
+    return success({"dh": dh})
 
 
 @router.post("/records/batch-delete", response_model=ResponseModel[dict])

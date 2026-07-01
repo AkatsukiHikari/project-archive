@@ -23,5 +23,7 @@ export { default as ArchiveSourceViewer } from "./ArchiveSourceViewer.vue";
 export { default as ArchiveInterpretDrawer } from "./ArchiveInterpretDrawer.vue";
 export { default as AiCatalogDrawer } from "./AiCatalogDrawer.vue";
 export { default as AutoIngestModal } from "./AutoIngestModal.vue";
+export { default as ArchiveDynamicForm } from "./ArchiveDynamicForm.vue";
+export { default as CatalogNavTree } from "./CatalogNavTree.vue";
 export { default as ResearchResultEditor } from "./ResearchResultEditor.vue";
 export { default as ResearchTemplateEditor } from "./ResearchTemplateEditor.vue";

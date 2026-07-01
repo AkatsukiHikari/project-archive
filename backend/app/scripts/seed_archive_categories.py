@@ -72,7 +72,7 @@ COMMON_FIELDS = [
     base("DH",   "档号",     "text",   True,  sort_order=1),
     base("QZH",  "全宗号",   "text",   True,  sort_order=2),
     # 内容描述组
-    base("TM",   "题名",     "text",   True,  sort_order=3),
+    base("TM",   "题名",     "textarea", True, sort_order=3),
     base("RZZ",  "责任者",   "text",          sort_order=4),
     base("ND",   "年度",     "number",        sort_order=5, default_value="$currentYear"),
     base("WJRQ", "文件日期", "text",          sort_order=6),

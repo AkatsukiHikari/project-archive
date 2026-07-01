@@ -21,11 +21,20 @@ BASE_COLUMNS = {"DH", "TM", "RZZ", "ND", "MJ", "BGQX", "WJRQ", "YS", "QZH"}
 
 
 def compact_schema(field_schema: Optional[list]) -> list[dict]:
-    """门类 field_schema → 抽取所需的精简字段定义。"""
+    """门类 field_schema → 抽取所需的精简字段定义。
+
+    按 sort_order 排序；sort_order=0/缺失(多为门类特殊字段)排到最后，
+    保证 档号→题名→…→特殊字段 的合理顺序，与著录表单一致。
+    """
+    def _ord(f: dict) -> int:
+        so = f.get("sort_order")
+        return so if isinstance(so, int) and so > 0 else 9999
+
     out: list[dict] = []
-    for f in field_schema or []:
-        if not isinstance(f, dict) or not f.get("name"):
-            continue
+    for f in sorted(
+        [f for f in (field_schema or []) if isinstance(f, dict) and f.get("name")],
+        key=_ord,
+    ):
         out.append(
             {
                 "name": f.get("name"),

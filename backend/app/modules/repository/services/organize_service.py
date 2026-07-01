@@ -60,6 +60,45 @@ class OrganizeService:
         await self.db.flush()
         return deleted
 
+    # ── 下一个档号（新增著录自动填）─────────────────────────────────────────
+    async def next_dh(
+        self, category_id: uuid.UUID, qzh: Optional[str], nd: Optional[int],
+        fonds_id: Optional[uuid.UUID], catalog_id: Optional[uuid.UUID],
+        tenant_id: Optional[uuid.UUID],
+    ) -> str:
+        """有历史档案 → 该门类最新档号末位 +1；无历史 → 按门类档号规则生成第一条。"""
+        from app.modules.ai.services.catalog_service import suggest_next_dh
+        from app.modules.repository.models.category import ArchiveCategory
+        from app.modules.repository.services.no_rule_engine import _FakeArchive
+
+        existing = await suggest_next_dh(self.db, category_id, tenant_id)
+        if existing:
+            return existing
+
+        cat = (await self.db.execute(
+            select(ArchiveCategory).where(ArchiveCategory.id == category_id)
+        )).scalars().first()
+        if not cat or not cat.archive_no_rule_id:
+            return ""
+        rule = (await self.db.execute(
+            select(ArchiveNoRule).where(
+                ArchiveNoRule.id == cat.archive_no_rule_id,
+                ArchiveNoRule.is_deleted.is_(False),
+            )
+        )).scalars().first()
+        if not rule:
+            return ""
+
+        fake = _FakeArchive({
+            "QZH": qzh, "ND": nd, "RZZ": "",
+            "WJRQ": f"{nd}-01-01" if nd else None,
+            "fonds_id": fonds_id, "catalog_id": catalog_id, "category_id": category_id,
+        })
+        try:
+            return await ArchiveNoEngine(self.db).generate(rule, fake, seq_override=1)
+        except Exception:  # noqa: BLE001
+            return ""
+
     # ── 批量重编档号 ──────────────────────────────────────────────────────────
 
     async def renumber_preview(

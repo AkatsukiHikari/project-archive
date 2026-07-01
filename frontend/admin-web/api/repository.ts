@@ -475,6 +475,13 @@ export const OrganizeAPI = {
       "/archive/organize/records/batch-delete", { ids },
     ),
 
+  /** 自动档号：有历史→末位+1；无历史→按门类档号规则生成第一条 */
+  nextDh: (categoryId: string, ctx?: { qzh?: string; nd?: number; fonds_id?: string; catalog_id?: string }) =>
+    http.get<ApiResponse<{ dh: string }>, ApiResponse<{ dh: string }>>(
+      "/archive/organize/next-dh",
+      { params: { category_id: categoryId, ...ctx } },
+    ),
+
   renumberPreview: (data: RenumberPayload) =>
     http.post<ApiResponse<RenumberPreviewResult>, ApiResponse<RenumberPreviewResult>>(
       "/archive/organize/renumber/preview", data,

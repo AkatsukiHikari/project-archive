@@ -15,7 +15,7 @@
         <NButton @click="clearLayout">清空画布</NButton>
         <NButton type="primary" :loading="saving" @click="saveLayout">
           <template #icon><Icon name="heroicons:check" class="w-4 h-4" /></template>
-          保存排版
+          保存
         </NButton>
       </div>
     </div>
@@ -114,6 +114,57 @@
                     >继承</NTag>
                   </div>
                   <div class="cell-field-actions">
+                    <!-- 编辑字段（必填/默认值/占位/选项） -->
+                    <NPopover v-if="fieldMap[cell.field]" trigger="click" placement="bottom-end">
+                      <template #trigger>
+                        <NButton text size="tiny" title="编辑字段">
+                          <Icon name="heroicons:pencil-square" class="w-3.5 h-3.5" />
+                        </NButton>
+                      </template>
+                      <div class="flex flex-col gap-2.5 py-1" style="width: 230px">
+                        <div class="text-[12px] font-semibold">{{ fieldMap[cell.field].label }} · 字段设置</div>
+                        <label v-if="!fieldMap[cell.field].inherited" class="flex flex-col gap-1">
+                          <span class="text-[11px] opacity-60">标签</span>
+                          <NInput v-model:value="fieldMap[cell.field].label" size="small" />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="text-[11px] opacity-60">输入类型</span>
+                          <NSelect :value="fieldMap[cell.field].type" :options="fieldTypeOptions" size="small" @update:value="(v: string) => (fieldMap[cell.field].type = v as FieldDefinition['type'])" />
+                        </label>
+                        <div class="flex items-center justify-between">
+                          <span class="text-[11px] opacity-60">必填</span>
+                          <NSwitch :value="!!fieldMap[cell.field].required" size="small" @update:value="(v: boolean) => (fieldMap[cell.field].required = v)" />
+                        </div>
+                        <label class="flex flex-col gap-1">
+                          <span class="text-[11px] opacity-60">默认值</span>
+                          <NSelect
+                            v-if="fieldMap[cell.field].type === 'select' && (fieldMap[cell.field].options?.length)"
+                            :value="defaultStr(cell.field)" :options="optionTags(cell.field)" size="small" clearable
+                            @update:value="(v: string) => setDefault(cell.field, v)"
+                          />
+                          <NSwitch
+                            v-else-if="fieldMap[cell.field].type === 'boolean'"
+                            :value="!!fieldMap[cell.field].default_value" size="small"
+                            @update:value="(v: boolean) => setDefault(cell.field, v)"
+                          />
+                          <NInputNumber
+                            v-else-if="fieldMap[cell.field].type === 'number'"
+                            :value="defaultNum(cell.field)" size="small"
+                            @update:value="(v: number | null) => setDefault(cell.field, v)"
+                          />
+                          <NInput v-else :value="defaultStr(cell.field)" size="small" @update:value="(v: string) => setDefault(cell.field, v)" />
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="text-[11px] opacity-60">占位提示</span>
+                          <NInput v-model:value="fieldMap[cell.field].placeholder" size="small" />
+                        </label>
+                        <label v-if="fieldMap[cell.field].type === 'select' && !fieldMap[cell.field].inherited && !fieldMap[cell.field].dict_type" class="flex flex-col gap-1">
+                          <span class="text-[11px] opacity-60">选项</span>
+                          <NDynamicTags :value="fieldMap[cell.field].options ?? []" size="small" @update:value="(v: string[]) => (fieldMap[cell.field].options = v)" />
+                        </label>
+                        <p class="text-[11px] opacity-50 m-0">改完点上方「保存」一并生效</p>
+                      </div>
+                    </NPopover>
                     <!-- 切换 span -->
                     <NButton
                       text size="tiny"
@@ -188,7 +239,10 @@
                   <span v-if="fieldMap[cell.field]?.required" class="text-red-500">*</span>
                 </div>
                 <div class="preview-field-input" :class="`preview-field-input--${fieldMap[cell.field]?.type}`">
-                  <template v-if="fieldMap[cell.field]?.type === 'select'">
+                  <template v-if="hasDefault(fieldMap[cell.field])">
+                    <span class="text-xs" style="color: var(--n-text-color-1, #333)">{{ defaultText(fieldMap[cell.field]) }}</span>
+                  </template>
+                  <template v-else-if="fieldMap[cell.field]?.type === 'select'">
                     <span class="text-gray-400 text-xs">▼ 请选择</span>
                   </template>
                   <template v-else-if="fieldMap[cell.field]?.type === 'boolean'">
@@ -216,7 +270,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { NButton, NInput, NTag, NSpin, useMessage } from "naive-ui";
+import { NButton, NDynamicTags, NInput, NInputNumber, NPopover, NSpin, NSwitch, NTag, useMessage } from "naive-ui";
 import {
   CategoryAPI,
   type ArchiveCategory,
@@ -226,7 +280,15 @@ import {
   type FormLayoutCell,
 } from "@/api/repository";
 
-definePageMeta({ layout: "archive", middleware: "auth" });
+definePageMeta({
+  layout: "archive",
+  middleware: "auth",
+  breadcrumb: [
+    { name: "档案门类", path: "/archive/settings/categories" },
+    { name: "录入排版设计", path: "" },
+  ],
+});
+useHead({ title: "录入排版设计" });
 
 const route   = useRoute();
 const router  = useRouter();
@@ -278,6 +340,28 @@ const fieldTypeOptions = [
 ];
 const fieldTypeLabel = (t: string) =>
   fieldTypeOptions.find((o) => o.value === t)?.label ?? t;
+
+// ── 字段默认值 / 编辑 ─────────────────────────────────────────────────────────
+const hasDefault = (f?: FieldDefinition) => !!f && f.default_value != null && f.default_value !== "";
+const defaultText = (f?: FieldDefinition) => {
+  if (!f) return "";
+  if (f.type === "boolean") return f.default_value ? "是" : "否";
+  return String(f.default_value);
+};
+const defaultStr = (name: string) => {
+  const v = fieldMap.value[name]?.default_value;
+  return v == null ? "" : String(v);
+};
+const defaultNum = (name: string) => {
+  const v = fieldMap.value[name]?.default_value;
+  return v == null || v === "" ? null : Number(v);
+};
+function setDefault(name: string, v: unknown) {
+  const f = fieldMap.value[name];
+  if (f) f.default_value = v as FieldDefinition["default_value"];
+}
+const optionTags = (name: string) =>
+  (fieldMap.value[name]?.options ?? []).map((o) => ({ label: o, value: o }));
 
 // ── 加载 ──────────────────────────────────────────────────────────────────────
 
@@ -403,8 +487,10 @@ function onNewRowDrop() {
 async function saveLayout() {
   saving.value = true;
   try {
+    // 字段设置（必填/默认值/标签/选项）与排版一并保存
+    await CategoryAPI.updateSchema(categoryId.value, allFields.value);
     await CategoryAPI.updateLayout(categoryId.value, layout.value);
-    message.success("排版已保存");
+    message.success("已保存");
   } finally {
     saving.value = false;
   }

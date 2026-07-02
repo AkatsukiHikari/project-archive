@@ -13,8 +13,8 @@
       <div class="flex items-center gap-2">
         <NSelect v-model:value="docSource" :options="sourceOptions" size="small" style="width: 130px" @update:value="load" />
         <NSwitch v-model:value="onlyIssues" size="small" @update:value="load">
-          <template #checked>仅看待补正</template>
-          <template #unchecked>全部有原文</template>
+          <template #checked>仅看待处理</template>
+          <template #unchecked>全部档案</template>
         </NSwitch>
         <NButton type="primary" size="small" @click="ingestShow = true">
           <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
@@ -61,7 +61,7 @@ const docSource = ref("all");
 const onlyIssues = ref(false);
 const drawerShow = ref(false);
 const ingestShow = ref(false);
-const target = ref<{ id: string; doc_source: "staging" | "formal"; DH?: string; TM: string } | null>(null);
+const target = ref<{ id: string; doc_source: "staging" | "formal"; DH?: string; TM: string; category_id?: string | null } | null>(null);
 
 const sourceOptions = [
   { label: "全部库", value: "all" },
@@ -124,7 +124,7 @@ const columns: DataTableColumns<CatalogCandidate> = [
 ];
 
 function openDrawer(r: CatalogCandidate) {
-  target.value = { id: r.id, doc_source: r.doc_source, DH: r.DH, TM: r.TM };
+  target.value = { id: r.id, doc_source: r.doc_source, DH: r.DH, TM: r.TM, category_id: r.category_id ?? null };
   drawerShow.value = true;
 }
 

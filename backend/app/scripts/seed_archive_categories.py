@@ -101,7 +101,7 @@ WS_FIELDS = [
     f("CSJG",  "抄送机关", "text"),
     f("BGR",   "拟稿人",   "text"),
     f("HGR",   "核稿人",   "text"),
-    f("QFR",   "签发人",   "text",   True),
+    f("QFR",   "签发人",   "text"),
     f("GDDW",  "归档单位", "text"),
     f("DJDW",  "定稿单位", "text"),
 ]

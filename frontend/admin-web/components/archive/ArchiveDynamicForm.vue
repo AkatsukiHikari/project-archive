@@ -48,6 +48,7 @@
         :placeholder="cell.def.placeholder || (cell.def.type === 'date' ? 'YYYY-MM-DD' : '')"
         @update:value="(v: string) => set(cell.def.name, v)"
       />
+      <slot name="field-extra" :def="cell.def" />
     </div>
   </div>
 </template>

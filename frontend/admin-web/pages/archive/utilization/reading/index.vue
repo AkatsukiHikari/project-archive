@@ -678,4 +678,11 @@ watch(
   () => [route.query.DH, route.query.q],
   () => { if (applyRouteQuery()) load(); },
 );
+
+// Tab 保活下复用实例：办理申请（?app=）变化时重新加载办理人/调阅篮并刷新列表
+watch(appId, async () => {
+  await reloadApp();
+  page.value = 1;
+  load();
+});
 </script>

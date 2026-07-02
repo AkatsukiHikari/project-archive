@@ -1,14 +1,18 @@
 <template>
-  <NDrawer :show="show" :width="1040" placement="right" @update:show="(v: boolean) => emit('update:show', v)">
+  <NDrawer :show="show" :width="isFull ? '100%' : 1040" placement="right" @update:show="(v: boolean) => emit('update:show', v)">
     <NDrawerContent :body-content-style="{ padding: 0, height: '100%' }" closable>
       <template #header>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 w-full">
           <Icon name="heroicons:document-plus" class="w-5 h-5" style="color: oklch(var(--p))" />
           <span>智能著录校正</span>
           <code v-if="archive?.DH" class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-gray-100" style="color: oklch(var(--p))">{{ archive.DH }}</code>
           <NTag v-if="archive" size="small" round :bordered="false" :type="archive.doc_source === 'formal' ? 'success' : 'default'">
             {{ archive.doc_source === 'formal' ? '正式库' : '暂存库' }}
           </NTag>
+          <div class="flex-1" />
+          <NButton text :title="isFull ? '退出全屏' : '全屏'" @click="isFull = !isFull">
+            <Icon :name="isFull ? 'heroicons:arrows-pointing-in' : 'heroicons:arrows-pointing-out'" class="w-4 h-4" />
+          </NButton>
         </div>
       </template>
 
@@ -61,39 +65,26 @@
               <NButton size="tiny" tertiary @click="revertAll">还原</NButton>
             </div>
 
-            <div class="flex-1 overflow-auto px-5 py-3 flex flex-col gap-3">
-              <div v-for="s in suggestions" :key="s.name" class="grid grid-cols-[100px_1fr] gap-3 items-start">
-                <label class="text-[13px] text-right pt-1.5" style="color: var(--semi-color-text-2)">
-                  <span v-if="s.changed" class="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style="background: oklch(var(--su))" />
-                  {{ s.label }}<span v-if="s.required" style="color:#dc2626">*</span>
-                </label>
-                <div class="flex flex-col gap-1">
-                  <NSelect
-                    v-if="s.options && s.options.length"
-                    :value="form[s.name]"
-                    :options="s.options.map((o) => ({ label: o, value: o }))"
-                    size="small" clearable
-                    @update:value="(v: string) => (form[s.name] = v ?? '')"
-                  />
-                  <NInput v-else :value="form[s.name]" size="small" @update:value="(v: string) => (form[s.name] = v)" />
-
-                  <!-- AI 提示行 -->
-                  <div v-if="s.changed" class="flex items-center gap-2 text-[11px]">
-                    <template v-if="form[s.name] === s.suggested">
-                      <NTag size="small" :type="s.kind === 'fill' ? 'info' : 'warning'" round :bordered="false">
-                        AI{{ s.kind === 'fill' ? '补足' : '更正' }} {{ s.confidence }}%<template v-if="s.similarity !== null"> · 似{{ s.similarity }}%</template>
+            <div class="flex-1 overflow-auto px-5 py-3">
+              <!-- 按门类字段定义 + 排版设计渲染；AI 建议作字段附注 -->
+              <ArchiveDynamicForm ref="dynRef" :category-id="archive?.category_id ?? null" :model="form">
+                <template #field-extra="{ def }">
+                  <div v-if="aiOf(def.name)" class="flex items-center gap-2 text-[11px] mt-0.5">
+                    <template v-if="String(form[def.name] ?? '') === aiOf(def.name)!.suggested">
+                      <NTag size="small" :type="aiOf(def.name)!.kind === 'fill' ? 'info' : 'warning'" round :bordered="false">
+                        AI{{ aiOf(def.name)!.kind === 'fill' ? '补足' : '更正' }} {{ aiOf(def.name)!.confidence }}%<template v-if="aiOf(def.name)!.similarity !== null"> · 似{{ aiOf(def.name)!.similarity }}%</template>
                       </NTag>
-                      <span v-if="s.current" style="color: var(--semi-color-text-3)">原值：{{ s.current }}</span>
-                      <a class="cursor-pointer" style="color: var(--semi-color-text-3)" @click="form[s.name] = s.current">撤销</a>
+                      <span v-if="aiOf(def.name)!.current" style="color: var(--semi-color-text-3)">原值：{{ aiOf(def.name)!.current }}</span>
+                      <a class="cursor-pointer" style="color: var(--semi-color-text-3)" @click="form[def.name] = aiOf(def.name)!.current">撤销</a>
                     </template>
                     <template v-else>
-                      <span style="color: var(--semi-color-text-3)">AI 建议：<strong style="color: oklch(var(--p))">{{ s.suggested }}</strong>（{{ s.confidence }}%）</span>
-                      <a class="cursor-pointer" style="color: oklch(var(--p))" @click="form[s.name] = s.suggested">采用</a>
+                      <span style="color: var(--semi-color-text-3)">AI 建议：<strong style="color: oklch(var(--p))">{{ aiOf(def.name)!.suggested }}</strong>（{{ aiOf(def.name)!.confidence }}%）</span>
+                      <a class="cursor-pointer" style="color: oklch(var(--p))" @click="form[def.name] = aiOf(def.name)!.suggested">采用</a>
                     </template>
-                    <span v-if="s.evidence" class="truncate" style="color: var(--semi-color-text-3)" :title="s.evidence">· 依据：{{ s.evidence }}</span>
+                    <span v-if="aiOf(def.name)!.evidence" class="truncate" style="color: var(--semi-color-text-3)" :title="aiOf(def.name)!.evidence">· 依据：{{ aiOf(def.name)!.evidence }}</span>
                   </div>
-                </div>
-              </div>
+                </template>
+              </ArchiveDynamicForm>
             </div>
 
             <div class="flex items-center gap-2 px-4 py-3 border-t shrink-0" style="border-color: var(--semi-color-border)">
@@ -113,11 +104,21 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { NButton, NDrawer, NDrawerContent, NInput, NSelect, NSpin, NTag, useMessage } from "naive-ui";
+import { NButton, NDrawer, NDrawerContent, NSpin, NTag, useMessage } from "naive-ui";
+import ArchiveDynamicForm from "./ArchiveDynamicForm.vue";
 import { CatalogAPI, type FieldSuggestion } from "@/api/catalog";
 import { AiAdminAPI } from "@/api/ai";
 
-interface TargetArchive { id: string; doc_source: "staging" | "formal"; DH?: string; TM: string }
+interface TargetArchive {
+  id: string;
+  doc_source: "staging" | "formal";
+  DH?: string;
+  TM: string;
+  category_id?: string | null;
+}
+
+// 枚举编码字段不采用 AI 建议值（保持当前值，由用户在表单中调整）
+const AI_SKIP = ["MJ", "BGQX"];
 
 const props = defineProps<{ show: boolean; archive: TargetArchive | null }>();
 const emit = defineEmits<{ (e: "update:show", v: boolean): void; (e: "applied"): void }>();
@@ -136,16 +137,32 @@ const errorMsg = ref("");
 const threshold = ref(80);
 const fullText = ref("");
 const suggestions = ref<FieldSuggestion[]>([]);
-const form = reactive<Record<string, string>>({});
+const form = reactive<Record<string, unknown>>({});
+const isFull = ref(false);
+const dynRef = ref<{ validate: () => string[]; fieldNames: () => string[] } | null>(null);
 
 // OCR 就地识别
 const ocrRunning = ref(false);
 const ocrFailed = ref(false);
 const ocrMsg = ref("");
 
-const changedCount = computed(() => suggestions.value.filter((s) => s.changed).length);
+const sugMap = computed(() => {
+  const m: Record<string, FieldSuggestion> = {};
+  suggestions.value.forEach((s) => { m[s.name] = s; });
+  return m;
+});
+function aiOf(name: string): FieldSuggestion | null {
+  const s = sugMap.value[name];
+  return s && s.changed && !AI_SKIP.includes(name) ? s : null;
+}
+
+const changedCount = computed(
+  () => suggestions.value.filter((s) => s.changed && !AI_SKIP.includes(s.name)).length,
+);
 const dirtyCount = computed(
-  () => suggestions.value.filter((s) => (form[s.name] ?? "").trim() !== (s.current ?? "").trim()).length,
+  () => suggestions.value.filter(
+    (s) => String(form[s.name] ?? "").trim() !== (s.current ?? "").trim(),
+  ).length,
 );
 
 function resetState() {
@@ -172,10 +189,10 @@ async function load() {
     }
     threshold.value = d.threshold ?? 80;
     fullText.value = d.full_text || "";
-    // MJ/BGQX 是枚举编码字段（码与中文选项不一致），AI 不猜，留正常著录页处理
-    suggestions.value = (d.suggestions || []).filter((s) => !["MJ", "BGQX"].includes(s.name));
+    suggestions.value = d.suggestions || [];
     for (const s of suggestions.value) {
-      form[s.name] = s.changed && s.preselect ? s.suggested : s.current;
+      const useAi = s.changed && s.preselect && !AI_SKIP.includes(s.name);
+      form[s.name] = useAi ? s.suggested : s.current;
     }
   } catch {
     errorMsg.value = "请求失败，请确认 AI 服务是否正常";
@@ -185,7 +202,9 @@ async function load() {
 }
 
 function applyAllAi() {
-  for (const s of suggestions.value) if (s.changed) form[s.name] = s.suggested;
+  for (const s of suggestions.value) {
+    if (s.changed && !AI_SKIP.includes(s.name)) form[s.name] = s.suggested;
+  }
 }
 function revertAll() {
   for (const s of suggestions.value) form[s.name] = s.current;
@@ -247,7 +266,7 @@ async function doApply() {
   if (!props.archive) return;
   const adopted: Record<string, string> = {};
   for (const s of suggestions.value) {
-    const v = (form[s.name] ?? "").trim();
+    const v = String(form[s.name] ?? "").trim();
     if (v !== (s.current ?? "").trim()) adopted[s.name] = v;
   }
   if (!Object.keys(adopted).length) return;

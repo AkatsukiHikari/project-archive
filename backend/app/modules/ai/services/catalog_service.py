@@ -348,7 +348,8 @@ async def list_candidates(
             status = "missing"
         else:
             status = "complete"
-        if only_issues and status == "complete":
+        # 仅看待处理：排除无原文（无法著录）与已完整（无需著录）
+        if only_issues and status in ("complete", "no_source"):
             continue
         it["attachment_count"] = ac
         it["status"] = status

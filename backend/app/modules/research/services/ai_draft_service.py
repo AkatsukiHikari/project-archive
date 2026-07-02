@@ -1,8 +1,10 @@
-"""AI 辅助编研：基于成果档案库生成可插入文档的 HTML 片段。
+"""AI 辅助编研：按用户的写作要求生成编研文章（HTML），供插入文档。
 
-走 Dify（scenario=research，DIFY_API_KEY_RESEARCH 回落 DIFY_API_KEY）。
-结果只作为草稿插入编辑器，由编研人员核对润色——人工把关，AI 不直接定稿。
-未配置 Dify key 时给出按档案整理的兜底 HTML（大事记表格 / 素材清单）。
+提示词与模型在 Dify「编研起草」应用内维护，本服务仅组装资料并转发：
+query=用户写作要求；inputs.es_context=成果档案库原文 + 按主题 ES 检索的馆藏原文。
+API key 取 DIFY_API_KEY_RESEARCH，未配置时回落 DIFY_QA_API_KEY。
+未配 key、AI 报错或无返回时抛 ValidationException，由调用方提示用户。
+生成结果作为草稿插入编辑器，由编研人员核对润色后定稿。
 """
 
 import html
@@ -38,92 +40,41 @@ class AiDraftService:
         tenant_id: Optional[uuid.UUID],
     ) -> dict:
         result = await self._get_result(result_id, tenant_id)
-        items = await self._load_items(result, tenant_id)
-        if not items:
-            return {
-                "summary": None,
-                "content": "<p>请先为本成果建立档案库（从馆藏选档或导入项目素材）。</p>",
-            }
-
-        result_type = result.result_type
-        api_key = settings.dify_api_key_for("research")
+        # 优先专用 research key；未配则走问答 Chatflow（带 Dify 知识库检索节点）
+        api_key = (
+            settings.DIFY_API_KEY_RESEARCH
+            or settings.DIFY_QA_API_KEY
+            or settings.DIFY_API_KEY
+        )
         if not api_key:
-            return self._fallback(result_type, items)
+            raise ValidationException(message="未配置 AI 服务（DIFY_QA_API_KEY），无法起草")
 
-        listing = "\n".join(
-            f"{i + 1}. 日期：{it['WJRQ'] or it['ND'] or '不详'}"
-            f"｜题名：{it['TM']}｜责任者：{it['RZZ'] or '不详'}｜档号：{it['DH'] or '不详'}"
-            for i, it in enumerate(items)
+        items = await self._load_items(result, tenant_id)
+        # 有主题时：按主题从馆藏(ES)检索相关档案原文，扩充参考资料
+        if topic:
+            items = items + await self._search_related(topic, items, tenant_id)
+        listing = (
+            self._build_listing(items)
+            if items
+            else "（本成果尚未选定档案，请主要依据知识库召回内容撰写）"
         )
-        try:
-            if result_type == "大事记":
-                return await self._draft_chronicle(
-                    listing, topic, user_id, api_key, items
-                )
-            return await self._draft_prose(
-                result_type, listing, topic, user_id, api_key, items
+
+        ask = (topic or "").strip() or f"围绕成果《{result.title}》撰写一篇编研文章"
+        answer = (
+            await self._collect(
+                ask,
+                user_id,
+                api_key,
+                {
+                    "es_context": listing,
+                    "title": result.title or "",
+                    "result_type": result.result_type or "",
+                },
             )
-        except Exception:
-            logger.exception("AI 编研拟稿失败 result=%s", result_id)
-            return self._fallback(result_type, items)
-
-    # ── 大事记：要 AI 返回 JSON 数组，再渲染成 HTML 表格 ──────────────────────────
-
-    async def _draft_chronicle(
-        self,
-        listing: str,
-        topic: Optional[str],
-        user_id: uuid.UUID,
-        api_key: str,
-        items: list,
-    ) -> dict:
-        query = (
-            "你是档案编研专家。根据以下档案条目编写一份大事记，按时间顺序，每条用简洁规范的"
-            "书面语概括事件。\n"
-            + (f"编研主题聚焦：{topic}\n" if topic else "")
-            + f"\n档案条目：\n{listing}\n\n"
-            "只输出 JSON 数组，不要其他文字。每个元素："
-            '{"date": "YYYY-MM-DD 或 年份", "event": "事件简述", "source_dh": "来源档号(可空)"}'
-        )
-        entries = self._parse_json_array(await self._collect(query, user_id, api_key))
-        clean = [e for e in entries if e.get("event")]
-        if not clean:
-            return self._fallback("大事记", items)
-        rows = "".join(
-            "<tr>"
-            f"<td>{html.escape(str(e.get('date', '')))}</td>"
-            f"<td>{html.escape(str(e.get('event', '')))}</td>"
-            f"<td>{html.escape(str(e.get('source_dh', '')))}</td>"
-            "</tr>"
-            for e in clean
-        )
-        table = (
-            "<table><thead><tr><th>日期</th><th>大事记事</th><th>来源档号</th></tr></thead>"
-            f"<tbody>{rows}</tbody></table>"
-        )
-        return {"summary": None, "content": table}
-
-    # ── 其它体裁：提要 + 正文 HTML ───────────────────────────────────────────────
-
-    async def _draft_prose(
-        self,
-        result_type: str,
-        listing: str,
-        topic: Optional[str],
-        user_id: uuid.UUID,
-        api_key: str,
-        items: list,
-    ) -> dict:
-        query = (
-            f"你是档案编研专家。根据以下馆藏档案条目，撰写一份《{result_type}》初稿，"
-            "语言规范、客观、有条理，分章节，用 Markdown 小标题（##）组织。\n"
-            + (f"编研主题：{topic}\n" if topic else "")
-            + f"\n档案条目：\n{listing}\n\n"
-            "先写一句内容提要（以「提要：」开头），空一行后写正文。"
-        )
-        answer = (await self._collect(query, user_id, api_key)).strip()
+        ).strip()
         if not answer:
-            return self._fallback(result_type, items)
+            raise ValidationException(message="AI 未返回内容，请稍后重试")
+
         summary = None
         body = answer
         m = re.search(r"提要[:：]\s*(.+)", answer)
@@ -132,12 +83,43 @@ class AiDraftService:
             body = answer[m.end() :].strip() or answer
         return {"summary": summary, "content": self._md_to_html(body)}
 
+    # ── 上下文：档案条目 + 真实原文摘录（控制总长）──────────────────────────────
+
+    @staticmethod
+    def _build_listing(items: list[dict]) -> str:
+        clip, budget = 600, 28000
+        used = 0
+        parts: list[str] = []
+        for i, it in enumerate(items):
+            head = (
+                f"{i + 1}. 〔{it['DH'] or '无档号'}〕{it['TM']}"
+                f"（{it['WJRQ'] or it['ND'] or '日期不详'}，责任者 {it['RZZ'] or '不详'}）"
+            )
+            ft = (it.get("full_text") or "").strip()
+            if ft and used < budget:
+                seg = ft[:clip]
+                used += len(seg)
+                parts.append(head + "\n   原文：" + seg + ("…" if len(ft) > clip else ""))
+            else:
+                parts.append(head + "\n   （仅条目信息，暂无数字化原文）")
+        return "\n\n".join(parts)
+
     # ── Dify 流式收集 ────────────────────────────────────────────────────────────
 
-    async def _collect(self, query: str, user_id: uuid.UUID, api_key: str) -> str:
+    async def _collect(
+        self,
+        query: str,
+        user_id: uuid.UUID,
+        api_key: str,
+        inputs: Optional[dict] = None,
+    ) -> str:
         parts: list[str] = []
         async for line in dify_service.stream_chat(
-            query=query, user_id=str(user_id), scenario_code="research", api_key=api_key
+            query=query,
+            user_id=str(user_id),
+            scenario_code="research",
+            api_key=api_key,
+            inputs=inputs or {},
         ):
             line = line.strip()
             if not line.startswith("data:"):
@@ -147,7 +129,9 @@ class AiDraftService:
             except json.JSONDecodeError:
                 continue
             if event.get("event") == "error":
-                return ""
+                raise ValidationException(
+                    message=f"AI 服务错误：{event.get('message') or '生成失败'}"
+                )
             if event.get("event") in ("message", "agent_message"):
                 parts.append(event.get("answer") or "")
         return "".join(parts)
@@ -203,61 +187,92 @@ class AiDraftService:
                 .scalars()
                 .all()
             )
-        return [
-            {"DH": a.DH, "TM": a.TM, "RZZ": a.RZZ, "ND": a.ND, "WJRQ": a.WJRQ}
+        items = [
+            {
+                "archive_id": getattr(a, "archive_id", None),
+                "DH": a.DH, "TM": a.TM, "RZZ": a.RZZ, "ND": a.ND, "WJRQ": a.WJRQ,
+                "full_text": "",
+            }
             for a in archives
         ]
-
-    # ── 兜底（无 Dify key）──────────────────────────────────────────────────────
-
-    @staticmethod
-    def _fallback(result_type: str, items: list) -> dict:
-        if result_type == "大事记":
-            rows = "".join(
-                "<tr>"
-                f"<td>{html.escape(it['WJRQ'] or (str(it['ND']) if it['ND'] else ''))}</td>"
-                f"<td>{html.escape(it['TM'])}</td>"
-                f"<td>{html.escape(it['DH'] or '')}</td>"
-                "</tr>"
-                for it in items
-            )
-            table = (
-                "<table><thead><tr><th>日期</th><th>大事记事</th><th>来源档号</th></tr></thead>"
-                f"<tbody>{rows}</tbody></table>"
-            )
-            return {"summary": None, "content": table}
-        lis = "".join(
-            f"<li>{html.escape(it['TM'])}（{html.escape(it['WJRQ'] or str(it['ND'] or '不详'))}）</li>"
-            for it in items
+        # 从原档案取真实全文（知识库内容），供 AI 基于原文撰写而非凭题名瞎编
+        texts = await self._fetch_full_texts(
+            [it["archive_id"] for it in items if it["archive_id"]]
         )
-        content = (
-            f"<h2>{html.escape(result_type)}</h2>"
-            f"<p>基于 {len(items)} 件馆藏档案整理的素材清单（AI 未启用，供编写参考）：</p>"
-            f"<ul>{lis}</ul>"
-        )
-        return {"summary": None, "content": content}
+        for it in items:
+            it["full_text"] = texts.get(str(it["archive_id"]), "")
+        return items
 
-    @staticmethod
-    def _parse_json_array(text: str) -> list[dict]:
-        match = re.search(r"\[.*\]", text, re.S)
-        if not match:
-            return []
+    async def _search_related(
+        self, topic: str, existing: list[dict], tenant_id: Optional[uuid.UUID]
+    ) -> list[dict]:
+        """按主题从馆藏检索相关档案（含原文），扩充编研参考资料。"""
+        from app.infra.search.archive_index import super_search
+
         try:
-            data = json.loads(match.group(0))
-        except json.JSONDecodeError:
+            r = await super_search(
+                keyword=topic,
+                mode="qa",
+                tenant_id=str(tenant_id) if tenant_id else None,
+                include_staging=True,
+                limit=8,
+            )
+        except Exception:  # noqa: BLE001
             return []
-        return [e for e in data if isinstance(e, dict)]
+        seen = {it.get("DH") for it in existing if it.get("DH")}
+        out: list[dict] = []
+        for h in r.get("hits", []):
+            if h.get("DH") in seen:
+                continue
+            out.append(
+                {
+                    "archive_id": None,
+                    "DH": h.get("DH"), "TM": h.get("TM") or "",
+                    "RZZ": h.get("RZZ"), "ND": h.get("ND"), "WJRQ": h.get("WJRQ"),
+                    "full_text": h.get("full_text") or "",
+                }
+            )
+        return out
+
+    async def _fetch_full_texts(self, archive_ids: list) -> dict:
+        from app.modules.repository.models.archive import (Archive,
+                                                           ArchiveStaging)
+
+        out: dict = {}
+        if not archive_ids:
+            return out
+        for model in (Archive, ArchiveStaging):
+            rows = (
+                await self.db.execute(
+                    select(model.id, model.full_text).where(model.id.in_(archive_ids))
+                )
+            ).all()
+            for aid, ft in rows:
+                if ft and str(aid) not in out:
+                    out[str(aid)] = ft
+        return out
 
     @staticmethod
     def _md_to_html(text: str) -> str:
-        """极简 Markdown→HTML：## 标题、空行分段。够用即可，正文仍可在编辑器里调整。"""
+        """极简 Markdown→HTML：标题、加粗、列表、空行分段。正文仍可在编辑器里调整。"""
+
+        def inline(s: str) -> str:
+            s = html.escape(s)
+            return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+
         blocks = [b.strip() for b in re.split(r"\n\s*\n", text) if b.strip()]
         out: list[str] = []
         for b in blocks:
             heading = re.match(r"^(#{1,3})\s+(.*)$", b)
             if heading:
-                level = len(heading.group(1)) + 1  # ## -> h3
-                out.append(f"<h{level}>{html.escape(heading.group(2))}</h{level}>")
+                level = len(heading.group(1)) + 1  # # -> h2, ## -> h3
+                out.append(f"<h{level}>{inline(heading.group(2))}</h{level}>")
+                continue
+            lines = b.split("\n")
+            if all(re.match(r"^\s*[-*]\s+", ln) for ln in lines):
+                stripped = [re.sub(r"^\s*[-*]\s+", "", ln) for ln in lines]
+                lis = "".join(f"<li>{inline(s)}</li>" for s in stripped)
+                out.append(f"<ul>{lis}</ul>")
             else:
-                out.append(f"<p>{html.escape(b)}</p>")
+                out.append(f"<p>{inline(b)}</p>")
         return "".join(out)

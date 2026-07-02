@@ -350,6 +350,116 @@ def build_qa_chatflow(dataset_id):
     )
 
 
+def build_research_chatflow(dataset_id):
+    """编研起草 Chatflow：Start(es_context/title/result_type) + sys.query(用户写作要求)
+    → 知识检索(档案知识库) → LLM 成文 → Answer。
+
+    导入后提示词/模型在 Dify UI 内维护；DSL 中的模型字段仅为导入所需初始值。
+    """
+    start, kr, llm, ans = "node_start", "node_kr", "node_llm", "node_answer"
+    prompt = (
+        "你是档案编研专家，请按用户的写作要求撰写一篇编研文章（类似研究文章）。\n\n"
+        "成果信息：《{{#" + start + ".title#}}》（体裁：{{#" + start + ".result_type#}}）\n\n"
+        "参考资料①（后端检索的馆藏档案原文，权威）：\n{{#" + start + ".es_context#}}\n\n"
+        "参考资料②（知识库语义召回补充）：\n{{#" + kr + ".result#}}\n\n"
+        "用户写作要求：{{#sys.query#}}\n\n"
+        "【要求】自然成文、叙述连贯，可用 Markdown 小标题（##）组织；"
+        "不要输出清单、表格，也不要逐条罗列档案条目；"
+        "所有史实、数字、人名、日期须出自参考资料，引用具体史实在句末标注〔档号〕；"
+        "资料未涉及之处如实说明，不得编造。\n"
+        "先写一句内容提要（以「提要：」开头），空一行后写正文（Markdown）。"
+    )
+    nodes = [
+        _node(
+            start,
+            "start",
+            {
+                "title": "Start",
+                "variables": [
+                    {"label": "参考资料", "variable": "es_context", "type": "paragraph",
+                     "required": False, "max_length": 48000, "options": []},
+                    {"label": "成果标题", "variable": "title", "type": "text-input",
+                     "required": False, "max_length": 256, "options": []},
+                    {"label": "体裁", "variable": "result_type", "type": "text-input",
+                     "required": False, "max_length": 64, "options": []},
+                ],
+            },
+            80, 240,
+        ),
+        _node(
+            kr,
+            "knowledge-retrieval",
+            {
+                "title": "知识检索",
+                "query_variable_selector": ["sys", "query"],
+                "dataset_ids": [dataset_id],
+                "retrieval_mode": "multiple",
+                "multiple_retrieval_config": {
+                    "top_k": 6,
+                    "score_threshold": None,
+                    "score_threshold_enabled": False,
+                    "reranking_enable": False,
+                    "reranking_mode": "weighted_score",
+                    "weights": {
+                        "weight_type": "customized",
+                        "vector_setting": {
+                            "vector_weight": 0.7,
+                            "embedding_provider_name": "",
+                            "embedding_model_name": "",
+                        },
+                        "keyword_setting": {"keyword_weight": 0.3},
+                    },
+                    "reranking_model": {"provider": "", "model": ""},
+                },
+            },
+            360, 240,
+        ),
+        _node(
+            llm,
+            "llm",
+            {
+                "title": "AI 成文",
+                # DSL 导入要求提供初始模型，导入后在 Dify UI 更换
+                "model": {
+                    "provider": DEEPSEEK_PROVIDER,
+                    "name": DEEPSEEK_MODEL,
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.4},
+                },
+                "prompt_template": [{"role": "system", "text": prompt}],
+                "context": {"enabled": True, "variable_selector": [kr, "result"]},
+                "memory": {
+                    "query_prompt_template": "{{#sys.query#}}",
+                    "window": {"enabled": False, "size": 10},
+                },
+                "vision": {"enabled": False},
+                "variables": [],
+            },
+            660, 240,
+        ),
+        _node(
+            ans,
+            "answer",
+            {"title": "Answer", "answer": "{{#" + llm + ".text#}}", "variables": []},
+            960, 240,
+        ),
+    ]
+    edges = [
+        _edge(start, kr, "start", "knowledge-retrieval"),
+        _edge(kr, llm, "knowledge-retrieval", "llm"),
+        _edge(llm, ans, "llm", "answer"),
+    ]
+    return _app(
+        "advanced-chat",
+        "编研起草",
+        "按用户写作要求，基于知识库+馆藏原文生成编研文章（提示词在本应用内管理）",
+        nodes,
+        edges,
+        icon="fountain_pen",
+        icon_bg="#FCE7F3",
+    )
+
+
 def build_catalog_workflow():
     """智能著录抽取：Start(全文+字段schema+当前条目) → DeepSeek 抽结构化JSON → End(text)。"""
     start, llm, end = "node_start", "node_llm", "node_end"
@@ -466,10 +576,27 @@ def main():
     ap.add_argument("--purge", action="store_true", help="删除所有旧 App")
     ap.add_argument("--qa", help="重建问答 Chatflow（传 dataset_id），不动其它")
     ap.add_argument("--catalog", action="store_true", help="建/重建 智能著录抽取工作流")
+    ap.add_argument("--research", help="建/重建 编研起草 Chatflow（传 dataset_id）")
     args = ap.parse_args()
 
     dify = Dify()
     print(f"✓ 登录 {EMAIL}")
+
+    if args.research:
+        for a in dify.list_apps():
+            if a.get("name") == "编研起草":
+                dify.delete_app(a["id"])
+        app_id = dify.import_app(
+            build_research_chatflow(args.research),
+            "编研起草",
+            "research draft",
+            icon="fountain_pen",
+            icon_bg="#FCE7F3",
+        )
+        dify.publish(app_id)
+        print(f"✓ 编研起草 Chatflow app_id={app_id}")
+        print(f"  DIFY_API_KEY_RESEARCH={dify.api_key(app_id)}")
+        return
 
     if args.catalog:
         for a in dify.list_apps():

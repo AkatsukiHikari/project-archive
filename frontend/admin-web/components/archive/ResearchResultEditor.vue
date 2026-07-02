@@ -1,18 +1,71 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-[1000] bg-white flex flex-col">
+  <div v-if="show" class="fixed inset-0 z-[1000] flex flex-col" style="background: var(--semi-color-bg-0)">
     <!-- 顶部操作栏 -->
-    <div class="h-14 shrink-0 border-b border-gray-200 flex items-center gap-2 px-4">
-      <Icon name="heroicons:document-text" class="w-5 h-5 text-indigo-600 shrink-0" />
+    <div class="h-14 shrink-0 border-b flex items-center gap-2 px-4" style="border-color: var(--semi-color-border)">
+      <Icon name="heroicons:document-text" class="w-5 h-5 shrink-0" style="color: oklch(var(--p))" />
       <span class="font-medium truncate max-w-[240px]">{{ result?.title || "编研成果" }}</span>
       <ResultStatusTag v-if="result" :status="result.status" />
       <div class="flex-1" />
 
       <template v-if="!locked">
-        <NInput v-model:value="aiTopic" size="small" placeholder="AI 主题(可选)" style="width: 160px" />
-        <NButton size="small" type="primary" :loading="aiLoading" @click="runAi">
-          <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
-          AI 起草
-        </NButton>
+        <!-- Gmail 式 AI 起草：图标 → 面板输入 → 生成 → 预览 → 插入光标处 -->
+        <NPopover v-model:show="aiShow" trigger="click" placement="bottom-end" :width="580" :show-arrow="false">
+          <template #trigger>
+            <NButton size="small" type="primary">
+              <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
+              AI 起草
+            </NButton>
+          </template>
+
+          <div class="flex flex-col gap-2.5 py-1">
+            <!-- 输入 -->
+            <template v-if="aiPhase === 'input'">
+              <div class="text-[13px] font-semibold" style="color: var(--semi-color-text-0)">想写什么？</div>
+              <NInput
+                v-model:value="aiTopic"
+                type="textarea"
+                :autosize="{ minRows: 4, maxRows: 8 }"
+                placeholder="描述你想写的大概内容，例如：&#10;围绕 2023 年防汛工作，梳理各阶段部署、行动与成效，突出重点事件。&#10;（留空则按成果体裁基于档案库自动起草）"
+              />
+              <div class="flex items-center justify-end gap-2">
+                <NButton size="small" quaternary @click="aiShow = false">取消</NButton>
+                <NButton size="small" type="primary" :loading="aiLoading" @click="aiGenerate">
+                  <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
+                  作成
+                </NButton>
+              </div>
+            </template>
+
+            <!-- 生成中 -->
+            <template v-else-if="aiPhase === 'loading'">
+              <div class="flex items-center gap-2 py-8 justify-center text-[13px]" style="color: var(--semi-color-text-2)">
+                <NSpin size="small" /> AI 正在依据成果档案库的原文撰写…
+              </div>
+            </template>
+
+            <!-- 预览 -->
+            <template v-else>
+              <div class="flex items-center gap-2">
+                <span class="text-[13px] font-semibold" style="color: var(--semi-color-text-0)">AI 草稿预览</span>
+                <span v-if="aiSummary" class="text-[11px] truncate" style="color: var(--semi-color-text-3)">{{ aiSummary }}</span>
+              </div>
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div class="ai-preview max-h-[46vh] overflow-auto rounded-lg border p-3 text-[13px] leading-relaxed" style="border-color: var(--semi-color-border)" v-html="aiContent" />
+              <div class="flex items-center gap-2">
+                <NButton size="small" quaternary @click="aiPhase = 'input'">
+                  <template #icon><Icon name="heroicons:arrow-left" class="w-3.5 h-3.5" /></template>
+                  重新输入
+                </NButton>
+                <NButton size="small" tertiary :loading="aiLoading" @click="aiGenerate">重新生成</NButton>
+                <div class="flex-1" />
+                <NButton size="small" type="primary" @click="aiInsert">
+                  <template #icon><Icon name="heroicons:arrow-down-on-square" class="w-4 h-4" /></template>
+                  插入
+                </NButton>
+              </div>
+            </template>
+          </div>
+        </NPopover>
         <NButton v-if="result?.result_type === '大事记'" size="small" tertiary :loading="chronLoading" @click="insertChronicle">
           大事记表格
         </NButton>
@@ -48,12 +101,12 @@
         </ClientOnly>
       </div>
 
-      <div v-show="showLib" class="w-96 shrink-0 border-l border-gray-200 flex flex-col bg-gray-50/60">
-        <div class="p-3 border-b border-gray-200 flex items-center justify-between">
-          <span class="text-sm font-medium">成果档案库</span>
-          <span class="text-xs text-gray-400">{{ archives.length }} 件</span>
+      <div v-show="showLib" class="w-96 shrink-0 border-l flex flex-col" style="border-color: var(--semi-color-border); background: var(--semi-color-bg-1)">
+        <div class="p-3 border-b flex items-center justify-between" style="border-color: var(--semi-color-border)">
+          <span class="text-sm font-medium" style="color: var(--semi-color-text-0)">成果档案库</span>
+          <span class="text-xs" style="color: var(--semi-color-text-3)">{{ archives.length }} 件</span>
         </div>
-        <div class="p-3 flex gap-2 border-b border-gray-200">
+        <div class="p-3 flex gap-2 border-b" style="border-color: var(--semi-color-border)">
           <NButton size="small" type="primary" tertiary class="flex-1" :disabled="locked" @click="openPicker">
             <template #icon><Icon name="heroicons:plus" class="w-4 h-4" /></template>
             从馆藏选档
@@ -63,16 +116,20 @@
             导入项目素材
           </NButton>
         </div>
-        <p class="px-3 pt-2 text-[11px] text-gray-400">点「查看原文」对照 PDF / OCR 全文撰写，点「引用」在正文光标处插入档案引用。</p>
+        <p class="px-3 pt-2 text-[11px]" style="color: var(--semi-color-text-3)">点「查看原文」对照 PDF / OCR 全文撰写，点「引用」在正文光标处插入档案引用。</p>
         <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
           <div
             v-for="a in archives"
             :key="a.id"
-            class="rounded-lg border bg-white p-2.5 text-xs transition-colors"
-            :class="a.archive_id === viewerArchiveId ? 'border-indigo-400 ring-1 ring-indigo-200' : 'border-gray-200 hover:border-indigo-300'"
+            class="rounded-lg border p-2.5 text-xs transition-colors"
+            :style="{
+              background: 'var(--semi-color-bg-0)',
+              borderColor: a.archive_id === viewerArchiveId ? 'oklch(var(--p))' : 'var(--semi-color-border)',
+              boxShadow: a.archive_id === viewerArchiveId ? '0 0 0 1px oklch(var(--p)/0.35)' : 'none',
+            }"
           >
-            <div class="font-medium text-gray-800 line-clamp-2 leading-snug">{{ a.TM }}</div>
-            <div class="text-gray-400 mt-1 truncate">{{ a.DH || "无档号" }} · {{ a.WJRQ || a.ND || "" }}{{ a.RZZ ? " · " + a.RZZ : "" }}</div>
+            <div class="font-medium line-clamp-2 leading-snug" style="color: var(--semi-color-text-0)">{{ a.TM }}</div>
+            <div class="mt-1 truncate" style="color: var(--semi-color-text-3)">{{ a.DH || "无档号" }} · {{ a.WJRQ || a.ND || "" }}{{ a.RZZ ? " · " + a.RZZ : "" }}</div>
             <div class="flex items-center gap-1 mt-2">
               <NButton size="tiny" tertiary @click="openViewer(a)">
                 <template #icon><Icon name="heroicons:document-magnifying-glass" class="w-3.5 h-3.5" /></template>
@@ -85,7 +142,7 @@
               </NButton>
             </div>
           </div>
-          <div v-if="!archives.length" class="text-center text-xs text-gray-400 py-8 px-2">
+          <div v-if="!archives.length" class="text-center text-xs py-8 px-2" style="color: var(--semi-color-text-3)">
             尚未建立档案库。<br>编研写作以档案原文为依据——请「从馆藏选档」或「导入项目素材」，再对照原文撰写。
           </div>
         </div>
@@ -119,7 +176,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue";
-import { NButton, NDivider, NDrawer, NDrawerContent, NInput, useMessage } from "naive-ui";
+import { NButton, NDivider, NDrawer, NDrawerContent, NInput, NPopover, NSpin, useMessage } from "naive-ui";
 import { ArchivePickerModal, ArchiveSourceViewer, ResultStatusTag } from "@/components/archive";
 import {
   ResearchResultAPI, ResearchUploadAPI,
@@ -263,16 +320,38 @@ async function insertChronicle() {
   }
 }
 
-async function runAi() {
+// ── Gmail 式 AI 起草：输入 → 作成 → 预览 → 插入光标处 ─────────────────────────
+const aiShow = ref(false);
+const aiPhase = ref<"input" | "loading" | "preview">("input");
+const aiContent = ref("");
+const aiSummary = ref("");
+
+async function aiGenerate() {
   if (!props.resultId) return;
   aiLoading.value = true;
+  aiPhase.value = "loading";
   try {
-    const res = await ResearchResultAPI.aiDraft({ result_id: props.resultId, topic: aiTopic.value || undefined });
-    tiptapInsert(res.data.content);
-    message.success("AI 草稿已插入，请核对润色");
+    const res = await ResearchResultAPI.aiDraft({
+      result_id: props.resultId,
+      topic: aiTopic.value.trim() || undefined,
+    });
+    aiContent.value = res.data.content;
+    aiSummary.value = res.data.summary ?? "";
+    aiPhase.value = "preview";
+  } catch {
+    message.error("AI 起草失败，请稍后重试");
+    aiPhase.value = "input";
   } finally {
     aiLoading.value = false;
   }
+}
+
+function aiInsert() {
+  if (!aiContent.value) return;
+  tiptapInsert(aiContent.value);
+  message.success("已插入光标位置，请核对润色");
+  aiShow.value = false;
+  aiPhase.value = "input";
 }
 
 function esc(s: string): string {
@@ -402,3 +481,14 @@ function close() {
   emit("update:show", false);
 }
 </script>
+
+<style scoped>
+/* AI 草稿预览：标题/表格/列表基本排版 */
+.ai-preview :deep(h2) { font-size: 15px; font-weight: 600; margin: 0.6em 0 0.3em; }
+.ai-preview :deep(h3) { font-size: 14px; font-weight: 600; margin: 0.5em 0 0.25em; }
+.ai-preview :deep(p) { margin: 0.4em 0; }
+.ai-preview :deep(ul), .ai-preview :deep(ol) { margin: 0.4em 0; padding-left: 1.4em; }
+.ai-preview :deep(table) { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 12px; }
+.ai-preview :deep(th), .ai-preview :deep(td) { border: 1px solid var(--semi-color-border); padding: 4px 8px; text-align: left; }
+.ai-preview :deep(th) { background: var(--semi-color-fill-0); font-weight: 600; }
+</style>

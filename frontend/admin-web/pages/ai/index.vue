@@ -1,5 +1,5 @@
 <template>
-  <div class="flex gap-3 overflow-hidden -my-6" style="height: calc(100vh - 176px)">
+  <div class="flex gap-3 overflow-hidden -my-3" style="height: calc(100vh - 174px)">
 
     <!-- ════════════════════════════════════════════════════════
          侧边栏（历史会话）

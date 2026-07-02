@@ -103,7 +103,7 @@
         </template>
       </div>
 
-      <ProTable :columns="columns" :data="archiveList" :loading="loading" :page-size="0" size="small" />
+      <ProTable :columns="columns" :data="archiveList" :loading="loading" :page-size="0" size="small" :scroll-x="1420" />
 
       <div class="flex justify-end">
         <NPagination
@@ -433,11 +433,11 @@ const columns = computed<DataTableColumns<Archive>>(() => [
   { title: "责任者", key: "RZZ", width: 110, ellipsis: { tooltip: true }, render: (r) => r.RZZ || "—" },
   { title: "年度", key: "ND", width: 64, render: (r) => r.ND ?? "—" },
   {
-    title: "密级", key: "MJ", width: 72,
+    title: "密级", key: "MJ", width: 92,
     render: (r) => h(NTag, { size: "small", type: securityType[r.MJ] ?? "default", bordered: false },
       { default: () => securityLabel[r.MJ] ?? r.MJ }),
   },
-  { title: "期限", key: "BGQX", width: 60, render: (r) => retentionLabel[r.BGQX] ?? r.BGQX },
+  { title: "保管期限", key: "BGQX", width: 92, render: (r) => retentionLabel[r.BGQX] ?? r.BGQX },
   {
     title: "开放状态", key: "KFZT", width: 90,
     render: (r) => h(KfztTag, { value: r.KFZT }),

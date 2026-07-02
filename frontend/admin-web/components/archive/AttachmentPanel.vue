@@ -67,32 +67,25 @@
         删除
       </NButton>
     </div>
-
-    <NDrawer v-model:show="showViewer" :width="viewerWidth" placement="right">
-      <NDrawerContent :body-content-style="{ padding: 0, height: '100%' }" closable>
-        <template #header>档案原文</template>
-        <ArchiveSourceViewer :archive-id="archiveId" />
-      </NDrawerContent>
-    </NDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import { NButton, NDrawer, NDrawerContent, NTag, NUpload, NUploadDragger, useDialog, useMessage } from "naive-ui";
+import { useRouter } from "vue-router";
+import { NButton, NTag, NUpload, NUploadDragger, useDialog, useMessage } from "naive-ui";
 import type { UploadFileInfo } from "naive-ui";
 import { ArchiveAPI, OrganizeAPI } from "@/api/repository";
 import type { ArchiveAttachment } from "@/api/repository";
-import ArchiveSourceViewer from "./ArchiveSourceViewer.vue";
 
 const props = defineProps<{ archiveId: string }>();
 const emit = defineEmits<{ changed: [] }>();
 
-const showViewer = ref(false);
+const router = useRouter();
+// 统一跳专门的查看原文页（不再各自开抽屉）
 function viewSource() {
-  showViewer.value = true;
+  router.push(`/archive/reader?id=${props.archiveId}`);
 }
-const viewerWidth = typeof window !== "undefined" ? Math.round(window.innerWidth * 0.66) : 900;
 
 const message = useMessage();
 const dialog = useDialog();

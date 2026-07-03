@@ -247,7 +247,7 @@ const form = reactive<ArchiveListParams>({
 });
 
 // 全文命中：archive_id → { tm: 题名高亮html, snippet: 原文命中片段html }
-const ftHits = ref<Record<string, { tm?: string; snippet?: string }>>({});
+const ftHits = ref<Record<string, { tm?: string; snippet?: string; preview?: string }>>({});
 // 是否处于"全文检索结果"状态（已输入关键词并检索）；空查询/字段模式下为 false
 const ftActive = ref(false);
 
@@ -418,8 +418,6 @@ async function loadField() {
 
 async function loadFullText() {
   const q = keyword.value.trim();
-  // 未输入关键词时，显示默认档案列表（与字段模式一致），命中高亮留空
-  if (!q) { await loadField(); return; }
   const res = await UtilizationAPI.search({
     q,
     public_only: publicOnly.value,
@@ -439,11 +437,11 @@ async function loadFullText() {
   total.value = res.data.total;
   ftHits.value = Object.fromEntries(
     hits.map((h2) => [h2.id, {
-      tm: h2.highlight?.TM?.[0],
-      snippet: (h2.highlight?.full_text ?? []).join(" … "),
+      snippet: (h2.highlight?.full_text ?? []).join(" … ") || undefined,
+      preview: (h2 as unknown as { full_text_preview?: string }).full_text_preview || undefined,
     }]),
   );
-  ftActive.value = true;
+  ftActive.value = !!q;
 }
 
 async function load() {
@@ -493,19 +491,21 @@ function toggleAll(checked: boolean) {
 }
 const allChecked = computed(() => rows.value.length > 0 && rows.value.every((r) => selected.value.has(r.id)));
 
+// 操作列：与 /search 页同一风格（tiny 按钮、固定文案、无原文置灰带提示）
 const actionCol = {
-  title: "操作", key: "actions", width: 180, fixed: "right" as const,
-  render: (r: Archive) => h("div", { class: "flex gap-1.5" }, [
-    h(NButton, { size: "small", tertiary: true, onClick: () => openDetail(r) }, () => "详情"),
+  title: "操作", key: "actions", width: 200, fixed: "right" as const,
+  render: (r: Archive) => h("div", { class: "flex items-center gap-1" }, [
+    h(NButton, { size: "tiny", tertiary: true, onClick: () => openDetail(r) }, { default: () => "详情" }),
     h(NButton, {
-      size: "small", tertiary: true, type: "primary",
+      size: "tiny", tertiary: true, type: "primary",
       disabled: !r.attachment_count,
+      title: r.attachment_count ? "查看原文" : "该档案暂无数字化原文",
       onClick: () => openReaderFor(r),
-    }, () => (r.attachment_count ? "原文" : "无原文")),
+    }, { default: () => "查看原文" }),
     h(NButton, {
-      size: "small", tertiary: true, type: "primary",
+      size: "tiny", tertiary: true, type: "primary",
       onClick: () => askAI(r),
-    }, () => "AI 解读"),
+    }, { default: () => "AI 解读" }),
   ]),
 };
 
@@ -548,17 +548,20 @@ const fulltextColumns: DataTableColumns<Archive> = [
     },
   },
   {
-    title: "命中内容（原文）", key: "_snippet", minWidth: 360,
+    title: "全文内容", key: "_snippet", minWidth: 360,
     render: (r) => {
-      const snip = ftHits.value[r.id]?.snippet;
-      if (!snip) {
-        return h("span", { class: "text-[12px]", style: "color:var(--semi-color-text-3)" }, "（命中题名）");
+      const hit = ftHits.value[r.id];
+      if (hit?.snippet) {
+        return h("span", {
+          class: "text-[12.5px] leading-relaxed",
+          style: "color:var(--semi-color-text-1)",
+          innerHTML: "… " + redHi(hit.snippet) + " …",
+        });
       }
-      return h("span", {
-        class: "text-[12.5px] leading-relaxed",
-        style: "color:var(--semi-color-text-1)",
-        innerHTML: "… " + redHi(snip) + " …",
-      });
+      if (hit?.preview) {
+        return h("span", { class: "text-[12.5px] leading-relaxed", style: "color:var(--semi-color-text-2)" }, hit.preview);
+      }
+      return h("span", { class: "text-[12px]", style: "color:var(--semi-color-text-3)" }, "（暂无原文全文）");
     },
   },
   { title: "年度", key: "ND", width: 64, render: (r) => r.ND ?? "—" },
@@ -570,7 +573,7 @@ const columns = computed<DataTableColumns<Archive>>(() => {
   // 依赖 fieldTerms/ftHits：检索后查询词变化时返回新数组，强制表格重渲染高亮
   void fieldTerms.value;
   void ftHits.value;
-  const base = (mode.value === "fulltext" && ftActive.value) ? fulltextColumns : fieldColumns;
+  const base = mode.value === "fulltext" ? fulltextColumns : fieldColumns;
   return appId.value ? [selCol, ...base] : [...base];
 });
 

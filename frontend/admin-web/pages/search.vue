@@ -345,7 +345,7 @@ const fulltextColumns: DataTableColumns<SearchHit> = [
   { title: "档号", key: "DH", width: 200, render: dhCell },
   { title: "题名", key: "TM", width: 240, ellipsis: { tooltip: true }, render: tmCell },
   {
-    title: "原文（命中标红）", key: "_fulltext", minWidth: 420,
+    title: "原文内容", key: "_fulltext", minWidth: 420,
     render: (r) =>
       r.full_text
         ? h("div", {

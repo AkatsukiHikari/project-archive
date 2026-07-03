@@ -68,35 +68,29 @@ async def search_items(
     limit: int = 20,
 ) -> dict[str, Any]:
     """
-    档案全文检索：题名 TM、责任者 RZZ、原文 OCR 全文 full_text 多字段匹配。
+    档案全文检索：**只查原文全文 full_text**（OCR/文本层结果），不掺题名/责任者
+    ——用户选了全文模式就是要按内容找，字段匹配走字段检索。
 
-    用于老档案题名著录不准、按字段查不到时，命中原文内容。
-    public_only=True 仅返回无密级（MJ=无）档案，供社会公众查档。
-
-    返回：{"total": N, "hits": [{...source, "score", "highlight"}]}
+    query 为空时返回全量列表（仅过滤，按入库时间倒序），供全文模式默认展示。
+    仅检索正式库（归档后的馆藏）。
+    返回：{"total": N, "hits": [{...source, "score", "highlight", "full_text_preview"}]}
     """
     client = get_es_client()
 
-    # 标准分词器对中文按单字切分，单字重叠会污染结果；
-    # 用 should + match_phrase 让"精确短语"命中排到最前，单字匹配作为兜底召回。
-    should_clauses: list[dict] = [
-        {"match_phrase": {"full_text": {"query": query, "boost": 8, "slop": 1}}},
-        {"match_phrase": {"TM": {"query": query, "boost": 10}}},
-        {"match_phrase": {"RZZ": {"query": query, "boost": 6}}},
-        {
-            "multi_match": {
-                "query": query,
-                "fields": ["TM^3", "RZZ^2", "full_text"],
-                "type": "best_fields",
-                "fuzziness": "AUTO",
+    must_clauses: list[dict] = []
+    if (query or "").strip():
+        # match_phrase 让精确短语排最前；match 分词作兜底召回
+        must_clauses.append({
+            "bool": {
+                "should": [
+                    {"match_phrase": {"full_text": {"query": query, "boost": 8, "slop": 1}}},
+                    {"match": {"full_text": {"query": query}}},
+                ],
+                "minimum_should_match": 1,
             }
-        },
-    ]
-    must_clauses: list[dict] = [
-        {"bool": {"should": should_clauses, "minimum_should_match": 1}}
-    ]
+        })
 
-    filter_clauses: list[dict] = []
+    filter_clauses: list[dict] = [{"term": {"doc_source.keyword": "formal"}}]
     if tenant_id:
         filter_clauses.append({"term": {"tenant_id": tenant_id}})
     if public_only:
@@ -106,12 +100,15 @@ async def search_items(
     if QZH:
         filter_clauses.append({"term": {"QZH": QZH}})
 
-    es_query = {
-        "query": {"bool": {"must": must_clauses, "filter": filter_clauses}},
+    es_query: dict = {
+        "query": {
+            "bool": {
+                "must": must_clauses or [{"match_all": {}}],
+                "filter": filter_clauses,
+            }
+        },
         "highlight": {
             "fields": {
-                "TM": {},
-                "RZZ": {},
                 "full_text": {"fragment_size": 120, "number_of_fragments": 2},
             },
             "pre_tags": ["<em>"],
@@ -131,23 +128,29 @@ async def search_items(
             "BGQX",
             "catalog_id",
             "create_time",
+            "full_text",
         ],
     }
+    if not must_clauses:
+        es_query["sort"] = [{"create_time": {"order": "desc"}}]
 
     try:
         resp = await client.search(index=ARCHIVE_INDEX, body=es_query)
         hits = resp["hits"]["hits"]
-        return {
-            "total": resp["hits"]["total"]["value"],
-            "hits": [
+        out = []
+        for hit in hits:
+            src = dict(hit["_source"])
+            ft = (src.pop("full_text", None) or "").strip()
+            out.append(
                 {
-                    **hit["_source"],
+                    **src,
                     "score": hit["_score"],
                     "highlight": hit.get("highlight", {}),
+                    # 全文内容列常驻展示用（截断预览，命中时前端优先用 highlight）
+                    "full_text_preview": ft[:280] + ("…" if len(ft) > 280 else ""),
                 }
-                for hit in hits
-            ],
-        }
+            )
+        return {"total": resp["hits"]["total"]["value"], "hits": out}
     except Exception as exc:
         logger.error("ES 搜索失败 query='%s': %s", query, exc)
         return {"total": 0, "hits": [], "error": "搜索服务暂时不可用"}
@@ -213,22 +216,10 @@ def _keyword_clause(keyword: str, mode: str) -> dict:
             should.append({"term": {"ND": int(y)}})
         return {"bool": {"should": should, "minimum_should_match": 1}}
     if mode == "fulltext":
-        # 短语命中排最前；match 分词 OR 召回，保证自然语言提问（如"2024财务"）
-        # 也能命中题名"2024年度财务凭证"这类非连续匹配；DH 通配兜底档号查询。
+        # 全文模式只查原文 full_text：用户选了全文就是按内容找，字段匹配走字段检索
         should = [
-            {
-                "wildcard": {
-                    "DH.keyword": {
-                        "value": f"*{keyword}*",
-                        "case_insensitive": True,
-                        "boost": 12,
-                    }
-                }
-            },
             {"match_phrase": {"full_text": {"query": keyword, "boost": 8, "slop": 1}}},
             {"match": {"full_text": {"query": keyword}}},
-            {"match_phrase": {"TM": {"query": keyword, "boost": 4}}},
-            {"match": {"TM": {"query": keyword, "boost": 2}}},
         ]
     else:
         # 题名/责任者用短语精确匹配；档号用子串通配（大小写不敏感）。

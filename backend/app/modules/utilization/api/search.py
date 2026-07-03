@@ -30,7 +30,7 @@ router = APIRouter()
     """,
 )
 async def search_archives(
-    q: str = Query(..., min_length=1, max_length=200, description="检索关键词"),
+    q: str = Query(default="", max_length=200, description="检索关键词（空=按入库时间倒序列全量）"),
     year: Optional[int] = Query(None, description="年度过滤"),
     fonds_code: Optional[str] = Query(None, description="全宗号过滤"),
     public_only: bool = Query(False, description="仅返回无密级档案（社会公众查档）"),

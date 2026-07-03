@@ -454,9 +454,10 @@ const columns = computed<DataTableColumns<Archive>>(() => [
     render: (r) => h("span", { class: "text-[12px]" }, statusLabel[r.status] ?? r.status),
   },
   {
-    title: "操作", key: "actions", width: 264, fixed: "right" as const,
+    title: "操作", key: "actions", width: 200, fixed: "right" as const,
     render: (r) => [
       h(NButton, { size: "tiny", tertiary: true, class: "mr-1", onClick: () => openDetail(r) }, { default: () => "详情" }),
+      h(NButton, { size: "tiny", tertiary: true, type: "primary", class: "mr-1", onClick: () => openModal(r) }, { default: () => "编辑" }),
       h(NButton, { size: "tiny", tertiary: true, type: "primary", class: "mr-1", onClick: () => openAttach(r) }, { default: () => "挂接" }),
       h(NButton, {
         size: "tiny", tertiary: true, type: "primary", class: "mr-1",

@@ -286,7 +286,7 @@ const selectedNavKeys = ref<string[]>([]);
 const navScopeLabel = ref("");
 
 async function loadNavRoot() {
-  const res = await ArchiveAPI.navCategories();
+  const res = await ArchiveAPI.navCategories("formal");
   navData.value = (res.data ?? []).map((c) => ({
     key: `c:${c.category_id}`,
     label: `${c.name}（${c.count}）`,
@@ -298,7 +298,7 @@ async function loadNavRoot() {
 async function onLoadNav(node: TreeOption): Promise<void> {
   const meta = (node.meta ?? {}) as Record<string, string>;
   if (meta.level === "category") {
-    const res = await ArchiveAPI.navFonds(meta.category_id);
+    const res = await ArchiveAPI.navFonds(meta.category_id, "formal");
     node.children = (res.data ?? []).map((f) => ({
       key: `f:${meta.category_id}:${f.fonds_id}`,
       label: `${f.qzh}（${f.count}）`,
@@ -306,7 +306,7 @@ async function onLoadNav(node: TreeOption): Promise<void> {
       meta: { level: "fonds", category_id: meta.category_id, fonds_id: f.fonds_id, qzh: f.qzh, name: meta.name },
     } as TreeOption));
   } else if (meta.level === "fonds") {
-    const res = await ArchiveAPI.navYears(meta.category_id, meta.fonds_id);
+    const res = await ArchiveAPI.navYears(meta.category_id, meta.fonds_id, "formal");
     node.children = (res.data ?? []).map((y) => ({
       key: `y:${meta.category_id}:${meta.fonds_id}:${y.year}`,
       label: `${y.year} 年（${y.count}）`,
@@ -390,6 +390,7 @@ const selected = ref<Set<string>>(new Set());
 function buildParams(): ArchiveListParams {
   const clean = (v?: string) => (v && v.trim() ? v.trim() : undefined);
   return {
+    source: "formal" as const,
     keyword: clean(keyword.value), TM: clean(form.TM), RZZ: clean(form.RZZ), DH: clean(form.DH),
     fonds_id: form.fonds_id || undefined, category_id: form.category_id || undefined,
     // 对外查档（从利用申请进入）：仅检索无密级档案
@@ -432,7 +433,8 @@ async function loadFullText() {
     id: h2.id, DH: h2.DH ?? undefined, TM: h2.TM, RZZ: h2.RZZ ?? undefined,
     ND: h2.ND ?? undefined, QZH: h2.QZH ?? "", category_id: h2.catalog_id ?? "",
     MJ: h2.MJ ?? "无", BGQX: h2.BGQX ?? "", status: "archived",
-    fonds_id: "", embedding_status: "done", attachment_count: 0,
+    fonds_id: "", embedding_status: "done",
+    attachment_count: (h2 as unknown as { attachment_count?: number }).attachment_count ?? 0,
   } as Archive));
   total.value = res.data.total;
   ftHits.value = Object.fromEntries(

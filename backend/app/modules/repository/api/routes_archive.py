@@ -127,16 +127,20 @@ async def archive_nav_tree(
     level: str = Query(..., pattern="^(category|fonds|year)$"),
     category_id: Optional[uuid.UUID] = Query(default=None),
     fonds_id: Optional[uuid.UUID] = Query(default=None),
+    source: str = Query(default="staging", description="staging 暂存库 | formal 正式库"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """档案查询的层级导航：门类→全宗号→年度，每级带条目计数，供老档案员点选过滤。
 
-    数据口径与档案查询字段检索一致（暂存库 ArchiveStaging）。
+    source 决定口径：著录页=暂存库，档案查询页=正式库。
     """
     from sqlalchemy import func, select
-    from app.modules.repository.models.archive import ArchiveStaging
+    from app.modules.repository.models.archive import Archive
+    from app.modules.repository.models.archive import ArchiveStaging as _Staging
     from app.modules.repository.models.category import ArchiveCategory
+
+    ArchiveStaging = Archive if source == "formal" else _Staging  # noqa: N806
 
     tenant_id = current_user.tenant_id
     base_conds = [ArchiveStaging.is_deleted == False]  # noqa: E712
@@ -204,6 +208,7 @@ async def archive_nav_tree(
 
 @router.get("/archive/records", response_model=ResponseModel[dict])
 async def list_archives(
+    source: str = Query(default="staging", description="staging 暂存库 | formal 正式库"),
     fonds_id: Optional[uuid.UUID] = Query(default=None),
     catalog_id: Optional[uuid.UUID] = Query(default=None),
     category_id: Optional[uuid.UUID] = Query(default=None),
@@ -244,7 +249,9 @@ async def list_archives(
         page_size=page_size,
     )
     svc = ArchiveService(db)
-    items, total = await svc.list_archives(query, tenant_id=current_user.tenant_id)
+    items, total = await svc.list_archives(
+        query, tenant_id=current_user.tenant_id, source=source
+    )
 
     # 原文附件数（整理页"原文"列）
     from sqlalchemy import func, select

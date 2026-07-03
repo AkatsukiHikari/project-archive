@@ -38,12 +38,15 @@
 
 <script setup lang="tsx">
 import { h, onMounted, reactive, ref } from "vue";
-import { NButton, NDataTable, NSelect, NSwitch, NTag } from "naive-ui";
+import { NButton, NDataTable, NSelect, NSwitch, NTag, useDialog, useMessage } from "naive-ui";
 import type { DataTableColumns } from "naive-ui";
 import { AiCatalogDrawer, AutoIngestModal } from "@/components/archive";
 import { CatalogAPI, type CatalogCandidate } from "@/api/catalog";
+import { OrganizeAPI } from "@/api/repository";
 
 const router = useRouter();
+const message = useMessage();
+const dialog = useDialog();
 
 definePageMeta({
   layout: "archive",
@@ -105,23 +108,49 @@ const columns: DataTableColumns<CatalogCandidate> = [
     },
   },
   {
-    title: "操作", key: "actions", width: 170,
+    title: "操作", key: "actions", width: 246, fixed: "right" as const,
     render: (r) => h("div", { class: "flex gap-1.5" }, [
       h(NButton, {
         size: "tiny", tertiary: true, type: "primary",
+        onClick: () => openDrawer(r),
+      }, { default: () => "著录" }),
+      h(NButton, {
+        size: "tiny", tertiary: true,
         disabled: !r.attachment_count,
         title: r.attachment_count ? "查看原文" : "该档案暂无数字化原文",
         onClick: () => router.push(`/archive/reader?id=${r.id}`),
       }, { default: () => "查看原文" }),
-      h(NButton, {
-        size: "tiny", type: "primary", tertiary: true,
-        disabled: !r.attachment_count,
-        title: r.attachment_count ? "AI 著录" : "无原文，无法 AI 著录",
-        onClick: () => openDrawer(r),
-      }, { default: () => "AI 著录" }),
+      ...(r.doc_source === "staging"
+        ? [h(NButton, {
+            size: "tiny", tertiary: true, type: "success",
+            onClick: () => confirmToFormal(r),
+          }, { default: () => "归档入库" })]
+        : []),
     ]),
   },
 ];
+
+// ── 归档入库（暂存库 → 正式库）──────────────────────────────────────────────
+function confirmToFormal(r: CatalogCandidate) {
+  dialog.warning({
+    title: "归档入库",
+    content: `确认将「${r.TM}」从暂存库转入正式库？转入后进入正式管理流程。`,
+    positiveText: "确认归档",
+    negativeText: "取消",
+    onPositiveClick: async () => {
+      const res = await OrganizeAPI.archiveToFormal([r.id]);
+      if (res.code !== 0) return message.error(res.message);
+      const { archived, rows } = res.data;
+      if (archived > 0) {
+        message.success(`已归档入库：${r.DH || r.TM}`);
+      } else {
+        const reason = rows?.[0]?.reason || "归档失败";
+        message.error(`归档失败：${reason}`);
+      }
+      load();
+    },
+  });
+}
 
 function openDrawer(r: CatalogCandidate) {
   target.value = { id: r.id, doc_source: r.doc_source, DH: r.DH, TM: r.TM, category_id: r.category_id ?? null };

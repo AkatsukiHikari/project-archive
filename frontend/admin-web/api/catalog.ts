@@ -42,6 +42,7 @@ export interface FieldSuggestion {
 
 export interface SuggestResult {
   ok: boolean;
+  need_ocr?: boolean;
   reason?: string;
   message?: string;
   threshold?: number;

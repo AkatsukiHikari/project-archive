@@ -316,6 +316,7 @@ export interface ArchiveListResult {
 }
 
 export interface ArchiveListParams {
+  source?: "staging" | "formal";
   fonds_id?: string;
   catalog_id?: string;
   category_id?: string;
@@ -356,12 +357,12 @@ export interface NavYear { year: number; count: number }
 export const ArchiveAPI = {
   list: (params: ArchiveListParams) =>
     http.get<ApiResponse<ArchiveListResult>, ApiResponse<ArchiveListResult>>("/archive/records", { params }),
-  navCategories: () =>
-    http.get<ApiResponse<NavCategory[]>, ApiResponse<NavCategory[]>>("/archive/records/nav", { params: { level: "category" } }),
-  navFonds: (categoryId: string) =>
-    http.get<ApiResponse<NavFonds[]>, ApiResponse<NavFonds[]>>("/archive/records/nav", { params: { level: "fonds", category_id: categoryId } }),
-  navYears: (categoryId: string, fondsId: string) =>
-    http.get<ApiResponse<NavYear[]>, ApiResponse<NavYear[]>>("/archive/records/nav", { params: { level: "year", category_id: categoryId, fonds_id: fondsId } }),
+  navCategories: (source: "staging" | "formal" = "staging") =>
+    http.get<ApiResponse<NavCategory[]>, ApiResponse<NavCategory[]>>("/archive/records/nav", { params: { level: "category", source } }),
+  navFonds: (categoryId: string, source: "staging" | "formal" = "staging") =>
+    http.get<ApiResponse<NavFonds[]>, ApiResponse<NavFonds[]>>("/archive/records/nav", { params: { level: "fonds", category_id: categoryId, source } }),
+  navYears: (categoryId: string, fondsId: string, source: "staging" | "formal" = "staging") =>
+    http.get<ApiResponse<NavYear[]>, ApiResponse<NavYear[]>>("/archive/records/nav", { params: { level: "year", category_id: categoryId, fonds_id: fondsId, source } }),
   get: (id: string) => http.get<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`),
   attachments: (id: string) =>
     http.get<ApiResponse<ArchiveAttachment[]>, ApiResponse<ArchiveAttachment[]>>(`/archive/records/${id}/attachments`),

@@ -53,9 +53,11 @@ class ArchiveRepository:
 
     @staticmethod
     def build_conditions(
-        query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
+        query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None,
+        model=ArchiveStaging,
     ) -> list:
-        """构建查询条件（list_with_query 与批量整理"按查询全量"共用）。"""
+        """构建查询条件（暂存库/正式库通用；list_with_query 与批量整理共用）。"""
+        ArchiveStaging = model  # noqa: N806 —— 下方条件按传入模型构建
         conditions: list = [ArchiveStaging.is_deleted == False]  # noqa: E712
         if tenant_id:
             conditions.append(ArchiveStaging.tenant_id == tenant_id)
@@ -98,20 +100,21 @@ class ArchiveRepository:
         return conditions
 
     async def list_with_query(
-        self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
-    ) -> tuple[list[ArchiveStaging], int]:
-        conditions = self.build_conditions(query, tenant_id)
+        self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None,
+        model=ArchiveStaging,
+    ):
+        conditions = self.build_conditions(query, tenant_id, model=model)
 
         count_result = await self._db.execute(
-            select(func.count()).select_from(ArchiveStaging).where(and_(*conditions))
+            select(func.count()).select_from(model).where(and_(*conditions))
         )
         total = count_result.scalar_one()
 
         offset = (query.page - 1) * query.page_size
         result = await self._db.execute(
-            select(ArchiveStaging)
+            select(model)
             .where(and_(*conditions))
-            .order_by(ArchiveStaging.create_time.desc())
+            .order_by(model.create_time.desc())
             .offset(offset)
             .limit(query.page_size)
         )

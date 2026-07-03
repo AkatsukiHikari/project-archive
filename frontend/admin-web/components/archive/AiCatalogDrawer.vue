@@ -41,22 +41,20 @@
             <NSpin size="small" /> AI 正在阅读原文并比对著录字段…
           </div>
 
-          <!-- 未 OCR：就地识别 -->
-          <div v-else-if="needOcr" class="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
-            <Icon name="heroicons:document-magnifying-glass" class="w-10 h-10" style="color: var(--semi-color-text-3)" />
-            <p class="text-sm" style="color: var(--semi-color-text-2)">该档案尚未识别原文全文，无法 AI 著录。</p>
-            <p v-if="ocrMsg" class="text-[12px]" :style="{ color: ocrFailed ? '#dc2626' : 'var(--semi-color-text-3)' }">{{ ocrMsg }}</p>
-            <NButton type="primary" :loading="ocrRunning" @click="runOcr">
-              <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
-              {{ ocrRunning ? '识别中…' : '立即 OCR 识别原文' }}
-            </NButton>
-            <p v-if="ocrRunning" class="text-[11px]" style="color: var(--semi-color-text-3)">扫描件识别较慢，请稍候，识别完成后将自动分析</p>
-          </div>
-
           <div v-else-if="errorMsg" class="flex-1 flex items-center justify-center px-6 text-center text-sm" style="color: #dc2626">{{ errorMsg }}</div>
 
           <template v-else>
-            <div class="flex items-center gap-3 px-4 py-2.5 border-b shrink-0" style="border-color: var(--semi-color-border)">
+            <!-- 无识别全文：手动编辑模式 + 就地 OCR -->
+            <div v-if="needOcr" class="flex items-center gap-2 px-4 py-2 shrink-0" style="background: oklch(0.65 0.15 80/0.1)">
+              <Icon name="heroicons:exclamation-triangle" class="w-4 h-4 shrink-0" style="color: oklch(0.6 0.18 80)" />
+              <span class="text-[12.5px]" style="color: var(--semi-color-text-1)">暂无识别全文，当前为手动编辑；识别后可获得 AI 建议</span>
+              <span v-if="ocrMsg" class="text-[11px]" :style="{ color: ocrFailed ? '#dc2626' : 'var(--semi-color-text-3)' }">{{ ocrMsg }}</span>
+              <div class="flex-1" />
+              <NButton size="tiny" type="warning" secondary :loading="ocrRunning" @click="runOcr">
+                {{ ocrRunning ? '识别中…' : 'OCR 识别原文' }}
+              </NButton>
+            </div>
+            <div v-else class="flex items-center gap-3 px-4 py-2.5 border-b shrink-0" style="border-color: var(--semi-color-border)">
               <span class="text-[13px]" style="color: var(--semi-color-text-2)">
                 AI 建议 <strong style="color: oklch(var(--p))">{{ changedCount }}</strong> 项（绿点）· 阈值 {{ threshold }}% 已自动采用
               </span>
@@ -183,10 +181,10 @@ async function load() {
     const res = await CatalogAPI.suggest(props.archive.id, props.archive.doc_source);
     const d = res.data;
     if (!d.ok) {
-      if (d.reason === "need_ocr") needOcr.value = true;
-      else errorMsg.value = d.message || d.reason || "AI 著录失败";
+      errorMsg.value = d.message || d.reason || "AI 著录失败";
       return;
     }
+    needOcr.value = !!d.need_ocr;
     threshold.value = d.threshold ?? 80;
     fullText.value = d.full_text || "";
     suggestions.value = d.suggestions || [];

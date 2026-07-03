@@ -136,22 +136,33 @@ async def suggest(
     archive = (await db.execute(stmt)).scalars().first()
     if archive is None:
         return {"ok": False, "reason": "档案不存在"}
-    full_text = getattr(archive, "full_text", None)
-    if not (full_text or "").strip():
-        return {"ok": False, "reason": "need_ocr", "message": "该档案暂无原文全文，请先做 OCR 识别"}
 
     schema = await category_schema(db, archive.category_id)
     current = archive_values(archive, schema)
+    threshold = await get_threshold(db)
+    info = {"id": str(archive.id), "DH": archive.DH, "TM": archive.TM,
+            "doc_source": doc_source}
+
+    full_text = (getattr(archive, "full_text", None) or "").strip()
+    if not full_text:
+        # 无识别全文：返回纯手动编辑表单（无 AI 建议），前端可就地 OCR 后重新分析
+        return {
+            "ok": True,
+            "need_ocr": True,
+            "threshold": threshold,
+            "archive": info,
+            "full_text": "",
+            "suggestions": build_suggestions(schema, current, {}, threshold),
+        }
+
     extracted = await _cached_extract(
         db, archive.id, full_text, _raw_schema(schema), current, str(user_id), tenant_id
     )
-    threshold = await get_threshold(db)
     suggestions = build_suggestions(schema, current, extracted, threshold)
     return {
         "ok": True,
         "threshold": threshold,
-        "archive": {"id": str(archive.id), "DH": archive.DH, "TM": archive.TM,
-                    "doc_source": doc_source},
+        "archive": info,
         "full_text": full_text,
         "suggestions": suggestions,
     }

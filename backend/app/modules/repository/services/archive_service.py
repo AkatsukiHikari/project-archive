@@ -101,6 +101,10 @@ class ArchiveService:
         await self._repo.delete(archive)
 
     async def list_archives(
-        self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None
-    ) -> tuple[list[ArchiveStaging], int]:
-        return await self._repo.list_with_query(query, tenant_id=tenant_id)
+        self, query: ArchiveListQuery, tenant_id: Optional[uuid.UUID] = None,
+        source: str = "staging",
+    ):
+        from app.modules.repository.models.archive import Archive
+
+        model = Archive if source == "formal" else ArchiveStaging
+        return await self._repo.list_with_query(query, tenant_id=tenant_id, model=model)

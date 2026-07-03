@@ -6,6 +6,93 @@
       icon="heroicons:arrow-up-tray"
     />
 
+    <!-- ── 历史批次（默认视图）───────────────────────────── -->
+    <template v-if="view === 'list'">
+      <div class="pro-card p-4 flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-[13px] font-medium" style="color:var(--semi-color-text-0)">导入历史</span>
+          <NButton text size="small" :loading="tasksLoading" @click="loadTasks">
+            <template #icon><Icon name="heroicons:arrow-path" class="w-4 h-4" /></template>
+            刷新
+          </NButton>
+          <div class="flex-1" />
+          <NButton type="primary" @click="startWizard">
+            <template #icon><Icon name="heroicons:plus" class="w-4 h-4" /></template>
+            新建导入
+          </NButton>
+        </div>
+        <ProTable :columns="taskColumns" :data="tasks" :loading="tasksLoading" :page-size="0" size="small" :scroll-x="1100" />
+      </div>
+
+      <!-- 批次详情：条目导入 → 原文挂接 全链报表 -->
+      <NModal v-model:show="detailShow" preset="card" style="width: 880px; max-width: 95vw" :bordered="false">
+        <template #header>
+          <div class="flex items-center gap-2.5">
+            <span>导入批次</span>
+            <code class="font-mono text-[14px] font-semibold" style="color:oklch(var(--p))">{{ detailTask?.task_no || "—" }}</code>
+            <NTag v-if="detailTask" size="small" round :bordered="false" :type="(TASK_STATUS[detailTask.status] ?? { type: 'default' }).type">
+              {{ (TASK_STATUS[detailTask.status] ?? { label: detailTask.status }).label }}
+            </NTag>
+          </div>
+        </template>
+
+        <div v-if="detailTask" class="flex flex-col gap-1.5">
+          <!-- ① 条目导入 -->
+          <div class="rounded-xl border p-4 flex flex-col gap-3" style="border-color: var(--semi-color-border)">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0" style="background:oklch(var(--p))">1</div>
+              <span class="text-[13.5px] font-semibold" style="color:var(--semi-color-text-0)">条目导入</span>
+              <span class="text-[12px] truncate" style="color:var(--semi-color-text-3)">{{ detailTask.original_filename }}</span>
+              <div class="flex-1" />
+              <span class="text-[12px]" style="color:var(--semi-color-text-3)">{{ detailTask.finished_at ? String(detailTask.finished_at).slice(0, 19).replace("T", " ") : "" }}</span>
+            </div>
+            <div class="grid grid-cols-4 gap-3">
+              <div v-for="s in importStats" :key="s.label" class="rounded-lg py-3 text-center" :style="{ background: s.bg }">
+                <p class="text-[22px] font-bold m-0 tabular-nums" :style="{ color: s.color }">{{ s.value }}</p>
+                <p class="text-[12px] m-0" style="color:var(--semi-color-text-2)">{{ s.label }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-center">
+            <Icon name="heroicons:arrow-long-down" class="w-5 h-5" style="color:var(--semi-color-text-3)" />
+          </div>
+
+          <!-- ② 原文挂接 -->
+          <div class="rounded-xl border p-4 flex flex-col gap-3" style="border-color: var(--semi-color-border)">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0" style="background:oklch(var(--p))">2</div>
+              <span class="text-[13.5px] font-semibold" style="color:var(--semi-color-text-0)">原文挂接</span>
+              <code v-if="detailAttach" class="font-mono text-[12px]" style="color:oklch(var(--p))">{{ detailAttach.batch_no }}</code>
+            </div>
+            <div v-if="detailLoading" class="flex items-center gap-2 py-4 justify-center text-[12.5px]" style="color:var(--semi-color-text-3)">
+              <NSpin size="small" /> 加载挂接报表…
+            </div>
+            <template v-else-if="detailAttach">
+              <div class="grid grid-cols-4 gap-3">
+                <div v-for="s in attachStats" :key="s.label" class="rounded-lg py-3 text-center" :style="{ background: s.bg }">
+                  <p class="text-[22px] font-bold m-0 tabular-nums" :style="{ color: s.color }">{{ s.value }}</p>
+                  <p class="text-[12px] m-0" style="color:var(--semi-color-text-2)">{{ s.label }}</p>
+                </div>
+              </div>
+              <ProTable :columns="attachDetailColumns" :data="detailAttach.rows ?? []" :page-size="0" size="small" max-height="240" />
+            </template>
+            <div v-else class="py-5 text-center text-[12.5px]" style="color:var(--semi-color-text-3)">
+              本批次未挂接原文（可在「档案整理 → 挂接成果」中按档号补挂）
+            </div>
+          </div>
+        </div>
+      </NModal>
+    </template>
+
+    <!-- ── 导入向导 ───────────────────────────────────────── -->
+    <template v-else>
+    <div class="flex items-center">
+      <NButton text size="small" @click="backToList">
+        <template #icon><Icon name="heroicons:arrow-left" class="w-4 h-4" /></template>
+        返回导入历史
+      </NButton>
+    </div>
     <!-- 步骤条 -->
     <div class="pro-card p-5">
       <NSteps :current="step" size="small">
@@ -207,26 +294,27 @@
         刚导入的著录条目已生成档号，把对应的数字化成果（PDF / OFD，文件名 = 档号）拖入下方即可批量挂接。
         每次挂接自动留痕，可在 档案整理 → 挂接成果 → 挂接历史 中追溯。
       </p>
-      <AttachBatchPanel @done="attachDone = true" />
+      <AttachBatchPanel @done="onAttachDone" />
       <div class="flex justify-between">
         <NButton @click="step = 5">上一步</NButton>
-        <NButton :type="attachDone ? 'primary' : 'default'" @click="restart">
-          {{ attachDone ? "完成，再次导入" : "跳过，再次导入" }}
+        <NButton :type="attachDone ? 'primary' : 'default'" @click="backToList">
+          {{ attachDone ? "完成，返回历史" : "跳过，返回历史" }}
         </NButton>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="tsx">
-import { ref, computed, onMounted, onUnmounted, reactive } from "vue";
+import { h, ref, computed, onMounted, onUnmounted, reactive } from "vue";
 import {
   NSteps, NStep, NSelect, NUpload, NUploadDragger, NSpin, NProgress,
-  NButton, NCheckbox, NInput, NTag, useMessage,
+  NButton, NCheckbox, NInput, NModal, NTag, useMessage,
 } from "naive-ui";
 import type { DataTableColumns, UploadCustomRequestOptions } from "naive-ui";
-import { FondsAPI, CatalogAPI, CategoryAPI } from "@/api/repository";
-import type { Fonds, Catalog, ArchiveCategory } from "@/api/repository";
+import { FondsAPI, CatalogAPI, CategoryAPI, OrganizeAPI } from "@/api/repository";
+import type { Fonds, Catalog, ArchiveCategory, AttachBatchRecord, AttachBatchResult, AttachMatchRow } from "@/api/repository";
 import { ImportAPI } from "@/api/collection";
 import type { UploadResponse, DryRunResponse, ImportTask, ColumnMapping, MappingTemplate } from "@/api/collection";
 import { AdminPageHeader } from "@/components/admin";
@@ -241,6 +329,161 @@ const userStore = useUserStore();
 
 const step = ref(1);
 const attachDone = ref(false);
+
+// ── 历史批次视图（默认）/ 导入向导 视图切换 ──────────────────────────────────
+const view = ref<"list" | "wizard">("list");
+const tasks = ref<ImportTask[]>([]);
+const tasksLoading = ref(false);
+
+const TASK_STATUS: Record<string, { label: string; type: "success" | "info" | "error" | "default" }> = {
+  done: { label: "已完成", type: "success" },
+  running: { label: "进行中", type: "info" },
+  pending: { label: "等待中", type: "default" },
+  failed: { label: "失败", type: "error" },
+};
+
+const taskColumns: DataTableColumns<ImportTask> = [
+  {
+    title: "批次号", key: "task_no", width: 150,
+    render: (r) => h("span", { class: "font-mono text-[12.5px] font-semibold", style: "color:oklch(var(--p))" }, r.task_no || "—"),
+  },
+  { title: "条目文件名", key: "original_filename", minWidth: 200, ellipsis: { tooltip: true }, render: (r) => r.original_filename || "—" },
+  {
+    title: "状态", key: "status", width: 88,
+    render: (r) => {
+      const m = TASK_STATUS[r.status] ?? { label: r.status, type: "default" as const };
+      return h(NTag, { size: "small", round: true, bordered: false, type: m.type }, { default: () => m.label });
+    },
+  },
+  { title: "条目总数", key: "total", width: 84, render: (r) => h("span", { class: "tabular-nums" }, String(r.total)) },
+  {
+    title: "成功", key: "success", width: 70,
+    render: (r) => h("span", { class: "tabular-nums", style: "color:oklch(var(--su));font-weight:600" }, String(r.success)),
+  },
+  {
+    title: "失败", key: "failed", width: 70,
+    render: (r) => (r.failed ? h("span", { class: "tabular-nums", style: "color:oklch(var(--er));font-weight:600" }, String(r.failed)) : "0"),
+  },
+  { title: "跳过", key: "skipped", width: 66, render: (r) => h("span", { class: "tabular-nums" }, String(r.skipped)) },
+  {
+    title: "原文挂接", key: "attach_batch_id", width: 90,
+    render: (r) => (r.attach_batch_id
+      ? h(NTag, { size: "small", round: true, bordered: false, type: "success" }, { default: () => "已挂接" })
+      : h("span", { style: "color:var(--semi-color-text-3);font-size:12px" }, "未挂接")),
+  },
+  {
+    title: "完成时间", key: "finished_at", width: 150,
+    render: (r) => (r.finished_at ? String(r.finished_at).slice(0, 19).replace("T", " ") : "—"),
+  },
+  {
+    title: "操作", key: "actions", width: 160, fixed: "right" as const,
+    render: (r) => h("div", { class: "flex gap-1" }, [
+      h(NButton, { size: "tiny", tertiary: true, type: "primary", onClick: () => openTaskDetail(r) }, { default: () => "查看详情" }),
+      r.error_report_key
+        ? h(NButton, { size: "tiny", tertiary: true, type: "error", onClick: () => downloadReport(r.id) }, { default: () => "错误报表" })
+        : null,
+    ]),
+  },
+];
+
+// ── 批次详情（条目导入 + 原文挂接 全链报表）──────────────────────────────────
+const detailShow = ref(false);
+const detailTask = ref<ImportTask | null>(null);
+const detailAttach = ref<AttachBatchRecord | null>(null);
+const detailLoading = ref(false);
+
+const importStats = computed(() => {
+  const t = detailTask.value;
+  if (!t) return [];
+  return [
+    { label: "条目总数", value: t.total, color: "var(--semi-color-text-0)", bg: "var(--semi-color-fill-0)" },
+    { label: "导入成功", value: t.success, color: "oklch(var(--su))", bg: "oklch(var(--su)/0.08)" },
+    { label: "失败", value: t.failed, color: t.failed ? "oklch(var(--er))" : "var(--semi-color-text-3)", bg: "oklch(var(--er)/0.06)" },
+    { label: "跳过", value: t.skipped, color: t.skipped ? "oklch(0.6 0.18 80)" : "var(--semi-color-text-3)", bg: "oklch(0.65 0.15 80/0.08)" },
+  ];
+});
+
+const attachStats = computed(() => {
+  const a = detailAttach.value;
+  if (!a) return [];
+  return [
+    { label: "原文文件", value: a.total, color: "var(--semi-color-text-0)", bg: "var(--semi-color-fill-0)" },
+    { label: "成功挂接", value: a.attached, color: "oklch(var(--su))", bg: "oklch(var(--su)/0.08)" },
+    { label: "跳过", value: a.skipped, color: a.skipped ? "oklch(0.6 0.18 80)" : "var(--semi-color-text-3)", bg: "oklch(0.65 0.15 80/0.08)" },
+    { label: "无匹配", value: a.not_found, color: a.not_found ? "oklch(var(--er))" : "var(--semi-color-text-3)", bg: "oklch(var(--er)/0.06)" },
+  ];
+});
+
+const ATTACH_ROW_LABEL: Record<string, { label: string; type: "success" | "warning" | "error" | "default" }> = {
+  attached: { label: "已挂接", type: "success" },
+  skipped: { label: "已跳过", type: "warning" },
+  not_found: { label: "无此档号", type: "error" },
+};
+
+const attachDetailColumns: DataTableColumns<AttachMatchRow> = [
+  { title: "文件名", key: "filename", minWidth: 180, ellipsis: { tooltip: true } },
+  { title: "档号", key: "DH", width: 180, ellipsis: { tooltip: true } },
+  { title: "匹配档案", key: "TM", minWidth: 150, ellipsis: { tooltip: true }, render: (r) => r.TM ?? "—" },
+  {
+    title: "结果", key: "status", width: 96,
+    render: (r) => {
+      const m = ATTACH_ROW_LABEL[r.status] ?? { label: r.status, type: "default" as const };
+      return h(NTag, { size: "small", type: m.type, round: true, bordered: false }, { default: () => m.label });
+    },
+  },
+];
+
+async function openTaskDetail(r: ImportTask) {
+  detailTask.value = r;
+  detailAttach.value = null;
+  detailShow.value = true;
+  if (r.attach_batch_id) {
+    detailLoading.value = true;
+    try {
+      const res = await OrganizeAPI.getAttachBatch(r.attach_batch_id);
+      if (res.code === 0) detailAttach.value = res.data;
+    } finally {
+      detailLoading.value = false;
+    }
+  }
+}
+
+async function loadTasks() {
+  tasksLoading.value = true;
+  try {
+    const res = await ImportAPI.listTasks();
+    tasks.value = res.data;
+  } finally {
+    tasksLoading.value = false;
+  }
+}
+
+async function downloadReport(id: string) {
+  const res = await ImportAPI.getReport(id);
+  if (res.code === 0 && res.data.url) window.open(res.data.url, "_blank", "noopener");
+  else message.error("报表不可用");
+}
+
+function startWizard() {
+  restart();
+  view.value = "wizard";
+}
+
+// 第 6 步挂接完成 → 把挂接批次绑定到本次导入任务（详情报表串联）
+async function onAttachDone(result: AttachBatchResult) {
+  attachDone.value = true;
+  if (result.batch_id && taskId.value) {
+    try {
+      await ImportAPI.bindAttachBatch(taskId.value, result.batch_id);
+    } catch { /* 绑定失败不阻断流程 */ }
+  }
+}
+
+function backToList() {
+  restart();
+  view.value = "list";
+  loadTasks();
+}
 
 const fondsList = ref<Fonds[]>([]);
 const catalogList = ref<Catalog[]>([]);
@@ -509,6 +752,9 @@ async function loadRefData() {
   categoryList.value = catRes.data;
 }
 
-onMounted(loadRefData);
+onMounted(() => {
+  loadRefData();
+  loadTasks();
+});
 onUnmounted(() => ws?.close());
 </script>

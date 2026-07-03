@@ -19,6 +19,10 @@ class AttachBatch(BaseEntity):
     batch_no: Mapped[str] = mapped_column(
         String(40), nullable=False, index=True, comment="批次号 GJyyyymmddNNN"
     )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="completed", server_default="completed",
+        comment="running 分批上传中 | completed 已完结",
+    )
     total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="文件总数")
     attached: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="挂接成功数")
     skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="跳过数")

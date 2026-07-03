@@ -42,6 +42,8 @@ export interface DryRunResponse {
 
 export interface ImportTask {
   id: string;
+  task_no?: string | null;
+  attach_batch_id?: string | null;
   category_id: string;
   fonds_id: string;
   catalog_id: string;
@@ -54,6 +56,7 @@ export interface ImportTask {
   skipped: number;
   started_at?: string;
   finished_at?: string;
+  error_report_key?: string | null;
   create_time: string;
 }
 
@@ -109,6 +112,12 @@ export const ImportAPI = {
   getTask: (id: string) => http.get<ApiResponse<ImportTask>, ApiResponse<ImportTask>>(`/archive/import/tasks/${id}`),
 
   /** 失败报表预签名 URL */
+  /** 把导入后执行的挂接批次关联到导入任务 */
+  bindAttachBatch: (taskId: string, batchId: string) =>
+    http.patch<ApiResponse<null>, ApiResponse<null>>(
+      `/archive/import/tasks/${taskId}/attach-batch`, { batch_id: batchId },
+    ),
+
   getReport: (id: string) =>
     http.get<ApiResponse<{ url: string }>, ApiResponse<{ url: string }>>(`/archive/import/tasks/${id}/report`),
 

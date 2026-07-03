@@ -66,6 +66,7 @@ class ImportService:
         storage.save(io.BytesIO(file_bytes), key, _IMPORT_BUCKET, "application/octet-stream")
 
         task = ImportTask(
+            task_no=await self._next_task_no(),
             category_id=category_id,
             fonds_id=fonds_id,
             catalog_id=catalog_id,
@@ -77,6 +78,21 @@ class ImportService:
         )
         task = await self._repo.create(task)
         return UploadResponse(task_id=task.id, columns=columns)
+
+    async def _next_task_no(self) -> str:
+        from datetime import date
+
+        from sqlalchemy import func, select
+
+        prefix = f"DR{date.today().strftime('%Y%m%d')}"
+        count = (
+            await self._db.execute(
+                select(func.count()).select_from(ImportTask).where(
+                    ImportTask.task_no.like(f"{prefix}%")
+                )
+            )
+        ).scalar_one()
+        return f"{prefix}{count + 1:03d}"
 
     # ── Step 2: 保存映射 + 自动匹配建议 ────────────────────────────────
 

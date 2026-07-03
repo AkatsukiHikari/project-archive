@@ -9,7 +9,7 @@ OCR / 知识库同步分别在 routes_ocr / routes_kb。
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -155,6 +155,28 @@ async def ocr_jobs(
     )
 
 
+# ── 档案摘要 ──────────────────────────────────────────────────────────────────
+
+
+@router.post("/summary/{archive_ref}", response_model=ResponseModel[dict])
+async def archive_summary(
+    archive_ref: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """生成/获取档案摘要。archive_ref 接受 UUID 或档号。
+
+    返回 status：ready(带 summary) | ocr_running | ocr_started | no_source。
+    无全文且未在识别时自动触发 OCR，前端轮询至 ready。
+    """
+    from app.modules.ai.services import summary_service
+
+    data = await summary_service.summarize(
+        db, archive_ref, current_user.id, current_user.tenant_id
+    )
+    return success(data)
+
+
 # ── 知识库 ────────────────────────────────────────────────────────────────────
 
 
@@ -189,3 +211,76 @@ async def kb_rebuild(
 @router.get("/kb/status", response_model=ResponseModel[dict])
 async def kb_status(current_user: User = Depends(get_current_user)):
     return success(await dify_kb.stats())
+
+
+@router.get("/kb/documents", response_model=ResponseModel[dict])
+async def kb_documents(
+    page: int = 1,
+    limit: int = 20,
+    keyword: str = "",
+    _: User = Depends(get_current_user),
+):
+    return success(await dify_kb.list_documents(page, limit, keyword))
+
+
+@router.delete("/kb/documents/{doc_id}", response_model=ResponseModel[dict])
+async def kb_delete_document(
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    await dify_kb.delete_doc(doc_id)
+    # 若该文档来自档案同步，清掉档案上的 kb_doc_id，之后可重新同步
+    rows = (
+        await db.execute(select(Archive).where(Archive.kb_doc_id == doc_id))
+    ).scalars().all()
+    for a in rows:
+        a.kb_doc_id = None
+    await db.commit()
+    return success({"ok": True})
+
+
+class HitTestBody(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+
+
+@router.post("/kb/hit-test", response_model=ResponseModel[dict])
+async def kb_hit_test(
+    body: HitTestBody,
+    _: User = Depends(get_current_user),
+):
+    return success({"records": await dify_kb.hit_testing(body.query)})
+
+
+@router.post("/kb/upload", response_model=ResponseModel[dict])
+async def kb_upload(
+    file: UploadFile = File(...),
+    _: User = Depends(get_current_user),
+):
+    """上传规章制度等文档进知识库（PDF/DOCX/TXT/MD，由 Dify 解析索引）。"""
+    content = await file.read()
+    doc = await dify_kb.upload_document_file(file.filename or "document.pdf", content)
+    return success(doc)
+
+
+@router.get("/kb/unsynced", response_model=ResponseModel[dict])
+async def kb_unsynced(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """尚未同步进知识库的正式库档案清单。"""
+    stmt = select(Archive).where(
+        Archive.is_deleted.is_(False), Archive.kb_doc_id.is_(None)
+    )
+    if current_user.tenant_id:
+        stmt = stmt.where(Archive.tenant_id == current_user.tenant_id)
+    rows = (await db.execute(stmt.order_by(Archive.update_time.desc()).limit(200))).scalars().all()
+    return success(
+        {
+            "total": len(rows),
+            "items": [
+                {"id": str(a.id), "DH": a.DH, "TM": a.TM, "QZH": a.QZH, "ND": a.ND}
+                for a in rows
+            ],
+        }
+    )

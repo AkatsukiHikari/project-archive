@@ -159,14 +159,7 @@ async def attach_batch(
     )
     await db.commit()
 
-    # 挂接成功的档案 → 后台投递 OCR 作业（不阻塞本请求）
-    from app.modules.ai.services import ocr_job_service
-
-    for r in rows:
-        if r.get("status") == "attached" and r.get("archive_id"):
-            await ocr_job_service.enqueue(
-                db, r["archive_id"], current_user.id, current_user.tenant_id
-            )
+    await _enqueue_ocr_for_attached(db, rows, current_user)
 
     result = {
         "batch_no": batch.batch_no,
@@ -176,6 +169,79 @@ async def attach_batch(
         "rows": rows,
     }
     return success(AttachBatchResult.model_validate(result).model_dump(mode="json"))
+
+
+async def _enqueue_ocr_for_attached(db, rows: list[dict], current_user) -> None:
+    """挂接成功的档案 → 后台投递 OCR 作业（不阻塞请求）。"""
+    from app.modules.ai.services import ocr_job_service
+
+    for r in rows:
+        if r.get("status") == "attached" and r.get("archive_id"):
+            await ocr_job_service.enqueue(
+                db, uuid.UUID(str(r["archive_id"])), current_user.id, current_user.tenant_id
+            )
+
+
+# ── 分批挂接会话（大批量：前端按组上传，实时进度）────────────────────────────
+
+
+@router.post("/attach/session", response_model=ResponseModel[dict])
+async def attach_session_start(
+    overwrite: bool = Form(False),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = AttachmentService(db)
+    batch = await svc.start_session(overwrite, current_user.id, current_user.tenant_id)
+    await db.commit()
+    return success({"batch_id": str(batch.id), "batch_no": batch.batch_no})
+
+
+@router.post("/attach/session/{batch_id}/files", response_model=ResponseModel[dict])
+async def attach_session_files(
+    batch_id: uuid.UUID,
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = AttachmentService(db)
+    payload = [(f.filename or "unnamed", await f.read()) for f in files]
+    batch, rows = await svc.attach_chunk(
+        batch_id, payload, current_user.id, current_user.tenant_id
+    )
+    await db.commit()
+    await _enqueue_ocr_for_attached(db, rows, current_user)
+    return success(
+        {
+            "batch_no": batch.batch_no,
+            "total": batch.total,
+            "attached": batch.attached,
+            "skipped": batch.skipped,
+            "not_found": batch.not_found,
+            "rows": rows,
+        }
+    )
+
+
+@router.post("/attach/session/{batch_id}/finish", response_model=ResponseModel[dict])
+async def attach_session_finish(
+    batch_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = AttachmentService(db)
+    batch = await svc.finish_session(batch_id, current_user.tenant_id)
+    await db.commit()
+    return success(
+        {
+            "batch_id": str(batch.id),
+            "batch_no": batch.batch_no,
+            "total": batch.total,
+            "attached": batch.attached,
+            "skipped": batch.skipped,
+            "not_found": batch.not_found,
+        }
+    )
 
 
 @router.get("/attach/batches", response_model=ResponseModel[dict])
@@ -194,6 +260,7 @@ async def list_attach_batches(
         {
             "id": str(b.id),
             "batch_no": b.batch_no,
+            "status": b.status,
             "total": b.total,
             "attached": b.attached,
             "skipped": b.skipped,

@@ -431,6 +431,7 @@ export interface AttachPreviewResult {
 }
 
 export interface AttachBatchResult {
+  batch_id?: string;
   batch_no: string;
   attached: number;
   skipped: number;
@@ -441,6 +442,7 @@ export interface AttachBatchResult {
 export interface AttachBatchRecord {
   id: string;
   batch_no: string;
+  status?: string;
   total: number;
   attached: number;
   skipped: number;
@@ -504,6 +506,30 @@ export const OrganizeAPI = {
       { headers: { "Content-Type": "multipart/form-data" } },
     );
   },
+
+  /** 分批挂接会话：开始（返回批次） */
+  attachSessionStart: (overwrite: boolean) => {
+    const form = new FormData();
+    form.append("overwrite", String(overwrite));
+    return http.post<ApiResponse<{ batch_id: string; batch_no: string }>, ApiResponse<{ batch_id: string; batch_no: string }>>(
+      "/archive/organize/attach/session", form,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+  },
+  /** 分批挂接会话：上传一组文件（返回累计计数 + 本组明细） */
+  attachSessionFiles: (batchId: string, files: File[]) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    return http.post<ApiResponse<AttachBatchResult & { total: number }>, ApiResponse<AttachBatchResult & { total: number }>>(
+      `/archive/organize/attach/session/${batchId}/files`, form,
+      { headers: { "Content-Type": "multipart/form-data" }, timeout: 300000 },
+    );
+  },
+  /** 分批挂接会话：完结 */
+  attachSessionFinish: (batchId: string) =>
+    http.post<ApiResponse<AttachBatchResult & { total: number }>, ApiResponse<AttachBatchResult & { total: number }>>(
+      `/archive/organize/attach/session/${batchId}/finish`,
+    ),
 
   listAttachBatches: (params?: { skip?: number; limit?: number }) =>
     http.get<ApiResponse<{ total: number; items: AttachBatchRecord[] }>, ApiResponse<{ total: number; items: AttachBatchRecord[] }>>(

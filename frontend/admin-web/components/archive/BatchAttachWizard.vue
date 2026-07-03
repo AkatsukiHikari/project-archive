@@ -51,6 +51,11 @@
           <span style="color:oklch(0.6 0.18 80)">跳过 {{ detail.skipped }}</span>
           <span style="color:oklch(var(--er))">无匹配 {{ detail.not_found }}</span>
           <span style="color:var(--semi-color-text-3)">{{ detail.create_time?.slice(0, 19).replace("T", " ") }}</span>
+          <div class="flex-1" />
+          <NButton size="tiny" tertiary @click="exportDetailCsv">
+            <template #icon><Icon name="heroicons:arrow-down-tray" class="w-3.5 h-3.5" /></template>
+            导出明细 CSV
+          </NButton>
         </div>
         <ProTable :columns="detailColumns" :data="detail.rows ?? []" :page-size="0" size="small" max-height="380" />
       </div>
@@ -118,8 +123,41 @@ async function openDetail(id: string) {
   }
 }
 
+const RESULT_LABEL: Record<string, string> = {
+  attached: "已挂接", skipped: "已跳过", not_found: "无此档号",
+};
+
+function exportDetailCsv() {
+  const d = detail.value;
+  if (!d) return;
+  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [
+    ["文件名", "档号", "匹配档案", "库", "结果", "说明"].map(esc).join(","),
+    ...(d.rows ?? []).map((r) =>
+      [
+        r.filename, r.DH,
+        r.TM ?? "",
+        r.source === "formal" ? "正式库" : r.source === "staging" ? "暂存库" : "",
+        RESULT_LABEL[r.status] ?? r.status,
+        r.reason ?? "",
+      ].map(esc).join(","),
+    ),
+  ];
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `挂接批次_${d.batch_no}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 const batchColumns: DataTableColumns<AttachBatchRecord> = [
   { title: "批次号", key: "batch_no", width: 150 },
+  {
+    title: "状态", key: "status", width: 80,
+    render: (r) => h(NTag, { size: "tiny", round: true, bordered: false, type: r.status === "running" ? "info" : "success" },
+      { default: () => (r.status === "running" ? "进行中" : "已完结") }),
+  },
   { title: "时间", key: "create_time", width: 160, render: (r) => r.create_time?.slice(0, 19).replace("T", " ") ?? "—" },
   { title: "文件数", key: "total", width: 75 },
   {

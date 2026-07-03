@@ -1,5 +1,10 @@
-"""OCR：挂接 PDF 时调 Dify OCR 工作流（MinerU）识别 → 存 full_text → 同步 ES + 知识库。"""
+"""OCR：识别档案原文 → 存 full_text → 同步 ES + 知识库。
 
+文字型 PDF 直接提取文本层（结果同样入库，视同 OCR 结果）；
+真扫描件（无文本层）才调 Dify OCR 工作流（MinerU）。
+"""
+
+import io
 import logging
 import uuid
 from typing import Optional
@@ -18,6 +23,19 @@ from app.modules.repository.models.archive import (Archive, ArchiveAttachment,
 from app.modules.repository.services import es_sync_service
 
 logger = logging.getLogger(__name__)
+
+
+def extract_pdf_text_layer(content: bytes, min_chars: int = 10) -> str:
+    """提取 PDF 自带文本层。有效文字不足 min_chars 视为扫描件，返回空。"""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(content))
+        text = "\n\n".join((p.extract_text() or "").strip() for p in reader.pages)
+        text = text.strip()
+        return text if len(text) >= min_chars else ""
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def _first_text(outputs: dict) -> str:
@@ -55,21 +73,25 @@ class OcrService:
             return {"ok": False, "reason": "该档案没有可识别的 PDF 原文"}
 
         content = storage.get(att.storage_key, att.storage_bucket)
-        file_id = await dify_service.upload_file(
-            content, att.original_name, str(user_id), key
-        )
-        outputs = await dify_service.run_workflow(
-            {
-                "file": {
-                    "transfer_method": "local_file",
-                    "upload_file_id": file_id,
-                    "type": "document",
-                }
-            },
-            str(user_id),
-            key,
-        )
-        text = _first_text(outputs).strip()
+
+        # 文字型 PDF：直接读文本层（同样作为 OCR 结果入库）；扫描件才走 OCR 引擎
+        text = extract_pdf_text_layer(content)
+        if not text:
+            file_id = await dify_service.upload_file(
+                content, att.original_name, str(user_id), key
+            )
+            outputs = await dify_service.run_workflow(
+                {
+                    "file": {
+                        "transfer_method": "local_file",
+                        "upload_file_id": file_id,
+                        "type": "document",
+                    }
+                },
+                str(user_id),
+                key,
+            )
+            text = _first_text(outputs).strip()
         if not text:
             return {"ok": False, "reason": "OCR 未返回文本"}
 

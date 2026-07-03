@@ -86,6 +86,36 @@
           </NTooltip>
         </div>
 
+        <!-- AI 摘要 -->
+        <div class="rounded-lg border p-3 flex flex-col gap-2" style="border-color: oklch(var(--p)/0.25); background: oklch(var(--p)/0.05)">
+          <div class="flex items-center gap-1.5">
+            <Icon name="heroicons:sparkles" class="w-4 h-4" style="color:oklch(var(--p))" />
+            <span class="text-[12.5px] font-semibold" style="color:var(--semi-color-text-0)">AI 摘要</span>
+            <div class="flex-1" />
+            <NButton v-if="sumStatus === 'ready'" text size="tiny" type="primary" title="把摘要写入本档案的「摘要」著录字段" @click="fillZY">
+              填入摘要字段
+            </NButton>
+          </div>
+          <p v-if="sumStatus === 'ready'" class="text-[12.5px] leading-relaxed whitespace-pre-wrap break-words m-0" style="color:var(--semi-color-text-1)">{{ sumText }}</p>
+          <div v-else-if="sumStatus === 'loading'" class="flex items-center gap-2 text-[12px]" style="color:var(--semi-color-text-3)">
+            <NSpin size="small" /> 正在生成摘要…
+          </div>
+          <div v-else-if="sumStatus === 'ocr'" class="flex items-center gap-2 text-[12px]" style="color:var(--semi-color-text-3)">
+            <NSpin size="small" /> 正在识别原文（OCR），完成后自动生成摘要…
+          </div>
+          <div v-else-if="sumStatus === 'ocr_failed'" class="flex flex-col gap-1">
+            <p class="text-[12px] m-0" style="color:#dc2626">OCR 识别失败：{{ sumError }}</p>
+            <div>
+              <NButton text size="tiny" type="primary" @click="retryOcr">重试识别</NButton>
+            </div>
+          </div>
+          <p v-else-if="sumStatus === 'no_source'" class="text-[12px] m-0" style="color:var(--semi-color-text-3)">该档案未挂接数字化原文，无法生成摘要</p>
+          <div v-else-if="sumStatus === 'error'" class="flex items-center gap-2 text-[12px]" style="color:#dc2626">
+            摘要生成失败
+            <NButton text size="tiny" type="primary" @click="fetchSummary">重试</NButton>
+          </div>
+        </div>
+
         <div v-if="archive" class="flex flex-col">
           <div
             v-for="f in metaFields"
@@ -145,8 +175,9 @@
       >
         <div class="flex items-center gap-2 px-3 py-2.5 shrink-0" style="border-bottom:1px solid var(--semi-color-border)">
           <Icon name="heroicons:sparkles" class="w-4 h-4" style="color:oklch(var(--p))" />
-          <span class="text-[13px] font-semibold" style="color:var(--semi-color-text-0)">全文提取</span>
-          <span v-if="hasText" class="text-[11px]" style="color:var(--semi-color-text-3)">约 {{ totalChars }} 字</span>
+          <span class="text-[13px] font-semibold" style="color:var(--semi-color-text-0)">档案全文</span>
+          <span v-if="serverText" class="text-[11px]" style="color:oklch(var(--su))">OCR 已识别 · {{ totalChars }} 字</span>
+          <span v-else-if="hasText" class="text-[11px]" style="color:var(--semi-color-text-3)">PDF 文本层 · 约 {{ totalChars }} 字</span>
           <div class="flex-1" />
           <NButton text size="tiny" :disabled="!hasText" @click="copyAll">
             <template #icon><Icon name="heroicons:clipboard-document" class="w-4 h-4" /></template>
@@ -162,9 +193,19 @@
         </div>
 
         <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-4">
-          <div v-if="extracting" class="flex items-center gap-2 py-6 text-[12px]" style="color:var(--semi-color-text-3)">
+          <!-- 优先：服务端 OCR 识别全文 -->
+          <template v-if="serverText">
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <p
+              class="text-[12.5px] leading-relaxed whitespace-pre-wrap break-words ocr-text pt-2"
+              style="color:var(--semi-color-text-1)"
+              v-html="highlight(serverText)"
+            />
+          </template>
+          <div v-else-if="extracting" class="flex items-center gap-2 py-6 text-[12px]" style="color:var(--semi-color-text-3)">
             <NSpin size="small" /> 正在提取全文…
           </div>
+          <!-- 回退：PDF 自带文本层 -->
           <template v-else-if="hasText">
             <div v-for="pt in pageTexts" :key="pt.page" class="mb-4">
               <div class="text-[11px] mb-1 font-medium" style="color:var(--semi-color-text-3)">第 {{ pt.page }} 页</div>
@@ -176,10 +217,15 @@
               />
             </div>
           </template>
+          <!-- OCR 进行中（由 AI 摘要状态机驱动，完成后自动刷新） -->
+          <div v-else-if="sumStatus === 'ocr'" class="flex flex-col items-center gap-2 py-8 text-center" style="color:var(--semi-color-text-3)">
+            <NSpin size="small" />
+            <p class="text-[12px]">正在 OCR 识别原文，完成后自动显示全文…</p>
+          </div>
           <div v-else class="flex flex-col items-center gap-2 py-8 text-center" style="color:var(--semi-color-text-3)">
             <Icon name="heroicons:photo" class="w-8 h-8" />
-            <p class="text-[12px]">该原文无文本层（疑为扫描件）</p>
-            <p class="text-[11px]">需服务端 OCR 引擎识别后才能提取文字</p>
+            <p class="text-[12px]">暂无识别全文（扫描件需 OCR 识别）</p>
+            <p class="text-[11px]">可在「AI → OCR 任务」查看识别进度，或稍后刷新</p>
           </div>
         </div>
       </aside>
@@ -188,12 +234,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, onDeactivated, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { NButton, NInput, NSelect, NSpin, NTooltip, useMessage } from "naive-ui";
 import VuePdfEmbed from "vue-pdf-embed";
 import { ArchiveAPI } from "@/api/repository";
 import type { Archive, ArchiveAttachment } from "@/api/repository";
+import { AiAdminAPI } from "@/api/ai";
 
 definePageMeta({ layout: "archive", middleware: "auth" });
 
@@ -207,6 +254,84 @@ const archive = ref<Archive | null>(null);
 const attachments = ref<ArchiveAttachment[]>([]);
 const activeKey = ref<string>("");
 const loading = ref(true);
+
+// ── AI 摘要：有全文即生成(带缓存)；无全文自动触发 OCR 后轮询 ────────────────
+const sumStatus = ref<"idle" | "loading" | "ready" | "ocr" | "ocr_failed" | "no_source" | "error">("idle");
+const sumText = ref("");
+const sumError = ref("");
+let sumTimer: ReturnType<typeof setTimeout> | null = null;
+let sumPollCount = 0;
+const SUM_POLL_MAX = 40; // 约 5 分钟
+
+function stopSumPoll() {
+  if (sumTimer) { clearTimeout(sumTimer); sumTimer = null; }
+}
+
+async function fetchSummary() {
+  if (!archiveId.value) return;
+  stopSumPoll();
+  if (sumStatus.value !== "ocr") { sumStatus.value = "loading"; sumPollCount = 0; }
+  try {
+    const res = await AiAdminAPI.summary(archiveId.value);
+    const d = res.data;
+    if (d.status === "ready") {
+      sumText.value = d.summary || "";
+      sumStatus.value = "ready";
+      // OCR 刚完成的场景：同步刷新右侧全文面板
+      if (!serverText.value) loadServerText();
+      return;
+    }
+    if (d.status === "ocr_running" || d.status === "ocr_started") {
+      if (++sumPollCount > SUM_POLL_MAX) {
+        sumStatus.value = "ocr_failed";
+        sumError.value = "识别等待超时，可点击重试";
+        return;
+      }
+      sumStatus.value = "ocr";
+      sumTimer = setTimeout(fetchSummary, 8000);
+      return;
+    }
+    if (d.status === "ocr_failed") {
+      sumStatus.value = "ocr_failed";
+      sumError.value = d.message || "OCR 识别失败";
+      return;
+    }
+    sumStatus.value = "no_source";
+  } catch {
+    sumStatus.value = "error";
+  }
+}
+
+/** OCR 失败后手动重试：强制投递新任务并恢复轮询 */
+async function retryOcr() {
+  if (!archiveId.value) return;
+  sumStatus.value = "ocr";
+  sumPollCount = 0;
+  try {
+    await AiAdminAPI.ocr(archiveId.value);
+    sumTimer = setTimeout(fetchSummary, 5000);
+  } catch {
+    sumStatus.value = "ocr_failed";
+    sumError.value = "重试触发失败";
+  }
+}
+
+/** 把摘要写入本档案的「摘要(ZY)」著录字段 */
+async function fillZY() {
+  if (!archive.value || !sumText.value) return;
+  try {
+    await ArchiveAPI.update(archive.value.id, {
+      ext_fields: { ...(archive.value.ext_fields ?? {}), ZY: sumText.value },
+    });
+    archive.value = { ...archive.value, ext_fields: { ...(archive.value.ext_fields ?? {}), ZY: sumText.value } };
+    message.success("已填入「摘要」著录字段");
+  } catch {
+    message.error("写入失败（正式库档案请在著录页修改）");
+  }
+}
+
+onUnmounted(stopSumPoll);
+onDeactivated(stopSumPoll);
 
 // ── PDF 视图状态 ──────────────────────────────────────────────
 const pageCount = ref(0);
@@ -231,9 +356,25 @@ const pageTexts = ref<PageText[]>([]);
 const textQuery = ref("");
 let pdfDoc: PdfDocProxy | null = null;
 
-const hasText = computed(() => pageTexts.value.some((p) => p.text.trim().length > 0));
-const totalChars = computed(() => pageTexts.value.reduce((s, p) => s + p.text.length, 0));
-const fullText = computed(() => pageTexts.value.map((p) => p.text).join("\n\n"));
+// 服务端 OCR 识别全文（Dify OCR 存库结果，优先于前端 PDF 文本层）
+const serverText = ref("");
+async function loadServerText() {
+  if (!archiveId.value) return;
+  try {
+    const res = await AiAdminAPI.ocrText(archiveId.value);
+    serverText.value = res.data.full_text || "";
+  } catch {
+    serverText.value = "";
+  }
+}
+
+const hasText = computed(() => !!serverText.value || pageTexts.value.some((p) => p.text.trim().length > 0));
+const totalChars = computed(() =>
+  serverText.value ? serverText.value.length : pageTexts.value.reduce((s, p) => s + p.text.length, 0),
+);
+const fullText = computed(() =>
+  serverText.value || pageTexts.value.map((p) => p.text).join("\n\n"),
+);
 const matchCount = computed(() => {
   const q = textQuery.value.trim();
   if (!q) return 0;
@@ -392,9 +533,18 @@ async function load() {
 }
 
 watch(activeKey, () => { currentPage.value = 1; rotation.value = 0; pageTexts.value = []; pdfDoc = null; });
-watch(archiveId, load);
+watch(archiveId, () => {
+  sumText.value = "";
+  sumStatus.value = "idle";
+  serverText.value = "";
+  load();
+  loadServerText();
+  fetchSummary();
+});
 
 onMounted(async () => {
+  fetchSummary();
+  loadServerText();
   await load();
   measure();
   window.addEventListener("resize", measure);

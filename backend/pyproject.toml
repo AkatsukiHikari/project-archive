@@ -12,7 +12,7 @@ dependencies = [
     "celery[redis]>=5.3.1",
     "fastapi[standard]>=0.128.0",
     "greenlet>=3.3.1",
-    "httpx>=0.28.1",           # 异步 HTTP 客户端，用于调用 Dify API
+    "httpx>=0.28.1", # 异步 HTTP 客户端，用于调用 Dify API
     "itsdangerous>=2.2.0",
     "jinja2>=3.1.6",
     "minio>=7.2.20",
@@ -22,11 +22,12 @@ dependencies = [
     "pyjwt>=2.11.0",
     "pytest-mock>=3.15.1",
     "python-json-logger>=4.0.0",
-    "elasticsearch[async]>=8.0.0",  # 全文检索客户端
+    "elasticsearch[async]>=8.0.0", # 全文检索客户端
     "redis>=7.1.0",
     "sqlalchemy>=2.0.46",
-    "openpyxl>=3.1.0",          # XLSX 文件解析（批量导入）
-    "xlsxwriter>=3.2.0",        # XLSX 报表生成（导入结果报表）
+    "openpyxl>=3.1.0", # XLSX 文件解析（批量导入）
+    "xlsxwriter>=3.2.0", # XLSX 报表生成（导入结果报表）
+    "pypdf>=6.14.2",
 ]
 
 [dependency-groups]

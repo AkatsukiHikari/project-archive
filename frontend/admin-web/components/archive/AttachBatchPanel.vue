@@ -48,11 +48,34 @@
           覆盖已有原文（{{ preview.has_primary }} 件）
         </label>
         <div class="flex-1" />
-        <NButton tertiary @click="resetAll">重选文件</NButton>
+        <NButton tertiary :disabled="attaching" @click="resetAll">重选文件</NButton>
         <NButton type="primary" :disabled="attachableCount === 0" :loading="attaching" @click="execute">
           <template #icon><Icon name="heroicons:paper-clip" class="w-4 h-4" /></template>
           开始挂接（{{ attachableCount }} 件）
         </NButton>
+      </div>
+
+      <!-- 分批上传进度 -->
+      <div v-if="attaching || failedFiles.length" class="rounded-lg p-3 flex flex-col gap-2" style="background: var(--semi-color-fill-0)">
+        <div class="flex items-center gap-3 text-[12.5px]" style="color:var(--semi-color-text-1)">
+          <span>已上传 {{ progress.done }} / {{ progress.total }} 个文件</span>
+          <span style="color:oklch(var(--su))">成功 {{ progress.attached }}</span>
+          <span style="color:oklch(0.6 0.18 80)">跳过 {{ progress.skipped }}</span>
+          <span style="color:oklch(var(--er))">无匹配 {{ progress.not_found }}</span>
+          <span v-if="failedFiles.length" style="color:oklch(var(--er))">上传失败 {{ failedFiles.length }}</span>
+        </div>
+        <NProgress
+          type="line"
+          :percentage="progress.total ? Math.round((progress.done / progress.total) * 100) : 0"
+          :status="failedFiles.length ? 'warning' : 'success'"
+          :height="10"
+          indicator-placement="inside"
+          processing
+        />
+        <div v-if="failedFiles.length && !attaching" class="flex items-center gap-2">
+          <span class="text-[12px]" style="color:var(--semi-color-text-2)">{{ failedFiles.length }} 个文件因网络等原因上传失败</span>
+          <NButton size="tiny" type="warning" secondary @click="retryFailed">重试失败文件</NButton>
+        </div>
       </div>
     </template>
 
@@ -88,8 +111,8 @@
 </template>
 
 <script setup lang="tsx">
-import { computed, h, ref } from "vue";
-import { NButton, NSwitch, NTag, NUpload, NUploadDragger, useMessage } from "naive-ui";
+import { computed, h, reactive, ref } from "vue";
+import { NButton, NProgress, NSwitch, NTag, NUpload, NUploadDragger, useMessage } from "naive-ui";
 import type { DataTableColumns, UploadFileInfo } from "naive-ui";
 import { ProTable } from "@/components/ui";
 import { OrganizeAPI } from "@/api/repository";
@@ -119,17 +142,79 @@ async function onFilesChange({ fileList }: { fileList: UploadFileInfo[] }) {
   else message.error(res.message);
 }
 
-async function execute() {
-  attaching.value = true;
-  try {
-    const res = await OrganizeAPI.attachBatch(files.value, overwrite.value);
-    if (res.code === 0) {
-      result.value = res.data;
-      preview.value = null;
-      emit("done", res.data);
-    } else {
-      message.error(res.message);
+// ── 分批上传（大批量不压垮浏览器/请求；进度实时；失败组可重试）─────────────────
+const CHUNK_SIZE = 5;
+const progress = reactive({ done: 0, total: 0, attached: 0, skipped: 0, not_found: 0 });
+const failedFiles = ref<File[]>([]);
+let sessionId: string | null = null;
+let sessionRows: AttachMatchRow[] = [];
+
+function chunkFiles(list: File[]): File[][] {
+  const out: File[][] = [];
+  for (let i = 0; i < list.length; i += CHUNK_SIZE) out.push(list.slice(i, i + CHUNK_SIZE));
+  return out;
+}
+
+async function uploadChunks(chunks: File[][]) {
+  for (const ch of chunks) {
+    try {
+      const res = await OrganizeAPI.attachSessionFiles(sessionId!, ch);
+      if (res.code !== 0) throw new Error(res.message);
+      progress.attached = res.data.attached;
+      progress.skipped = res.data.skipped;
+      progress.not_found = res.data.not_found;
+      sessionRows = sessionRows.concat(res.data.rows ?? []);
+    } catch {
+      failedFiles.value = failedFiles.value.concat(ch);
     }
+    progress.done += ch.length;
+  }
+}
+
+async function finishSession() {
+  const fin = await OrganizeAPI.attachSessionFinish(sessionId!);
+  result.value = { ...fin.data, rows: sessionRows };
+  preview.value = null;
+  emit("done", result.value);
+}
+
+async function execute() {
+  if (!files.value.length) return;
+  attaching.value = true;
+  progress.done = 0;
+  progress.total = files.value.length;
+  progress.attached = 0;
+  progress.skipped = 0;
+  progress.not_found = 0;
+  failedFiles.value = [];
+  sessionRows = [];
+  try {
+    const start = await OrganizeAPI.attachSessionStart(overwrite.value);
+    if (start.code !== 0) { message.error(start.message); return; }
+    sessionId = start.data.batch_id;
+    await uploadChunks(chunkFiles(files.value));
+    if (failedFiles.value.length) {
+      message.warning(`${failedFiles.value.length} 个文件上传失败，可点击重试；其余已挂接`);
+      return; // 不完结批次，等待重试
+    }
+    await finishSession();
+  } catch {
+    message.error("挂接执行失败");
+  } finally {
+    attaching.value = false;
+  }
+}
+
+async function retryFailed() {
+  if (!sessionId || !failedFiles.value.length) return;
+  attaching.value = true;
+  const retry = failedFiles.value;
+  failedFiles.value = [];
+  progress.done -= retry.length;
+  try {
+    await uploadChunks(chunkFiles(retry));
+    if (!failedFiles.value.length) await finishSession();
+    else message.warning(`仍有 ${failedFiles.value.length} 个文件失败，可再次重试`);
   } finally {
     attaching.value = false;
   }
@@ -140,6 +225,14 @@ function resetAll() {
   preview.value = null;
   result.value = null;
   overwrite.value = false;
+  failedFiles.value = [];
+  sessionId = null;
+  sessionRows = [];
+  progress.done = 0;
+  progress.total = 0;
+  progress.attached = 0;
+  progress.skipped = 0;
+  progress.not_found = 0;
 }
 
 defineExpose({ resetAll });

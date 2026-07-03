@@ -625,6 +625,11 @@ function renderAnswer(text: string): string {
   } catch {
     html = preprocessed.replace(/\n/g, "<br/>");
   }
+  // 回答里的〔档号〕转为查看原文链接（onAnswerClick 拦截站内 href 走 router.push）
+  html = html.replace(
+    /〔([A-Za-z0-9][\w-]{2,60})〕/g,
+    '<a href="/archive/reader?id=$1">〔$1〕</a>',
+  );
   // 清洗 HTML 防 XSS，保留 marked 生成的所有标签
   return DOMPurify.sanitize(html, {
     ADD_TAGS: ["span"],

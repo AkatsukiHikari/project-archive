@@ -16,6 +16,13 @@ class ImportTask(BaseEntity):
     """
     __tablename__ = "repo_import_task"
 
+    task_no: Mapped[Optional[str]] = mapped_column(
+        String(40), nullable=True, index=True, comment="导入批次号 DRyyyymmddNNN"
+    )
+    attach_batch_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True,
+        comment="本批次导入后执行的原文挂接批次(repo_attach_batch.id)"
+    )
     category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("repo_archive_category.id", ondelete="RESTRICT"),

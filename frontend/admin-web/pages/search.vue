@@ -30,10 +30,6 @@
           <NButton type="primary" size="large" :loading="loading" @click="runSearch">检索</NButton>
           <NButton size="large" tertiary @click="resetAll">重置</NButton>
         </div>
-        <div v-if="!authed" class="flex items-center gap-1.5 text-xs" style="color: var(--semi-color-text-2)">
-          <Icon name="heroicons:lock-closed" class="w-3.5 h-3.5" />
-          未登录，仅检索对外开放档案；登录后可检索全部馆藏。
-        </div>
       </div>
 
       <!-- 筛选条件 + 结果表 -->
@@ -75,7 +71,7 @@
                 >
                   <Icon v-if="isSelected(f, b.value)" name="heroicons:check" class="w-2.5 h-2.5" style="color: oklch(var(--pc))" />
                 </span>
-                <span class="flex-1 truncate">{{ b.label }}</span>
+                <span class="flex-1 truncate">{{ facetValueLabel(f, b.label) }}</span>
                 <span class="text-[11px] tabular-nums shrink-0" style="color: var(--semi-color-text-3)">{{ b.count }}</span>
               </button>
               <button
@@ -96,7 +92,7 @@
           <div class="flex items-center flex-wrap gap-2 min-h-[24px]">
             <span class="text-sm" style="color: var(--semi-color-text-2)">共 <strong style="color: var(--semi-color-text-0)">{{ total }}</strong> 件</span>
             <NTag v-for="chip in activeChips" :key="chip.key" size="small" round closable type="info" @close="toggleFacet(chip.field, chip.value)">
-              {{ facetLabels[chip.field] }}：{{ chip.label }}
+              {{ facetLabels[chip.field] }}：{{ facetValueLabel(chip.field, chip.label) }}
             </NTag>
             <NButton v-if="activeChips.length" size="tiny" text type="primary" @click="clearFacets">清除筛选</NButton>
           </div>
@@ -110,6 +106,7 @@
               :row-key="(r: SearchHit) => r.id"
               :bordered="false"
               :single-line="false"
+              :scroll-x="activeScrollX"
               size="small"
               remote
               @update:page="onPage"
@@ -121,14 +118,56 @@
     </div>
 
     <ArchiveInterpretDrawer v-model:show="interpretShow" :archive-id="interpretId" :title="interpretTitle" />
+
+    <!-- 档案详情 -->
+    <NDrawer v-model:show="detailShow" :width="560" placement="right">
+      <NDrawerContent :title="`档案详情 · ${detailRow?.DH || detailRow?.TM || ''}`" closable>
+        <div v-if="detailLoading" class="py-8 flex justify-center"><NSpin size="small" /></div>
+        <div v-else-if="detail" class="flex flex-col gap-4">
+          <table class="w-full text-[13px] border-collapse">
+            <tbody>
+              <tr
+                v-for="f in detailFields"
+                :key="f.label"
+                class="border-b"
+                style="border-color: var(--semi-color-border)"
+              >
+                <th class="text-left align-top py-2 pr-3 font-medium whitespace-nowrap" style="width:96px;color:var(--semi-color-text-3)">{{ f.label }}</th>
+                <td class="py-2 break-words" :class="f.mono ? 'font-mono' : ''" style="color:var(--semi-color-text-0)">{{ f.value || "—" }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <template #footer>
+          <div class="flex w-full items-center gap-2">
+            <NButton
+              type="primary"
+              :disabled="!detailRow?.has_source"
+              :title="detailRow?.has_source ? '查看原文' : '该档案暂无数字化原文'"
+              @click="detailRow && openReader(detailRow.id)"
+            >
+              <template #icon><Icon name="heroicons:document-magnifying-glass" class="w-4 h-4" /></template>
+              查看原文
+            </NButton>
+            <div class="flex-1" />
+            <NButton text type="primary" @click="detailRow && openInterpret(detailRow)">
+              <template #icon><Icon name="heroicons:sparkles" class="w-4 h-4" /></template>
+              AI 解读
+            </NButton>
+          </div>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>
 
 <script setup lang="tsx">
 import { computed, h, onMounted, reactive, ref } from "vue";
-import { NButton, NDataTable, NInput, NTag } from "naive-ui";
+import { NButton, NDataTable, NDrawer, NDrawerContent, NInput, NSpin, NTag } from "naive-ui";
 import type { DataTableColumns } from "naive-ui";
 import { SuperSearchAPI, type FacetValue, type SearchHit, type SearchMode } from "@/api/superSearch";
+import { ArchiveAPI } from "@/api/repository";
+import type { Archive } from "@/api/repository";
 import { ArchiveInterpretDrawer } from "@/components/archive";
 
 definePageMeta({ layout: "search" });
@@ -229,11 +268,61 @@ function mjCell(r: SearchHit) {
     : h("span", { class: "text-xs", style: "color: var(--semi-color-text-3)" }, "无");
 }
 
+const RETENTION_LABEL: Record<string, string> = { permanent: "永久", long: "长期", short: "短期" };
+function facetValueLabel(f: string, label: string): string {
+  return f === "BGQX" ? (RETENTION_LABEL[label] ?? label) : label;
+}
+
+// ── 档案详情（拉全量字段，含门类扩展字段）────────────────────────────────────
+const detailShow = ref(false);
+const detailLoading = ref(false);
+const detailRow = ref<SearchHit | null>(null);
+const detail = ref<Archive | null>(null);
+
+async function openDetail(r: SearchHit) {
+  detailRow.value = r;
+  detail.value = null;
+  detailShow.value = true;
+  detailLoading.value = true;
+  try {
+    const res = await ArchiveAPI.get(r.id);
+    if (res.code === 0) detail.value = res.data;
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
+const detailFields = computed(() => {
+  const d = detail.value;
+  if (!d) return [];
+  const base = [
+    { label: "档号", value: d.DH, mono: true },
+    { label: "题名", value: d.TM },
+    { label: "全宗号", value: d.QZH },
+    { label: "责任者", value: d.RZZ },
+    { label: "年度", value: d.ND ? String(d.ND) : "" },
+    { label: "文件日期", value: d.WJRQ },
+    { label: "页数", value: d.YS ? String(d.YS) : "" },
+    { label: "密级", value: d.MJ },
+    { label: "保管期限", value: RETENTION_LABEL[d.BGQX] ?? d.BGQX },
+    { label: "开放状态", value: d.KFZT ?? "未鉴定" },
+    { label: "门类", value: catName(d.category_id) },
+  ];
+  const ext = Object.entries(d.ext_fields ?? {})
+    .filter(([, v]) => v !== null && v !== "")
+    .map(([k, v]) => ({ label: k, value: String(v), mono: false }));
+  return [...base, ...ext];
+});
+
 function actionCell(r: SearchHit) {
   return h("div", { class: "flex items-center gap-1" }, [
-    r.has_source
-      ? h(NButton, { size: "tiny", tertiary: true, onClick: () => openReader(r.id) }, { default: () => "原文" })
-      : h("span", { class: "text-xs", style: "color: var(--semi-color-text-3)" }, "无原文"),
+    h(NButton, { size: "tiny", tertiary: true, onClick: () => openDetail(r) }, { default: () => "详情" }),
+    h(NButton, {
+      size: "tiny", tertiary: true, type: "primary",
+      disabled: !r.has_source,
+      title: r.has_source ? "查看原文" : "该档案暂无数字化原文",
+      onClick: () => openReader(r.id),
+    }, { default: () => "查看原文" }),
     h(NButton, { size: "tiny", tertiary: true, type: "primary", onClick: () => openInterpret(r) }, { default: () => "AI 解读" }),
   ]);
 }
@@ -247,8 +336,8 @@ const fieldColumns: DataTableColumns<SearchHit> = [
   { title: "全宗号", key: "QZH", width: 84, render: (r) => r.QZH || "—" },
   { title: "门类", key: "category_id", width: 130, ellipsis: { tooltip: true }, render: (r) => catName(r.category_id) },
   { title: "密级", key: "MJ", width: 76, render: mjCell },
-  { title: "保管期限", key: "BGQX", width: 90, render: (r) => r.BGQX || "—" },
-  { title: "操作", key: "actions", width: 150, render: actionCell },
+  { title: "保管期限", key: "BGQX", width: 90, render: (r) => RETENTION_LABEL[r.BGQX ?? ""] ?? r.BGQX ?? "—" },
+  { title: "操作", key: "actions", width: 200, fixed: "right" as const, render: actionCell },
 ];
 
 // 全文检索表头：突出"命中内容（原文）"
@@ -269,13 +358,16 @@ const fulltextColumns: DataTableColumns<SearchHit> = [
   { title: "年度", key: "ND", width: 70, render: (r) => r.ND || "—" },
   { title: "全宗号", key: "QZH", width: 84, render: (r) => r.QZH || "—" },
   { title: "密级", key: "MJ", width: 76, render: mjCell },
-  { title: "操作", key: "actions", width: 150, render: actionCell },
+  { title: "操作", key: "actions", width: 200, fixed: "right" as const, render: actionCell },
 ];
 
 const activeColumns = computed(() => {
   void appliedKeyword.value; // 依赖关键词：变了就给新数组，强制 NDataTable 重渲染标红单元格
   return mode.value === "fulltext" ? [...fulltextColumns] : [...fieldColumns];
 });
+
+// 列总宽超出容器时出横向滚动条（操作列固定右侧），避免表格挤压变形
+const activeScrollX = computed(() => (mode.value === "fulltext" ? 1290 : 1230));
 
 // ── 分面交互 ──────────────────────────────────────────────────────────────────
 function toggleSection(f: string) { open[f] = !open[f]; }

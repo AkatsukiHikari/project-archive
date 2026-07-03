@@ -48,6 +48,8 @@ class ExecuteRequest(BaseModel):
 
 class ImportTaskRead(BaseModel):
     id: uuid.UUID
+    task_no: Optional[str] = None
+    attach_batch_id: Optional[uuid.UUID] = None
     status: str
     total: int
     success: int

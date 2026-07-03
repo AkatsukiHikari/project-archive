@@ -118,6 +118,47 @@ class AttachmentService:
             )
         return rows
 
+    async def _attach_one(
+        self,
+        name: str,
+        content: bytes,
+        user_id: uuid.UUID,
+        tenant_id: Optional[uuid.UUID],
+        overwrite: bool,
+    ) -> dict:
+        """挂接单个文件（文件名去扩展名 = 档号），返回逐文件明细行。"""
+        dh = self._strip_ext(name)
+        base: dict = {"filename": name, "DH": dh}
+        target = await self._find_by_dh(dh, tenant_id)
+        if target is None:
+            return {**base, "status": "not_found"}
+        base.update(
+            {
+                "source": target.source,
+                "archive_id": str(target.archive_id),
+                "TM": target.TM,
+            }
+        )
+
+        has_primary = await self._has_primary(target.archive_id)
+        if has_primary and not overwrite:
+            return {**base, "status": "skipped"}
+
+        try:
+            fmt = self._validate_file(name, content)
+        except ValidationException as exc:
+            return {**base, "status": "skipped", "reason": exc.message}
+
+        if has_primary:
+            await self._demote_primary(target.archive_id, soft_delete=True)
+        attachment = self._build_attachment(
+            target, name, content, fmt, user_id, is_primary=True
+        )
+        self.db.add(attachment)
+        # 逐条 flush：同一档号在一批里有多个文件时，后续 _has_primary 才能看到前一条
+        await self.db.flush()
+        return {**base, "status": "attached"}
+
     async def batch_attach(
         self,
         files: list[tuple[str, bytes]],
@@ -125,55 +166,20 @@ class AttachmentService:
         tenant_id: Optional[uuid.UUID],
         overwrite: bool = False,
     ) -> tuple[AttachBatch, list[dict]]:
-        """执行挂接：matched 的存储并建附件记录；已有原文按 overwrite 决定跳过或替换。
-
-        每次执行落一条挂接批次（repo_attach_batch），含逐文件明细，供历史追溯。
-        """
-        rows: list[dict] = []
-        for name, content in files:
-            dh = self._strip_ext(name)
-            base = {"filename": name, "DH": dh}
-            target = await self._find_by_dh(dh, tenant_id)
-            if target is None:
-                rows.append({**base, "status": "not_found"})
-                continue
-            base.update(
-                {
-                    "source": target.source,
-                    "archive_id": target.archive_id,
-                    "TM": target.TM,
-                }
-            )
-
-            has_primary = await self._has_primary(target.archive_id)
-            if has_primary and not overwrite:
-                rows.append({**base, "status": "skipped"})
-                continue
-
-            try:
-                fmt = self._validate_file(name, content)
-            except ValidationException as exc:
-                rows.append({**base, "status": "skipped", "reason": exc.message})
-                continue
-
-            if has_primary:
-                await self._demote_primary(target.archive_id, soft_delete=True)
-            attachment = self._build_attachment(
-                target, name, content, fmt, user_id, is_primary=True
-            )
-            self.db.add(attachment)
-            # 逐条 flush：同一档号在一批里有多个文件时，后续 _has_primary 才能看到前一条
-            await self.db.flush()
-            rows.append({**base, "status": "attached"})
-
+        """一次性执行挂接（小批量）。每次执行落一条挂接批次供历史追溯。"""
+        rows = [
+            await self._attach_one(name, content, user_id, tenant_id, overwrite)
+            for name, content in files
+        ]
         batch = AttachBatch(
             batch_no=await self._next_batch_no(),
+            status="completed",
             total=len(rows),
             attached=sum(1 for r in rows if r["status"] == "attached"),
             skipped=sum(1 for r in rows if r["status"] == "skipped"),
             not_found=sum(1 for r in rows if r["status"] == "not_found"),
             overwrite=overwrite,
-            rows=[{**r, "archive_id": str(r["archive_id"])} if r.get("archive_id") else r for r in rows],
+            rows=rows,
             operator_id=user_id,
             tenant_id=tenant_id,
             create_by=user_id,
@@ -181,6 +187,55 @@ class AttachmentService:
         self.db.add(batch)
         await self.db.flush()
         return batch, rows
+
+    # ── 分批挂接会话（大批量：前端按组上传，进度实时累计进批次）────────────────
+
+    async def start_session(
+        self, overwrite: bool, user_id: uuid.UUID, tenant_id: Optional[uuid.UUID]
+    ) -> AttachBatch:
+        batch = AttachBatch(
+            batch_no=await self._next_batch_no(),
+            status="running",
+            total=0, attached=0, skipped=0, not_found=0,
+            overwrite=overwrite,
+            rows=[],
+            operator_id=user_id,
+            tenant_id=tenant_id,
+            create_by=user_id,
+        )
+        self.db.add(batch)
+        await self.db.flush()
+        return batch
+
+    async def attach_chunk(
+        self,
+        batch_id: uuid.UUID,
+        files: list[tuple[str, bytes]],
+        user_id: uuid.UUID,
+        tenant_id: Optional[uuid.UUID],
+    ) -> tuple[AttachBatch, list[dict]]:
+        batch = await self.get_batch(batch_id, tenant_id)
+        if batch.status != "running":
+            raise ValidationException(message="该挂接批次已完结，不能继续上传")
+        rows = [
+            await self._attach_one(name, content, user_id, tenant_id, batch.overwrite)
+            for name, content in files
+        ]
+        batch.total += len(rows)
+        batch.attached += sum(1 for r in rows if r["status"] == "attached")
+        batch.skipped += sum(1 for r in rows if r["status"] == "skipped")
+        batch.not_found += sum(1 for r in rows if r["status"] == "not_found")
+        batch.rows = (batch.rows or []) + rows
+        await self.db.flush()
+        return batch, rows
+
+    async def finish_session(
+        self, batch_id: uuid.UUID, tenant_id: Optional[uuid.UUID]
+    ) -> AttachBatch:
+        batch = await self.get_batch(batch_id, tenant_id)
+        batch.status = "completed"
+        await self.db.flush()
+        return batch
 
     # ── 挂接历史 ──────────────────────────────────────────────────────────────
 

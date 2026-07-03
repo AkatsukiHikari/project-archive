@@ -85,6 +85,30 @@ export interface KBStatus {
   error?: string;
 }
 
+export interface KBDoc {
+  id: string;
+  name: string;
+  word_count?: number;
+  indexing_status?: string;
+  enabled?: boolean;
+  created_at?: number;
+}
+
+export interface KBHit {
+  score?: number;
+  content: string;
+  document_id?: string;
+  document_name?: string;
+}
+
+export interface KBUnsynced {
+  id: string;
+  DH?: string;
+  TM: string;
+  QZH?: string;
+  ND?: number;
+}
+
 export interface OcrJob {
   id: string;
   archive_id: string;
@@ -119,8 +143,48 @@ export const AiAdminAPI = {
       `/ai/ocr/text/${archiveId}`,
     ),
 
+  /** 档案摘要：ready(带summary) | ocr_running | ocr_started | no_source */
+  summary: (archiveRef: string) =>
+    http.post<ApiResponse<{ status: string; summary?: string; message?: string }>, ApiResponse<{ status: string; summary?: string; message?: string }>>(
+      `/ai/summary/${archiveRef}`,
+    ),
+
   kbStatus: () =>
     http.get<ApiResponse<KBStatus>, ApiResponse<KBStatus>>("/ai/kb/status"),
+
+  /** 知识库文档列表 */
+  kbDocuments: (params?: { page?: number; limit?: number; keyword?: string }) =>
+    http.get<ApiResponse<{ total: number; items: KBDoc[] }>, ApiResponse<{ total: number; items: KBDoc[] }>>(
+      "/ai/kb/documents",
+      { params },
+    ),
+
+  kbDeleteDoc: (docId: string) =>
+    http.delete<ApiResponse<{ ok: boolean }>, ApiResponse<{ ok: boolean }>>(`/ai/kb/documents/${docId}`),
+
+  /** 命中测试：看知识库对某问题召回了哪些片段 */
+  kbHitTest: (query: string) =>
+    http.post<ApiResponse<{ records: KBHit[] }>, ApiResponse<{ records: KBHit[] }>>(
+      "/ai/kb/hit-test",
+      { query },
+    ),
+
+  /** 上传规章制度等文档进知识库（PDF/DOCX/TXT/MD） */
+  kbUpload: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return http.post<ApiResponse<{ id: string; name: string }>, ApiResponse<{ id: string; name: string }>>(
+      "/ai/kb/upload",
+      fd,
+      { headers: { "Content-Type": "multipart/form-data" }, timeout: 300000 },
+    );
+  },
+
+  /** 未同步进知识库的正式库档案 */
+  kbUnsynced: () =>
+    http.get<ApiResponse<{ total: number; items: KBUnsynced[] }>, ApiResponse<{ total: number; items: KBUnsynced[] }>>(
+      "/ai/kb/unsynced",
+    ),
 
   kbRebuild: () =>
     http.post<ApiResponse<{ synced: number }>, ApiResponse<{ synced: number }>>("/ai/kb/rebuild"),

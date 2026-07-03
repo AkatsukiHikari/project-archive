@@ -460,6 +460,73 @@ def build_research_chatflow(dataset_id):
     )
 
 
+def build_summary_workflow():
+    """档案摘要 Workflow：Start(meta 条目著录信息 + full_text 原文全文) → LLM → End(text)。
+
+    导入后提示词/模型在 Dify UI 内维护；DSL 中的模型字段仅为导入所需初始值。
+    """
+    start, llm, end = "node_start", "node_llm", "node_end"
+    prompt = (
+        "请为这份档案生成一段简明摘要，让读者一眼了解它是什么、讲了什么。\n\n"
+        "条目著录信息：\n{{#" + start + ".meta#}}\n\n"
+        "原文 OCR 全文：\n{{#" + start + ".full_text#}}\n\n"
+        "要求：结合条目著录信息与原文内容撰写；先用 2~4 句话概括核心内容，"
+        "如有必要再以「•」列出至多 3 条关键要点；只依据提供的信息，不得编造；"
+        "**必须使用简体中文输出**（无论原文是什么语言）；直接输出摘要正文，不要任何前缀说明。"
+    )
+    nodes = [
+        _node(
+            start,
+            "start",
+            {
+                "title": "Start",
+                "variables": [
+                    {"label": "条目著录信息", "variable": "meta", "type": "paragraph",
+                     "required": False, "max_length": 8000, "options": []},
+                    {"label": "原文全文", "variable": "full_text", "type": "paragraph",
+                     "required": True, "max_length": 48000, "options": []},
+                ],
+            },
+            80, 240,
+        ),
+        _node(
+            llm,
+            "llm",
+            {
+                "title": "AI 摘要",
+                # DSL 导入要求提供初始模型，导入后在 Dify UI 更换
+                "model": {
+                    "provider": DEEPSEEK_PROVIDER,
+                    "name": DEEPSEEK_MODEL,
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.3},
+                },
+                "prompt_template": [{"role": "system", "text": prompt}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "variables": [],
+            },
+            420, 240,
+        ),
+        _node(
+            end,
+            "end",
+            {"title": "End", "outputs": [{"variable": "text", "value_selector": [llm, "text"]}]},
+            760, 240,
+        ),
+    ]
+    edges = [_edge(start, llm, "start", "llm"), _edge(llm, end, "llm", "end")]
+    return _app(
+        "workflow",
+        "档案摘要",
+        "结合条目著录信息与原文全文生成简明摘要（提示词在本应用内管理）",
+        nodes,
+        edges,
+        icon="scroll",
+        icon_bg="#E0E7FF",
+    )
+
+
 def build_catalog_workflow():
     """智能著录抽取：Start(全文+字段schema+当前条目) → DeepSeek 抽结构化JSON → End(text)。"""
     start, llm, end = "node_start", "node_llm", "node_end"
@@ -577,10 +644,27 @@ def main():
     ap.add_argument("--qa", help="重建问答 Chatflow（传 dataset_id），不动其它")
     ap.add_argument("--catalog", action="store_true", help="建/重建 智能著录抽取工作流")
     ap.add_argument("--research", help="建/重建 编研起草 Chatflow（传 dataset_id）")
+    ap.add_argument("--summary", action="store_true", help="建/重建 档案摘要工作流")
     args = ap.parse_args()
 
     dify = Dify()
     print(f"✓ 登录 {EMAIL}")
+
+    if args.summary:
+        for a in dify.list_apps():
+            if a.get("name") in ("档案要約", "档案摘要"):
+                dify.delete_app(a["id"])
+        app_id = dify.import_app(
+            build_summary_workflow(),
+            "档案摘要",
+            "archive summary",
+            icon="scroll",
+            icon_bg="#E0E7FF",
+        )
+        dify.publish(app_id)
+        print(f"✓ 档案摘要工作流 app_id={app_id}")
+        print(f"  DIFY_SUMMARY_WORKFLOW_KEY={dify.api_key(app_id)}")
+        return
 
     if args.research:
         for a in dify.list_apps():

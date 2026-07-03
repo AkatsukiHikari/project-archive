@@ -142,6 +142,21 @@ async def get_task(
     return success(ImportTaskRead.model_validate(task))
 
 
+@router.patch("/tasks/{task_id}/attach-batch", response_model=ResponseModel[None])
+async def bind_attach_batch(
+    task_id: uuid.UUID,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """把本批次导入后执行的原文挂接批次关联到导入任务（详情报表串联用）。"""
+    svc = ImportService(db)
+    task = await svc.get_task(task_id, current_user.tenant_id)
+    task.attach_batch_id = uuid.UUID(str(body.get("batch_id")))
+    await db.commit()
+    return success(None)
+
+
 @router.get("/tasks/{task_id}/report")
 async def download_report(
     task_id: uuid.UUID,

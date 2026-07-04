@@ -53,9 +53,7 @@ class Dify:
     def list_apps(self):
         out, page = [], 1
         while True:
-            d = self.c.get(
-                f"{CONSOLE}/apps", params={"page": page, "limit": 100}
-            ).json()
+            d = self.c.get(f"{CONSOLE}/apps", params={"page": page, "limit": 100}).json()
             out += d.get("data", [])
             if not d.get("has_more"):
                 break
@@ -87,13 +85,9 @@ class Dify:
             "completed-with-warnings",
             "pending",
         }:
-            raise RuntimeError(
-                f"导入失败 status={data.get('status')}: {str(data)[:400]}"
-            )
+            raise RuntimeError(f"导入失败 status={data.get('status')}: {str(data)[:400]}")
         if data.get("status") == "completed-with-warnings":
-            print(
-                f"  ⚠ 导入有警告：{data.get('imported_dsl_version')} → {data.get('current_dsl_version')}"
-            )
+            print(f"  ⚠ 导入有警告：{data.get('imported_dsl_version')} → {data.get('current_dsl_version')}")
         return data["app_id"]
 
     def publish(self, app_id):
@@ -247,7 +241,7 @@ def build_qa_chatflow(dataset_id):
     start, kr, llm, ans = "node_start", "node_kr", "node_llm", "node_answer"
     prompt = (
         "你是 SAMS 档案馆智能助手。资料分两部分：\n"
-        "① 后端 ES 精确检索到的相关档案（**权威**，含档号与原文）：\n"
+        "① 精确检索到的相关档案（**权威**，含档号与原文）：\n"
         "{{#" + start + ".es_context#}}\n\n"
         "② 知识库语义召回的补充内容：\n{{#" + kr + ".result#}}\n\n"
         "用户问题：{{#sys.query#}}\n\n"
@@ -376,15 +370,13 @@ def build_research_chatflow(dataset_id):
             {
                 "title": "Start",
                 "variables": [
-                    {"label": "参考资料", "variable": "es_context", "type": "paragraph",
-                     "required": False, "max_length": 48000, "options": []},
-                    {"label": "成果标题", "variable": "title", "type": "text-input",
-                     "required": False, "max_length": 256, "options": []},
-                    {"label": "体裁", "variable": "result_type", "type": "text-input",
-                     "required": False, "max_length": 64, "options": []},
+                    {"label": "参考资料", "variable": "es_context", "type": "paragraph", "required": False, "max_length": 48000, "options": []},
+                    {"label": "成果标题", "variable": "title", "type": "text-input", "required": False, "max_length": 256, "options": []},
+                    {"label": "体裁", "variable": "result_type", "type": "text-input", "required": False, "max_length": 64, "options": []},
                 ],
             },
-            80, 240,
+            80,
+            240,
         ),
         _node(
             kr,
@@ -412,7 +404,8 @@ def build_research_chatflow(dataset_id):
                     "reranking_model": {"provider": "", "model": ""},
                 },
             },
-            360, 240,
+            360,
+            240,
         ),
         _node(
             llm,
@@ -435,13 +428,15 @@ def build_research_chatflow(dataset_id):
                 "vision": {"enabled": False},
                 "variables": [],
             },
-            660, 240,
+            660,
+            240,
         ),
         _node(
             ans,
             "answer",
             {"title": "Answer", "answer": "{{#" + llm + ".text#}}", "variables": []},
-            960, 240,
+            960,
+            240,
         ),
     ]
     edges = [
@@ -481,13 +476,12 @@ def build_summary_workflow():
             {
                 "title": "Start",
                 "variables": [
-                    {"label": "条目著录信息", "variable": "meta", "type": "paragraph",
-                     "required": False, "max_length": 8000, "options": []},
-                    {"label": "原文全文", "variable": "full_text", "type": "paragraph",
-                     "required": True, "max_length": 48000, "options": []},
+                    {"label": "条目著录信息", "variable": "meta", "type": "paragraph", "required": False, "max_length": 8000, "options": []},
+                    {"label": "原文全文", "variable": "full_text", "type": "paragraph", "required": True, "max_length": 48000, "options": []},
                 ],
             },
-            80, 240,
+            80,
+            240,
         ),
         _node(
             llm,
@@ -506,13 +500,15 @@ def build_summary_workflow():
                 "vision": {"enabled": False},
                 "variables": [],
             },
-            420, 240,
+            420,
+            240,
         ),
         _node(
             end,
             "end",
             {"title": "End", "outputs": [{"variable": "text", "value_selector": [llm, "text"]}]},
-            760, 240,
+            760,
+            240,
         ),
     ]
     edges = [_edge(start, llm, "start", "llm"), _edge(llm, end, "llm", "end")]
@@ -550,15 +546,13 @@ def build_catalog_workflow():
             {
                 "title": "Start",
                 "variables": [
-                    {"label": "原文全文", "variable": "full_text", "type": "paragraph",
-                     "required": True, "max_length": 48000, "options": []},
-                    {"label": "字段定义", "variable": "field_schema", "type": "paragraph",
-                     "required": True, "max_length": 8000, "options": []},
-                    {"label": "当前条目", "variable": "existing", "type": "paragraph",
-                     "required": False, "max_length": 8000, "options": []},
+                    {"label": "原文全文", "variable": "full_text", "type": "paragraph", "required": True, "max_length": 48000, "options": []},
+                    {"label": "字段定义", "variable": "field_schema", "type": "paragraph", "required": True, "max_length": 8000, "options": []},
+                    {"label": "当前条目", "variable": "existing", "type": "paragraph", "required": False, "max_length": 8000, "options": []},
                 ],
             },
-            80, 240,
+            80,
+            240,
         ),
         _node(
             llm,
@@ -576,13 +570,15 @@ def build_catalog_workflow():
                 "vision": {"enabled": False},
                 "variables": [],
             },
-            420, 240,
+            420,
+            240,
         ),
         _node(
             end,
             "end",
             {"title": "End", "outputs": [{"variable": "text", "value_selector": [llm, "text"]}]},
-            760, 240,
+            760,
+            240,
         ),
     ]
     edges = [_edge(start, llm, "start", "llm"), _edge(llm, end, "llm", "end")]

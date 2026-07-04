@@ -95,34 +95,49 @@ class DifyService:
 
         try:
             # stream=True 表示使用流式 HTTP 响应，不等待全部内容再返回
-            async with self._client.stream(
-                "POST",
-                _DIFY_CHAT_URL,
-                json=payload,
-                headers=headers,
-            ) as resp:
-                if resp.status_code != 200:
-                    error_body = await resp.aread()
-                    logger.error("Dify API 错误 %d: %s", resp.status_code, error_body)
-                    yield f'data: {{"event":"error","message":"AI服务暂时不可用（{resp.status_code}）"}}\n\n'
+            for attempt in (1, 2):
+                async with self._client.stream(
+                    "POST",
+                    _DIFY_CHAT_URL,
+                    json=payload,
+                    headers=headers,
+                ) as resp:
+                    # 旧会话指向的应用已重建 → Dify 404，去掉 conversation_id 开新会话重试一次
+                    if (
+                        resp.status_code == 404
+                        and "conversation_id" in payload
+                        and attempt == 1
+                    ):
+                        payload.pop("conversation_id")
+                        logger.warning(
+                            "Dify 会话不存在（应用可能已重建），自动开新会话"
+                        )
+                        continue
+                    if resp.status_code != 200:
+                        error_body = await resp.aread()
+                        logger.error(
+                            "Dify API 错误 %d: %s", resp.status_code, error_body
+                        )
+                        yield f'data: {{"event":"error","message":"AI服务暂时不可用（{resp.status_code}）"}}\n\n'
+                        return
+
+                    # 逐行读取 SSE 事件
+                    async for line in resp.aiter_lines():
+                        if not line:
+                            continue  # 跳过空行（SSE 事件分隔符）
+
+                        # 原样转发给前端，保持 SSE 格式
+                        yield f"{line}\n\n"
+
+                        # 检测到结束事件时停止
+                        if line.startswith("data:"):
+                            try:
+                                event_data = json.loads(line[5:].strip())
+                                if event_data.get("event") in ("message_end", "error"):
+                                    break
+                            except json.JSONDecodeError:
+                                pass
                     return
-
-                # 逐行读取 SSE 事件
-                async for line in resp.aiter_lines():
-                    if not line:
-                        continue  # 跳过空行（SSE 事件分隔符）
-
-                    # 原样转发给前端，保持 SSE 格式
-                    yield f"{line}\n\n"
-
-                    # 检测到结束事件时停止
-                    if line.startswith("data:"):
-                        try:
-                            event_data = json.loads(line[5:].strip())
-                            if event_data.get("event") in ("message_end", "error"):
-                                break
-                        except json.JSONDecodeError:
-                            pass
 
         except httpx.ConnectError:
             logger.error("无法连接到 Dify 服务: %s", _DIFY_CHAT_URL)

@@ -242,5 +242,5 @@ export function useNaiveTheme() {
     buildOverrides(THEME_PRIMARY[currentTheme.value] ?? "#1978e5"),
   );
 
-  return { naiveTheme, themeOverrides };
+  return { naiveTheme, themeOverrides, isDark };
 }

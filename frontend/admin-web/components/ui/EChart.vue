@@ -6,10 +6,10 @@
 import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import * as echarts from "echarts/core";
 import { BarChart, PieChart, LineChart, RadarChart } from "echarts/charts";
-import { GridComponent, TooltipComponent, LegendComponent } from "echarts/components";
+import { GridComponent, TooltipComponent, LegendComponent, TitleComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
-echarts.use([BarChart, PieChart, LineChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
+echarts.use([BarChart, PieChart, LineChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, CanvasRenderer]);
 
 const props = withDefaults(defineProps<{ option: Record<string, unknown>; height?: number }>(), {
   height: 260,

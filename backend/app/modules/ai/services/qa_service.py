@@ -17,15 +17,39 @@ from app.core.config import settings
 from app.infra.search.archive_index import super_search
 from app.modules.ai.services.dify_service import dify_service
 from app.modules.repository.models.archive import Archive, ArchiveStaging
+from app.modules.repository.models.category import ArchiveCategory
 
 MAX_CONTEXT_ARCHIVES = 6
 FULLTEXT_CLIP = 1200
 
 # 统计/计数类问题：RAG 只能取 top-K 样本，无法计数，必须走后端精确聚合
 STATS_KEYWORDS = (
-    "统计", "多少", "数量", "总数", "总共", "合计", "几件", "几条", "分布",
-    "占比", "比例", "按全宗", "按年度", "按门类", "按密级", "列出所有",
-    "全部档案", "所有档案", "总件数",
+    "统计",
+    "多少",
+    "数量",
+    "总数",
+    "总共",
+    "合计",
+    "几件",
+    "几条",
+    "分布",
+    "占比",
+    "比例",
+    "按全宗",
+    "按年度",
+    "按门类",
+    "按密级",
+    "列出所有",
+    "全部档案",
+    "所有档案",
+    "总件数",
+    "报表",
+    "图表",
+    "柱状图",
+    "饼图",
+    "折线图",
+    "趋势",
+    "可视化",
 )
 # 聚合维度：(列名, 中文标签)。正式库含开放状态；暂存库无 KFZT 字段。
 STATS_DIMS = (
@@ -81,9 +105,7 @@ class QaService:
             context = (
                 "【以下为后端检索到的相关档案，含正式库与暂存库；"
                 "回答时请据实标明每条来自『正式库』还是『暂存库（整理中）』】\n\n"
-                + "\n\n".join(
-                    self._hit_block(i + 1, h) for i, h in enumerate(hits)
-                )
+                + "\n\n".join(self._hit_block(i + 1, h) for i, h in enumerate(hits))
             )
             citations_event = _citations_sse(hits)
 
@@ -109,7 +131,10 @@ class QaService:
             Archive, "正式库（已归档馆藏）", STATS_DIMS, tenant_id
         )
         staging_block, staging_total = await self._lib_stats(
-            ArchiveStaging, "暂存库（著录整理中、未正式归档）", STATS_DIMS_STAGING, tenant_id
+            ArchiveStaging,
+            "暂存库（著录整理中、未正式归档）",
+            STATS_DIMS_STAGING,
+            tenant_id,
         )
         return (
             "【档案统计（后端实时精确统计，权威数据）\n"
@@ -129,9 +154,7 @@ class QaService:
             conds.append(model.tenant_id == tenant_id)
 
         total = (
-            await self.db.execute(
-                select(func.count()).select_from(model).where(*conds)
-            )
+            await self.db.execute(select(func.count()).select_from(model).where(*conds))
         ).scalar_one()
 
         lines = [f"=== {src_label}：{total} 件 ==="]
@@ -151,6 +174,21 @@ class QaService:
             for val, cnt in rows[:60]:
                 shown = val if val not in (None, "") else "（空）"
                 lines.append(f"  {shown}：{cnt} 件")
+
+        cat_rows = (
+            await self.db.execute(
+                select(ArchiveCategory.name, func.count())
+                .select_from(model)
+                .join(ArchiveCategory, ArchiveCategory.id == model.category_id)
+                .where(*conds)
+                .group_by(ArchiveCategory.name)
+                .order_by(func.count().desc())
+            )
+        ).all()
+        if cat_rows:
+            lines.append("按门类：")
+            for name, cnt in cat_rows[:60]:
+                lines.append(f"  {name}：{cnt} 件")
         return "\n".join(lines), total
 
     # ── 解读单份档案（喂完整信息）──────────────────────────────────────────────

@@ -25,6 +25,7 @@ PASSWORD = os.environ.get("DIFY_CONSOLE_PASSWORD", "Claude2026")
 DEEPSEEK_PROVIDER = "langgenius/deepseek/deepseek"
 DEEPSEEK_MODEL = "deepseek-chat"
 MINERU_PROVIDER = "langgenius/mineru/mineru"
+ECHARTS_PROVIDER = "langgenius/echarts/echarts"
 
 
 # ── Dify console 客户端 ────────────────────────────────────────────────────────
@@ -53,7 +54,9 @@ class Dify:
     def list_apps(self):
         out, page = [], 1
         while True:
-            d = self.c.get(f"{CONSOLE}/apps", params={"page": page, "limit": 100}).json()
+            d = self.c.get(
+                f"{CONSOLE}/apps", params={"page": page, "limit": 100}
+            ).json()
             out += d.get("data", [])
             if not d.get("has_more"):
                 break
@@ -85,10 +88,35 @@ class Dify:
             "completed-with-warnings",
             "pending",
         }:
-            raise RuntimeError(f"导入失败 status={data.get('status')}: {str(data)[:400]}")
+            raise RuntimeError(
+                f"导入失败 status={data.get('status')}: {str(data)[:400]}"
+            )
         if data.get("status") == "completed-with-warnings":
-            print(f"  ⚠ 导入有警告：{data.get('imported_dsl_version')} → {data.get('current_dsl_version')}")
+            print(
+                f"  ⚠ 导入有警告：{data.get('imported_dsl_version')} → {data.get('current_dsl_version')}"
+            )
         return data["app_id"]
+
+    def create_app(self, name, mode, description, icon="robot_face", icon_bg="#E0F2FE"):
+        r = self.c.post(
+            f"{CONSOLE}/apps",
+            json={
+                "name": name,
+                "mode": mode,
+                "description": description,
+                "icon_type": "emoji",
+                "icon": icon,
+                "icon_background": icon_bg,
+            },
+        )
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"建 App 失败 {r.status_code}: {r.text[:400]}")
+        return r.json()["id"]
+
+    def set_model_config(self, app_id, config):
+        r = self.c.post(f"{CONSOLE}/apps/{app_id}/model-config", json=config)
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"配置 App 失败 {r.status_code}: {r.text[:400]}")
 
     def publish(self, app_id):
         r = self.c.post(
@@ -237,6 +265,95 @@ def build_ocr_workflow():
     )
 
 
+def qa_agent_model_config(dataset_id):
+    """档案问答 Agent 应用（agent-chat）配置：DeepSeek 函数调用 + ECharts 图表工具 + 知识库。
+
+    创建后提示词/模型/工具在 Dify UI 内维护；此处仅为初始配置。
+    """
+    prompt = (
+        "你是 SAMS 档案馆智能助手。资料分两部分：\n"
+        "① 后端精确检索/统计到的权威资料（含档号与精确数字）：\n"
+        "{{es_context}}\n\n"
+        "② 知识库语义召回的补充内容（系统自动检索）。\n\n"
+        "【回答要求】优先依据①作答，②作补充；引用具体档案时在句末标注〔档号〕；"
+        "资料不足就如实说明，绝不编造档号、年度、数字或结论。\n"
+        "【图表要求】当用户想看统计、报表、分布、占比、对比、趋势等可视化结果时：\n"
+        "先用文字给出简明结论，再调用图表工具生成图表——"
+        "分类对比用「柱状图」，占比构成用「饼图」，随年度/时间变化用「线性图表」；\n"
+        "图表数据必须逐项取自①中的权威统计数字，类目与数值一一对应，禁止编造或凑整；"
+        "①中没有对应统计数据时不要画图，如实说明。"
+    )
+    tools = [
+        {
+            "enabled": True,
+            "isDeleted": False,
+            "notAuthor": False,
+            "provider_id": ECHARTS_PROVIDER,
+            "provider_name": ECHARTS_PROVIDER,
+            "provider_type": "builtin",
+            "tool_label": label,
+            "tool_name": name,
+            "tool_parameters": {},
+        }
+        for name, label in (
+            ("bar_chart", "柱状图"),
+            ("pie_chart", "饼图"),
+            ("line_chart", "线性图表"),
+        )
+    ]
+    return {
+        "pre_prompt": prompt,
+        "prompt_type": "simple",
+        "user_input_form": [
+            {
+                "paragraph": {
+                    "label": "ES检索上下文",
+                    "variable": "es_context",
+                    "required": False,
+                    "default": "",
+                    "max_length": 48000,
+                }
+            }
+        ],
+        "dataset_query_variable": "",
+        "opening_statement": "",
+        "suggested_questions": [],
+        "more_like_this": {"enabled": False},
+        "suggested_questions_after_answer": {"enabled": False},
+        "speech_to_text": {"enabled": False},
+        "text_to_speech": {"enabled": False},
+        "retriever_resource": {"enabled": True},
+        "sensitive_word_avoidance": {"enabled": False},
+        "agent_mode": {
+            "enabled": True,
+            "max_iteration": 5,
+            "strategy": "function_call",
+            "tools": tools,
+        },
+        "model": {
+            "provider": DEEPSEEK_PROVIDER,
+            "name": DEEPSEEK_MODEL,
+            "mode": "chat",
+            "completion_params": {"temperature": 0.3},
+        },
+        "dataset_configs": {
+            "retrieval_model": "multiple",
+            "top_k": 6,
+            "reranking_enable": False,
+            "datasets": {
+                "datasets": [{"dataset": {"enabled": True, "id": dataset_id}}]
+            },
+        },
+        "file_upload": {
+            "image": {
+                "enabled": False,
+                "number_limits": 3,
+                "transfer_methods": ["local_file", "remote_url"],
+            }
+        },
+    }
+
+
 def build_qa_chatflow(dataset_id):
     start, kr, llm, ans = "node_start", "node_kr", "node_llm", "node_answer"
     prompt = (
@@ -353,8 +470,14 @@ def build_research_chatflow(dataset_id):
     start, kr, llm, ans = "node_start", "node_kr", "node_llm", "node_answer"
     prompt = (
         "你是档案编研专家，请按用户的写作要求撰写一篇编研文章（类似研究文章）。\n\n"
-        "成果信息：《{{#" + start + ".title#}}》（体裁：{{#" + start + ".result_type#}}）\n\n"
-        "参考资料①（后端检索的馆藏档案原文，权威）：\n{{#" + start + ".es_context#}}\n\n"
+        "成果信息：《{{#"
+        + start
+        + ".title#}}》（体裁：{{#"
+        + start
+        + ".result_type#}}）\n\n"
+        "参考资料①（后端检索的馆藏档案原文，权威）：\n{{#"
+        + start
+        + ".es_context#}}\n\n"
         "参考资料②（知识库语义召回补充）：\n{{#" + kr + ".result#}}\n\n"
         "用户写作要求：{{#sys.query#}}\n\n"
         "【要求】自然成文、叙述连贯，可用 Markdown 小标题（##）组织；"
@@ -370,9 +493,30 @@ def build_research_chatflow(dataset_id):
             {
                 "title": "Start",
                 "variables": [
-                    {"label": "参考资料", "variable": "es_context", "type": "paragraph", "required": False, "max_length": 48000, "options": []},
-                    {"label": "成果标题", "variable": "title", "type": "text-input", "required": False, "max_length": 256, "options": []},
-                    {"label": "体裁", "variable": "result_type", "type": "text-input", "required": False, "max_length": 64, "options": []},
+                    {
+                        "label": "参考资料",
+                        "variable": "es_context",
+                        "type": "paragraph",
+                        "required": False,
+                        "max_length": 48000,
+                        "options": [],
+                    },
+                    {
+                        "label": "成果标题",
+                        "variable": "title",
+                        "type": "text-input",
+                        "required": False,
+                        "max_length": 256,
+                        "options": [],
+                    },
+                    {
+                        "label": "体裁",
+                        "variable": "result_type",
+                        "type": "text-input",
+                        "required": False,
+                        "max_length": 64,
+                        "options": [],
+                    },
                 ],
             },
             80,
@@ -476,8 +620,22 @@ def build_summary_workflow():
             {
                 "title": "Start",
                 "variables": [
-                    {"label": "条目著录信息", "variable": "meta", "type": "paragraph", "required": False, "max_length": 8000, "options": []},
-                    {"label": "原文全文", "variable": "full_text", "type": "paragraph", "required": True, "max_length": 48000, "options": []},
+                    {
+                        "label": "条目著录信息",
+                        "variable": "meta",
+                        "type": "paragraph",
+                        "required": False,
+                        "max_length": 8000,
+                        "options": [],
+                    },
+                    {
+                        "label": "原文全文",
+                        "variable": "full_text",
+                        "type": "paragraph",
+                        "required": True,
+                        "max_length": 48000,
+                        "options": [],
+                    },
                 ],
             },
             80,
@@ -506,7 +664,10 @@ def build_summary_workflow():
         _node(
             end,
             "end",
-            {"title": "End", "outputs": [{"variable": "text", "value_selector": [llm, "text"]}]},
+            {
+                "title": "End",
+                "outputs": [{"variable": "text", "value_selector": [llm, "text"]}],
+            },
             760,
             240,
         ),
@@ -530,11 +691,13 @@ def build_catalog_workflow():
         "你是档案著录专家。请依据『档案原文全文』，按『目标字段定义』抽取每个字段的著录值。\n\n"
         "目标字段定义(JSON，name=字段名/拼音缩写，label=中文名，type=类型，"
         "required=是否必录，options=可选值列表)：\n{{#" + start + ".field_schema#}}\n\n"
-        "当前条目已有值(JSON，供参考，可能为空或有误)：\n{{#" + start + ".existing#}}\n\n"
+        "当前条目已有值(JSON，供参考，可能为空或有误)：\n{{#"
+        + start
+        + ".existing#}}\n\n"
         "档案原文全文：\n{{#" + start + ".full_text#}}\n\n"
         "【要求】\n"
         "1. 只输出一个 JSON 对象，键为字段 name，值为对象 "
-        "{\"value\": 抽取值, \"confidence\": 0~100 整数, \"evidence\": 原文出处片段}。\n"
+        '{"value": 抽取值, "confidence": 0~100 整数, "evidence": 原文出处片段}。\n'
         "2. type=select 的字段，value 必须取自该字段 options，否则留空。\n"
         "3. 原文中找不到依据的字段，value 用空字符串、confidence=0。\n"
         "4. 不要编造；日期统一 YYYY-MM-DD；不要输出 JSON 以外的任何文字。"
@@ -546,9 +709,30 @@ def build_catalog_workflow():
             {
                 "title": "Start",
                 "variables": [
-                    {"label": "原文全文", "variable": "full_text", "type": "paragraph", "required": True, "max_length": 48000, "options": []},
-                    {"label": "字段定义", "variable": "field_schema", "type": "paragraph", "required": True, "max_length": 8000, "options": []},
-                    {"label": "当前条目", "variable": "existing", "type": "paragraph", "required": False, "max_length": 8000, "options": []},
+                    {
+                        "label": "原文全文",
+                        "variable": "full_text",
+                        "type": "paragraph",
+                        "required": True,
+                        "max_length": 48000,
+                        "options": [],
+                    },
+                    {
+                        "label": "字段定义",
+                        "variable": "field_schema",
+                        "type": "paragraph",
+                        "required": True,
+                        "max_length": 8000,
+                        "options": [],
+                    },
+                    {
+                        "label": "当前条目",
+                        "variable": "existing",
+                        "type": "paragraph",
+                        "required": False,
+                        "max_length": 8000,
+                        "options": [],
+                    },
                 ],
             },
             80,
@@ -576,7 +760,10 @@ def build_catalog_workflow():
         _node(
             end,
             "end",
-            {"title": "End", "outputs": [{"variable": "text", "value_selector": [llm, "text"]}]},
+            {
+                "title": "End",
+                "outputs": [{"variable": "text", "value_selector": [llm, "text"]}],
+            },
             760,
             240,
         ),
@@ -698,15 +885,15 @@ def main():
         for a in dify.list_apps():
             if a.get("name") == "档案问答":
                 dify.delete_app(a["id"])
-        app_id = dify.import_app(
-            build_qa_chatflow(args.qa),
+        app_id = dify.create_app(
             "档案问答",
-            "QA chatflow",
+            "agent-chat",
+            "ES精确检索 + 知识库召回 + DeepSeek Agent（可调用 ECharts 图表工具）",
             icon="speech_balloon",
             icon_bg="#E0F2FE",
         )
-        dify.publish(app_id)
-        print(f"✓ 问答 Chatflow app_id={app_id}")
+        dify.set_model_config(app_id, qa_agent_model_config(args.qa))
+        print(f"✓ 问答 Agent 应用 app_id={app_id}")
         print(f"  DIFY_QA_API_KEY={dify.api_key(app_id)}")
         return
 

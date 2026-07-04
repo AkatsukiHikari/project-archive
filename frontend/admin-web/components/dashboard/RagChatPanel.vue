@@ -94,10 +94,36 @@
                 ? 'background:oklch(var(--p));color:oklch(var(--pc))'
                 : 'background:var(--semi-color-bg-0);color:var(--semi-color-text-0);border:1px solid var(--semi-color-border)'"
               @click="msg.role === 'assistant' && onAnswerClick($event)"
-              v-html="msg.role === 'assistant'
-                ? renderAnswer(getMsgText(msg)) + (chat.status === 'streaming' && isLastMsg(msg) ? '<span class=&quot;typing-cursor-inline&quot;></span>' : '')
-                : getMsgText(msg)"
-            />
+            >
+              <template v-if="msg.role === 'assistant'">
+                <template v-for="(part, pi) in answerParts(getMsgText(msg))" :key="pi">
+                  <!-- eslint-disable-next-line vue/no-v-html -->
+                  <div v-if="part.type === 'md'" v-html="renderAnswer(part.text)" />
+                  <div
+                    v-else-if="part.option"
+                    class="my-2 rounded-xl px-1 py-2 w-full min-w-[280px] sm:min-w-[420px]"
+                    style="background:var(--semi-color-fill-0)"
+                  >
+                    <EChart :option="themedChartOption(part.option)" :height="300" />
+                  </div>
+                  <div
+                    v-else-if="part.pending"
+                    class="flex items-center gap-2 my-2 text-[12px]"
+                    style="color:var(--semi-color-text-2)"
+                  >
+                    <span class="dot-bounce" style="animation-delay:0ms" />
+                    <span class="dot-bounce" style="animation-delay:160ms" />
+                    图表生成中…
+                  </div>
+                  <div v-else class="my-2 text-[12px]" style="color:oklch(var(--er))">
+                    图表配置解析失败，原始配置：
+                    <pre class="mt-1 text-[11px] overflow-x-auto">{{ part.raw }}</pre>
+                  </div>
+                </template>
+                <span v-if="chat.status === 'streaming' && isLastMsg(msg)" class="typing-cursor-inline" />
+              </template>
+              <template v-else>{{ getMsgText(msg) }}</template>
+            </div>
 
             <!-- 引用 chip 行 —— 仅 AI 气泡下方展示 -->
             <div
@@ -238,6 +264,7 @@
 import { ref, computed, watch, nextTick, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { NButton, NInput, NPopover, NTag } from "naive-ui";
+import { EChart } from "@/components/ui";
 import { Chat } from "@ai-sdk/vue";
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
 import { marked } from "marked";
@@ -319,18 +346,19 @@ const parseDifyError = (raw: string | undefined): string => {
 const normalizeCitations = (raw: unknown): CitationChip[] => {
   if (!Array.isArray(raw)) return [];
   return raw
-    .map((r: any, i: number): CitationChip | null => {
-      if (!r || typeof r !== "object") return null;
+    .map((item: unknown, i: number): CitationChip | null => {
+      if (!item || typeof item !== "object") return null;
+      const r = item as Record<string, unknown>;
       // 本系统形态
       if (r.chunk_id && r.source_type) {
         return {
           chunk_id: String(r.chunk_id),
-          source_type: r.source_type,
+          source_type: r.source_type as CitationChip["source_type"],
           source_id: String(r.source_id ?? ""),
           title: String(r.title ?? r.source_id ?? "引用"),
           snippet: String(r.snippet ?? ""),
           score: Number(r.score ?? 0),
-          extra: r.extra ?? undefined,
+          extra: (r.extra as Record<string, unknown>) ?? undefined,
         };
       }
       // Dify retriever_resources 形态
@@ -345,6 +373,26 @@ const normalizeCitations = (raw: unknown): CitationChip[] => {
       };
     })
     .filter((x): x is CitationChip => x !== null);
+};
+
+// agent_thought.observation 形如 {"pie_chart": "```echarts\n{...}\n```"}，
+// 抽出全部 echarts 代码块内容（非图表工具的产出忽略）
+const extractEchartsBlocks = (observation: string): string[] => {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(observation) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const blocks: string[] = [];
+  for (const value of Object.values(parsed)) {
+    if (typeof value !== "string") continue;
+    for (const m of value.matchAll(/```echarts\s*([\s\S]*?)```/g)) {
+      const inner = (m[1] ?? "").trim();
+      if (inner) blocks.push(inner);
+    }
+  }
+  return blocks;
 };
 
 class DifyTransport implements ChatTransport<UIMessage> {
@@ -416,6 +464,9 @@ class DifyTransport implements ChatTransport<UIMessage> {
         let buffer = "";
         const textId = "txt";
         let closed = false;
+        // Agent 工具产出（echarts 图表块）藏在 agent_thought.observation 里，
+        // 同一 thought 会被多次推送（先空后带结果），按 id 去重只注入一次
+        const injectedThoughts = new Set<string>();
 
         const safeClose = () => {
           if (closed) return;
@@ -466,6 +517,27 @@ class DifyTransport implements ChatTransport<UIMessage> {
                     this.onCitations(this.lastAssistantId, cits);
                   }
                   break loop;
+                }
+
+                // Agent 模式：图表等工具产出在 agent_thought.observation，
+                // 抽出 echarts 代码块按到达顺序注入正文（正好落在两轮 LLM 文字之间）
+                if (chunk.event === "agent_thought") {
+                  const tid = String(chunk.id ?? "");
+                  const obs = String(chunk.observation ?? "");
+                  if (tid && obs && !injectedThoughts.has(tid)) {
+                    const blocks = extractEchartsBlocks(obs);
+                    if (blocks.length > 0) {
+                      injectedThoughts.add(tid);
+                      for (const block of blocks) {
+                        controller.enqueue({
+                          type: "text-delta",
+                          id: textId,
+                          delta: `\n\n\`\`\`echarts\n${block}\n\`\`\`\n\n`,
+                        });
+                      }
+                    }
+                  }
+                  continue;
                 }
 
                 // 后端独立推送的 citations 事件（P2 起后端在 Dify 之外注入）
@@ -635,6 +707,75 @@ function renderAnswer(text: string): string {
     ADD_TAGS: ["span"],
     ADD_ATTR: ["class", "target", "rel"],
   });
+}
+
+// ── 答案分段：markdown 文本段 + echarts 图表段 ────────────────────────────────
+type AnswerPart =
+  | { type: "md"; text: string }
+  | { type: "chart"; raw: string; pending: boolean; option?: Record<string, unknown> };
+
+function answerParts(text: string): AnswerPart[] {
+  const parts: AnswerPart[] = [];
+  let rest = text;
+  while (true) {
+    const idx = rest.indexOf("```echarts");
+    if (idx === -1) break;
+    if (idx > 0) parts.push({ type: "md", text: rest.slice(0, idx) });
+    const after = rest.slice(idx + "```echarts".length);
+    const endIdx = after.indexOf("```");
+    if (endIdx === -1) {
+      // 流式中围栏未闭合 → 图表生成中占位
+      parts.push({ type: "chart", raw: after.trim(), pending: true });
+      return parts;
+    }
+    const raw = after.slice(0, endIdx).trim();
+    let option: Record<string, unknown> | undefined;
+    try {
+      option = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      option = undefined;
+    }
+    parts.push({ type: "chart", raw, pending: false, option });
+    rest = after.slice(endIdx + 3);
+  }
+  if (rest) parts.push({ type: "md", text: rest });
+  return parts;
+}
+
+// 图表主题适配：AI 生成的 option 不带颜色，按亮/暗主题补文字与轴线色
+const { isDark } = useNaiveTheme();
+
+type LooseObj = Record<string, unknown>;
+
+function themedChartOption(raw: LooseObj): LooseObj {
+  const text = isDark.value ? "#e5e7eb" : "#334155";
+  const sub = isDark.value ? "#94a3b8" : "#64748b";
+  const line = isDark.value ? "rgba(148,163,184,0.25)" : "rgba(100,116,139,0.2)";
+  const opt = JSON.parse(JSON.stringify(raw)) as LooseObj;
+  opt.backgroundColor = "transparent";
+  opt.textStyle = { color: text, ...((opt.textStyle as LooseObj) ?? {}) };
+  const title = opt.title as LooseObj | undefined;
+  if (title && typeof title === "object") {
+    opt.title = { ...title, textStyle: { color: text, fontSize: 14, ...((title.textStyle as LooseObj) ?? {}) } };
+  }
+  const legend = opt.legend as LooseObj | undefined;
+  if (legend && typeof legend === "object") {
+    opt.legend = { ...legend, textStyle: { color: sub, ...((legend.textStyle as LooseObj) ?? {}) } };
+  }
+  const themeAxis = (a: LooseObj): LooseObj => ({
+    ...a,
+    axisLabel: { color: sub, ...((a.axisLabel as LooseObj) ?? {}) },
+    axisLine: { lineStyle: { color: line }, ...((a.axisLine as LooseObj) ?? {}) },
+    splitLine: { lineStyle: { color: line }, ...((a.splitLine as LooseObj) ?? {}) },
+  });
+  for (const axisKey of ["xAxis", "yAxis"]) {
+    const axis = opt[axisKey];
+    if (!axis) continue;
+    opt[axisKey] = Array.isArray(axis)
+      ? (axis as LooseObj[]).map(themeAxis)
+      : themeAxis(axis as LooseObj);
+  }
+  return opt;
 }
 
 const chipKindTagStyle = (chip: CitationChip): Record<string, string> => {

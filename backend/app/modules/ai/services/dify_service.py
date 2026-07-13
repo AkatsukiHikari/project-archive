@@ -153,13 +153,24 @@ class DifyService:
         self, content: bytes, filename: str, user_id: str, api_key: str
     ) -> str:
         """上传文件到 Dify，返回 upload_file_id（供工作流 file 入参引用）。"""
-        resp = await self._client.post(
-            f"{settings.DIFY_BASE_URL}/files/upload",
-            headers={"Authorization": f"Bearer {api_key}"},
-            files={"file": (filename, content)},
-            data={"user": user_id},
-            timeout=httpx.Timeout(connect=10.0, read=120.0, write=120.0, pool=10.0),
-        )
+        from app.common.exceptions.base import ValidationException
+
+        try:
+            resp = await self._client.post(
+                f"{settings.DIFY_BASE_URL}/files/upload",
+                headers={"Authorization": f"Bearer {api_key}"},
+                files={"file": (filename, content)},
+                data={"user": user_id},
+                timeout=httpx.Timeout(connect=10.0, read=120.0, write=120.0, pool=10.0),
+            )
+        except httpx.ConnectError as exc:
+            logger.error("无法连接到 Dify 服务: %s", settings.DIFY_BASE_URL)
+            raise ValidationException(
+                message="AI 服务（Dify）无法连接，请确认 Dify 已启动"
+            ) from exc
+        except httpx.TimeoutException as exc:
+            logger.error("Dify 文件上传超时")
+            raise ValidationException(message="AI 服务（Dify）响应超时，请稍后重试") from exc
         resp.raise_for_status()
         return resp.json()["id"]
 
@@ -167,15 +178,26 @@ class DifyService:
         self, inputs: dict, user_id: str, api_key: str, timeout_s: float = 600.0
     ) -> dict:
         """阻塞式跑工作流（OCR 这类耗时任务），返回 data.outputs。"""
-        resp = await self._client.post(
-            f"{settings.DIFY_BASE_URL}/workflows/run",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={"inputs": inputs, "response_mode": "blocking", "user": user_id},
-            timeout=httpx.Timeout(connect=10.0, read=timeout_s, write=30.0, pool=10.0),
-        )
+        from app.common.exceptions.base import ValidationException
+
+        try:
+            resp = await self._client.post(
+                f"{settings.DIFY_BASE_URL}/workflows/run",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"inputs": inputs, "response_mode": "blocking", "user": user_id},
+                timeout=httpx.Timeout(connect=10.0, read=timeout_s, write=30.0, pool=10.0),
+            )
+        except httpx.ConnectError as exc:
+            logger.error("无法连接到 Dify 服务: %s", settings.DIFY_BASE_URL)
+            raise ValidationException(
+                message="AI 服务（Dify）无法连接，请确认 Dify 已启动"
+            ) from exc
+        except httpx.TimeoutException as exc:
+            logger.error("Dify 工作流请求超时")
+            raise ValidationException(message="AI 服务（Dify）响应超时，请稍后重试") from exc
         resp.raise_for_status()
         data = resp.json().get("data", {})
         if data.get("status") != "succeeded":

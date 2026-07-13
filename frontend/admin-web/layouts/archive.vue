@@ -105,7 +105,7 @@
         :style="{ left: isCollapsed ? '64px' : '240px' }"
       >
         <SystemHeader />
-        <TabsBar prefix="/archive" :extra-paths="['/ai', '/ai/catalog', '/ai/knowledge', '/ai/ocr']" />
+        <TabsBar prefix="/archive" :extra-paths="['/ai', '/ai/catalog', '/ai/proofread', '/ai/knowledge', '/ai/ocr']" />
       </div>
 
       <!-- 内容区 -->

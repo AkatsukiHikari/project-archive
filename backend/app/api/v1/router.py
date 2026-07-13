@@ -44,6 +44,8 @@ from app.modules.ai.api.routes_ai import router as ai_router
 v1_router.include_router(ai_router, prefix="/ai", tags=["ai"])
 from app.modules.ai.api.routes_catalog import router as ai_catalog_router
 v1_router.include_router(ai_catalog_router, prefix="/ai", tags=["ai"])
+from app.modules.ai.api.routes_proofread import router as ai_proofread_router
+v1_router.include_router(ai_proofread_router, prefix="/ai", tags=["ai"])
 v1_router.include_router(repository_routes.router, prefix="/repository", tags=["repository"])
 v1_router.include_router(archive_category_router)
 v1_router.include_router(archive_router)

@@ -357,11 +357,11 @@ export interface NavYear { year: number; count: number }
 export const ArchiveAPI = {
   list: (params: ArchiveListParams) =>
     http.get<ApiResponse<ArchiveListResult>, ApiResponse<ArchiveListResult>>("/archive/records", { params }),
-  navCategories: (source: "staging" | "formal" = "staging") =>
+  navCategories: (source: "staging" | "formal" | "all" = "staging") =>
     http.get<ApiResponse<NavCategory[]>, ApiResponse<NavCategory[]>>("/archive/records/nav", { params: { level: "category", source } }),
-  navFonds: (categoryId: string, source: "staging" | "formal" = "staging") =>
+  navFonds: (categoryId: string, source: "staging" | "formal" | "all" = "staging") =>
     http.get<ApiResponse<NavFonds[]>, ApiResponse<NavFonds[]>>("/archive/records/nav", { params: { level: "fonds", category_id: categoryId, source } }),
-  navYears: (categoryId: string, fondsId: string, source: "staging" | "formal" = "staging") =>
+  navYears: (categoryId: string, fondsId: string, source: "staging" | "formal" | "all" = "staging") =>
     http.get<ApiResponse<NavYear[]>, ApiResponse<NavYear[]>>("/archive/records/nav", { params: { level: "year", category_id: categoryId, fonds_id: fondsId, source } }),
   get: (id: string) => http.get<ApiResponse<Archive>, ApiResponse<Archive>>(`/archive/records/${id}`),
   attachments: (id: string) =>

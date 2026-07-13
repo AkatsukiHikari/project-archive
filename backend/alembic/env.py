@@ -37,6 +37,7 @@ from app.modules.ai.models.ocr_job import OcrJob  # noqa: F401
 from app.modules.ai.models.catalog_log import AiCatalogLog  # noqa: F401
 from app.modules.ai.models.catalog_extract import CatalogExtractCache  # noqa: F401
 from app.modules.ai.models.archive_summary import ArchiveSummary  # noqa: F401
+from app.modules.ai.models.proofread import AiProofreadBatch, AiProofreadItem  # noqa: F401
 from app.modules.research.models import (  # noqa: F401
     ResearchMaterial,
     ResearchProject,

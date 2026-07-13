@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { NButton, NTree } from "naive-ui";
 import type { TreeOption } from "naive-ui";
 import { ArchiveAPI } from "@/api/repository";
@@ -62,7 +62,10 @@ const emit = defineEmits<{
   (e: "clear"): void;
 }>();
 
-withDefaults(defineProps<{ defaultOpen?: boolean }>(), { defaultOpen: true });
+const props = withDefaults(
+  defineProps<{ defaultOpen?: boolean; source?: "staging" | "formal" | "all" }>(),
+  { defaultOpen: true, source: "staging" },
+);
 
 const open = ref(true);
 const navData = ref<TreeOption[]>([]);
@@ -70,7 +73,7 @@ const selectedKeys = ref<string[]>([]);
 const scopeLabel = ref("");
 
 async function loadRoot() {
-  const res = await ArchiveAPI.navCategories();
+  const res = await ArchiveAPI.navCategories(props.source);
   navData.value = (res.data ?? []).map((c) => ({
     key: `c:${c.category_id}`,
     label: `${c.name}（${c.count}）`,
@@ -82,7 +85,7 @@ async function loadRoot() {
 async function onLoadNav(node: TreeOption): Promise<void> {
   const meta = (node.meta ?? {}) as Record<string, string>;
   if (meta.level === "category") {
-    const res = await ArchiveAPI.navFonds(meta.category_id);
+    const res = await ArchiveAPI.navFonds(meta.category_id, props.source);
     node.children = (res.data ?? []).map((f) => ({
       key: `f:${meta.category_id}:${f.fonds_id}`,
       label: `${f.qzh}（${f.count}）`,
@@ -90,7 +93,7 @@ async function onLoadNav(node: TreeOption): Promise<void> {
       meta: { level: "fonds", category_id: meta.category_id, fonds_id: f.fonds_id, qzh: f.qzh, name: meta.name },
     } as TreeOption));
   } else if (meta.level === "fonds") {
-    const res = await ArchiveAPI.navYears(meta.category_id, meta.fonds_id);
+    const res = await ArchiveAPI.navYears(meta.category_id, meta.fonds_id, props.source);
     node.children = (res.data ?? []).map((y) => ({
       key: `y:${meta.category_id}:${meta.fonds_id}:${y.year}`,
       label: `${y.year} 年（${y.count}）`,
@@ -131,4 +134,15 @@ function clear() {
 
 defineExpose({ clear });
 onMounted(loadRoot);
+
+// 库切换（智能校对页 全部/暂存/正式）：清空选中并按新口径重载计数
+watch(
+  () => props.source,
+  () => {
+    selectedKeys.value = [];
+    scopeLabel.value = "";
+    navData.value = [];
+    loadRoot();
+  },
+);
 </script>

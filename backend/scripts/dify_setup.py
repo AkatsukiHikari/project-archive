@@ -688,19 +688,17 @@ def build_catalog_workflow():
     """智能著录抽取：Start(全文+字段schema+当前条目) → DeepSeek 抽结构化JSON → End(text)。"""
     start, llm, end = "node_start", "node_llm", "node_end"
     prompt = (
-        "你是档案著录专家。请依据『档案原文全文』，按『目标字段定义』抽取每个字段的著录值。\n\n"
+        "你是档案著录专家。请**只依据『档案原文全文』**，按『目标字段定义』抽取每个字段的著录值。\n\n"
         "目标字段定义(JSON，name=字段名/拼音缩写，label=中文名，type=类型，"
         "required=是否必录，options=可选值列表)：\n{{#" + start + ".field_schema#}}\n\n"
-        "当前条目已有值(JSON，供参考，可能为空或有误)：\n{{#"
-        + start
-        + ".existing#}}\n\n"
         "档案原文全文：\n{{#" + start + ".full_text#}}\n\n"
         "【要求】\n"
         "1. 只输出一个 JSON 对象，键为字段 name，值为对象 "
         '{"value": 抽取值, "confidence": 0~100 整数, "evidence": 原文出处片段}。\n'
         "2. type=select 的字段，value 必须取自该字段 options，否则留空。\n"
-        "3. 原文中找不到依据的字段，value 用空字符串、confidence=0。\n"
-        "4. 不要编造；日期统一 YYYY-MM-DD；不要输出 JSON 以外的任何文字。"
+        "3. 原文中找不到依据的字段，value 用空字符串、confidence=0。evidence 必须是原文中"
+        "真实存在的片段，禁止写说明性文字。\n"
+        "4. 一切以原文为准，不要编造；日期统一 YYYY-MM-DD；不要输出 JSON 以外的任何文字。"
     )
     nodes = [
         _node(

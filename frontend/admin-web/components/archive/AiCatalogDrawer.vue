@@ -55,8 +55,11 @@
               </NButton>
             </div>
             <div v-else class="flex items-center gap-3 px-4 py-2.5 border-b shrink-0" style="border-color: var(--semi-color-border)">
-              <span class="text-[13px]" style="color: var(--semi-color-text-2)">
+              <span v-if="autoAdopt" class="text-[13px]" style="color: var(--semi-color-text-2)">
                 AI 建议 <strong style="color: oklch(var(--p))">{{ changedCount }}</strong> 项（绿点）· 阈值 {{ threshold }}% 已自动采用
+              </span>
+              <span v-else class="text-[13px]" style="color: var(--semi-color-text-2)">
+                AI 发现 <strong style="color: var(--semi-color-danger)">{{ changedCount }}</strong> 项与原文不符或缺录，表单保持现值，请逐项确认是否采用
               </span>
               <div class="flex-1" />
               <NButton size="tiny" tertiary @click="applyAllAi">全部采用 AI</NButton>
@@ -118,7 +121,15 @@ interface TargetArchive {
 // 枚举编码字段不采用 AI 建议值（保持当前值，由用户在表单中调整）
 const AI_SKIP = ["MJ", "BGQX"];
 
-const props = defineProps<{ show: boolean; archive: TargetArchive | null }>();
+const props = withDefaults(
+  defineProps<{
+    show: boolean;
+    archive: TargetArchive | null;
+    /** 是否将 ≥阈值 的 AI 建议自动填入表单。著录补正=true；智能校对=false（只提示，逐项人工采用） */
+    autoAdopt?: boolean;
+  }>(),
+  { autoAdopt: true },
+);
 const emit = defineEmits<{ (e: "update:show", v: boolean): void; (e: "applied"): void }>();
 
 const message = useMessage();
@@ -189,7 +200,7 @@ async function load() {
     fullText.value = d.full_text || "";
     suggestions.value = d.suggestions || [];
     for (const s of suggestions.value) {
-      const useAi = s.changed && s.preselect && !AI_SKIP.includes(s.name);
+      const useAi = props.autoAdopt && s.changed && s.preselect && !AI_SKIP.includes(s.name);
       form[s.name] = useAi ? s.suggested : s.current;
     }
   } catch {

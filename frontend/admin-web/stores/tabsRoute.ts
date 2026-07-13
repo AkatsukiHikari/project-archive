@@ -54,6 +54,7 @@ const ROUTE_TITLE_MAP: Record<string, string> = {
   "/archive/research/template": "编研模板",
   "/ai": "档案智能问答",
   "/ai/catalog": "智能著录",
+  "/ai/proofread": "智能校对",
   "/ai/knowledge": "AI 知识库",
   "/ai/ocr": "OCR 任务",
   "/archive/settings/fonds": "全宗管理",

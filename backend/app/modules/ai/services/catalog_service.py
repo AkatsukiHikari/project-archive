@@ -60,8 +60,14 @@ async def category_schema(db: AsyncSession, category_id) -> list[dict]:
     if not category_id:
         return []
     cat = (
-        await db.execute(select(ArchiveCategory).where(ArchiveCategory.id == category_id))
-    ).scalars().first()
+        (
+            await db.execute(
+                select(ArchiveCategory).where(ArchiveCategory.id == category_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     return extract.compact_schema(cat.field_schema if cat else None)
 
 
@@ -126,7 +132,10 @@ def build_suggestions(
 
 
 async def suggest(
-    db: AsyncSession, archive_id: uuid.UUID, doc_source: str, user_id: uuid.UUID,
+    db: AsyncSession,
+    archive_id: uuid.UUID,
+    doc_source: str,
+    user_id: uuid.UUID,
     tenant_id: Optional[uuid.UUID],
 ) -> dict:
     model = _model(doc_source)
@@ -140,8 +149,12 @@ async def suggest(
     schema = await category_schema(db, archive.category_id)
     current = archive_values(archive, schema)
     threshold = await get_threshold(db)
-    info = {"id": str(archive.id), "DH": archive.DH, "TM": archive.TM,
-            "doc_source": doc_source}
+    info = {
+        "id": str(archive.id),
+        "DH": archive.DH,
+        "TM": archive.TM,
+        "doc_source": doc_source,
+    }
 
     full_text = (getattr(archive, "full_text", None) or "").strip()
     if not full_text:
@@ -168,31 +181,53 @@ async def suggest(
     }
 
 
+# 抽取口径版本号：进缓存哈希。逻辑变更时递增，旧缓存自动全部失效。
+# v2: 抽取对条目现有值致盲（不再传 existing 给工作流）——曾发现模型把现有值
+#     原样抄回并标 100 置信度（evidence="当前条目已有值"），导致比对永远一致。
+EXTRACT_VERSION = "v2"
+
+
 async def _cached_extract(
-    db: AsyncSession, archive_id, full_text: str, raw_schema: list[dict],
-    current: dict, user_id: str, tenant_id,
+    db: AsyncSession,
+    archive_id,
+    full_text: str,
+    raw_schema: list[dict],
+    current: dict,
+    user_id: str,
+    tenant_id,
+    force: bool = False,
 ) -> dict:
-    """抽取结果按 full_text 哈希缓存：原文没变就复用，不再重跑 Dify。"""
+    """抽取结果按 full_text 哈希缓存：原文没变就复用，不再重跑 Dify。
+
+    force=True 时无视缓存强制重抽（批量校对的「强制重新校对」）。
+    """
     import hashlib
 
     from app.modules.ai.models.catalog_extract import CatalogExtractCache
 
-    h = hashlib.sha256((full_text or "").encode("utf-8")).hexdigest()
+    h = hashlib.sha256(
+        f"{EXTRACT_VERSION}:{full_text or ''}".encode("utf-8")
+    ).hexdigest()
     row = (
-        await db.execute(
-            select(CatalogExtractCache)
-            .where(
-                CatalogExtractCache.archive_id == archive_id,
-                CatalogExtractCache.is_deleted.is_(False),
+        (
+            await db.execute(
+                select(CatalogExtractCache)
+                .where(
+                    CatalogExtractCache.archive_id == archive_id,
+                    CatalogExtractCache.is_deleted.is_(False),
+                )
+                .order_by(CatalogExtractCache.create_time.desc())
+                .limit(1)
             )
-            .order_by(CatalogExtractCache.create_time.desc())
-            .limit(1)
         )
-    ).scalars().first()
-    if row and row.text_hash == h and row.data:
+        .scalars()
+        .first()
+    )
+    if not force and row and row.text_hash == h and row.data:
         return row.data  # 命中缓存，跳过 Dify
 
-    extracted = await extract.extract_from_text(full_text, raw_schema, current, user_id)
+    # 致盲抽取：绝不把条目现有值给模型，AI 只能依据原文；比对由后端完成
+    extracted = await extract.extract_from_text(full_text, raw_schema, {}, user_id)
     if row:
         row.is_deleted = True
     db.add(
@@ -225,8 +260,12 @@ def _coerce(name: str, value: str):
 
 
 async def apply(
-    db: AsyncSession, archive_id: uuid.UUID, doc_source: str,
-    adopted: dict[str, str], user_id: uuid.UUID, tenant_id: Optional[uuid.UUID],
+    db: AsyncSession,
+    archive_id: uuid.UUID,
+    doc_source: str,
+    adopted: dict[str, str],
+    user_id: uuid.UUID,
+    tenant_id: Optional[uuid.UUID],
 ) -> dict:
     model = _model(doc_source)
     stmt = select(model).where(model.id == archive_id, model.is_deleted.is_(False))
@@ -268,6 +307,7 @@ async def apply(
 
     try:
         from app.modules.repository.services.es_sync_service import sync_one
+
         await sync_one(archive)
     except Exception:  # noqa: BLE001
         logger.warning("智能著录写入后 ES 同步失败 archive=%s", archive.id)
@@ -275,7 +315,10 @@ async def apply(
 
 
 async def log_ingest(
-    db: AsyncSession, archive, adopted_meta: dict, user_id: uuid.UUID,
+    db: AsyncSession,
+    archive,
+    adopted_meta: dict,
+    user_id: uuid.UUID,
     tenant_id: Optional[uuid.UUID],
 ) -> None:
     db.add(
@@ -319,8 +362,12 @@ def _completeness(archive, required: list[str]) -> tuple[int, int]:
 
 
 async def list_candidates(
-    db: AsyncSession, tenant_id: Optional[uuid.UUID], doc_source: str = "all",
-    only_issues: bool = False, skip: int = 0, limit: int = 50,
+    db: AsyncSession,
+    tenant_id: Optional[uuid.UUID],
+    doc_source: str = "all",
+    only_issues: bool = False,
+    skip: int = 0,
+    limit: int = 50,
 ) -> dict:
     required = await _required_map(db)
     sources = ["staging", "formal"] if doc_source == "all" else [doc_source]
@@ -331,14 +378,23 @@ async def list_candidates(
         stmt = select(model).where(model.is_deleted.is_(False))
         if tenant_id:
             stmt = stmt.where(model.tenant_id == tenant_id)
-        rows = (await db.execute(stmt.order_by(model.update_time.desc()))).scalars().all()
+        rows = (
+            (await db.execute(stmt.order_by(model.update_time.desc()))).scalars().all()
+        )
         for a in rows:
             filled, total = _completeness(a, required.get(a.category_id, []))
             items.append(
                 {
-                    "id": str(a.id), "_uid": a.id, "doc_source": src, "DH": a.DH, "TM": a.TM,
-                    "QZH": a.QZH, "ND": a.ND, "category_id": str(a.category_id) if a.category_id else None,
-                    "filled": filled, "total": total,
+                    "id": str(a.id),
+                    "_uid": a.id,
+                    "doc_source": src,
+                    "DH": a.DH,
+                    "TM": a.TM,
+                    "QZH": a.QZH,
+                    "ND": a.ND,
+                    "category_id": str(a.category_id) if a.category_id else None,
+                    "filled": filled,
+                    "total": total,
                     "_has_text": bool((a.full_text or "").strip()),
                 }
             )
@@ -350,9 +406,9 @@ async def list_candidates(
         ac = counts.get(it.pop("_uid"), 0)
         has_text = it.pop("_has_text")
         if not ac:
-            status = "no_source"          # 无原文：不能查看原文、不能 AI 著录
+            status = "no_source"  # 无原文：不能查看原文、不能 AI 著录
         elif not has_text:
-            status = "need_ocr"           # 有原文未识别：先 OCR
+            status = "need_ocr"  # 有原文未识别：先 OCR
         elif it["filled"] == 0:
             status = "empty"
         elif it["total"] and it["filled"] < it["total"]:

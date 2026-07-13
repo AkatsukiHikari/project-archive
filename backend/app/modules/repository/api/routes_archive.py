@@ -127,80 +127,95 @@ async def archive_nav_tree(
     level: str = Query(..., pattern="^(category|fonds|year)$"),
     category_id: Optional[uuid.UUID] = Query(default=None),
     fonds_id: Optional[uuid.UUID] = Query(default=None),
-    source: str = Query(default="staging", description="staging 暂存库 | formal 正式库"),
+    source: str = Query(default="staging", description="staging 暂存库 | formal 正式库 | all 两库合并"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """档案查询的层级导航：门类→全宗号→年度，每级带条目计数，供老档案员点选过滤。
 
-    source 决定口径：著录页=暂存库，档案查询页=正式库。
+    source 决定口径：著录页=暂存库，档案查询页=正式库，智能校对页=all（两库计数合并）。
     """
     from sqlalchemy import func, select
-    from app.modules.repository.models.archive import Archive
-    from app.modules.repository.models.archive import ArchiveStaging as _Staging
+    from app.modules.repository.models.archive import Archive, ArchiveStaging
     from app.modules.repository.models.category import ArchiveCategory
 
-    ArchiveStaging = Archive if source == "formal" else _Staging  # noqa: N806
+    if source == "formal":
+        models = [Archive]
+    elif source == "all":
+        models = [ArchiveStaging, Archive]
+    else:
+        models = [ArchiveStaging]
 
     tenant_id = current_user.tenant_id
-    base_conds = [ArchiveStaging.is_deleted == False]  # noqa: E712
-    if tenant_id:
-        base_conds.append(ArchiveStaging.tenant_id == tenant_id)
+
+    def _conds(model):
+        conds = [model.is_deleted == False]  # noqa: E712
+        if tenant_id:
+            conds.append(model.tenant_id == tenant_id)
+        return conds
 
     if level == "category":
-        stmt = (
-            select(
-                ArchiveStaging.category_id,
-                ArchiveCategory.code,
-                ArchiveCategory.name,
-                func.count(),
+        merged: dict = {}
+        for model in models:
+            stmt = (
+                select(
+                    model.category_id,
+                    ArchiveCategory.code,
+                    ArchiveCategory.name,
+                    func.count(),
+                )
+                .join(ArchiveCategory, model.category_id == ArchiveCategory.id)
+                .where(*_conds(model))
+                .group_by(model.category_id, ArchiveCategory.code, ArchiveCategory.name)
             )
-            .join(ArchiveCategory, ArchiveStaging.category_id == ArchiveCategory.id)
-            .where(*base_conds)
-            .group_by(ArchiveStaging.category_id, ArchiveCategory.code, ArchiveCategory.name)
-            .order_by(ArchiveCategory.code)
-        )
-        rows = (await db.execute(stmt)).all()
-        return success([
-            {"category_id": str(r[0]), "code": r[1], "name": r[2], "count": r[3]}
-            for r in rows
-        ])
+            for r in (await db.execute(stmt)).all():
+                key = str(r[0])
+                if key in merged:
+                    merged[key] = {**merged[key], "count": merged[key]["count"] + r[3]}
+                else:
+                    merged[key] = {"category_id": key, "code": r[1], "name": r[2], "count": r[3]}
+        return success(sorted(merged.values(), key=lambda x: x["code"] or ""))
 
     if level == "fonds":
         if not category_id:
             return success([])
-        stmt = (
-            select(
-                ArchiveStaging.QZH,
-                ArchiveStaging.fonds_id,
-                func.count(),
+        merged = {}
+        for model in models:
+            stmt = (
+                select(model.QZH, model.fonds_id, func.count())
+                .where(*_conds(model), model.category_id == category_id)
+                .group_by(model.QZH, model.fonds_id)
             )
-            .where(*base_conds, ArchiveStaging.category_id == category_id)
-            .group_by(ArchiveStaging.QZH, ArchiveStaging.fonds_id)
-            .order_by(ArchiveStaging.QZH)
-        )
-        rows = (await db.execute(stmt)).all()
-        return success([
-            {"qzh": r[0], "fonds_id": str(r[1]), "count": r[2]} for r in rows
-        ])
+            for r in (await db.execute(stmt)).all():
+                key = str(r[1])
+                if key in merged:
+                    merged[key] = {**merged[key], "count": merged[key]["count"] + r[2]}
+                else:
+                    merged[key] = {"qzh": r[0], "fonds_id": key, "count": r[2]}
+        return success(sorted(merged.values(), key=lambda x: x["qzh"] or ""))
 
     # level == "year"
     if not category_id or not fonds_id:
         return success([])
-    stmt = (
-        select(ArchiveStaging.ND, func.count())
-        .where(
-            *base_conds,
-            ArchiveStaging.category_id == category_id,
-            ArchiveStaging.fonds_id == fonds_id,
+    merged = {}
+    for model in models:
+        stmt = (
+            select(model.ND, func.count())
+            .where(
+                *_conds(model),
+                model.category_id == category_id,
+                model.fonds_id == fonds_id,
+            )
+            .group_by(model.ND)
         )
-        .group_by(ArchiveStaging.ND)
-        .order_by(ArchiveStaging.ND.desc().nulls_last())
-    )
-    rows = (await db.execute(stmt)).all()
-    return success([
-        {"year": r[0], "count": r[1]} for r in rows if r[0] is not None
-    ])
+        for r in (await db.execute(stmt)).all():
+            if r[0] is None:
+                continue
+            if r[0] in merged:
+                merged[r[0]] = {**merged[r[0]], "count": merged[r[0]]["count"] + r[1]}
+            else:
+                merged[r[0]] = {"year": r[0], "count": r[1]}
+    return success(sorted(merged.values(), key=lambda x: x["year"], reverse=True))
 
 
 # ── 档案 ──────────────────────────────────────────────────────────────────────

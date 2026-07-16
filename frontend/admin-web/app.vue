@@ -10,7 +10,11 @@
         <NNotificationProvider>
           <div :data-theme="currentTheme">
             <NuxtLayout>
-              <NuxtPage :keepalive="{ max: 20 }" :page-key="pageKey" />
+              <NuxtPage
+                :keepalive="{ max: 20 }"
+                :page-key="pageKey"
+                :transition="{ name: 'page-fade', mode: 'out-in' }"
+              />
             </NuxtLayout>
             <Toaster position="top-right" rich-colors />
           </div>
@@ -46,3 +50,31 @@ onMounted(() => {
   initTheme();
 });
 </script>
+
+<style>
+/* 页面切换过渡：150ms 淡入，keep-alive 缓存不受影响 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+/* 全局细滚动条（内容区/表格/弹层统一） */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--semi-color-fill-1);
+  border-radius: 20px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--semi-color-fill-2);
+}
+</style>

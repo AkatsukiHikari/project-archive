@@ -10,6 +10,9 @@
       <span class="text-xs text-base-content/50">{{ currentDate }}</span>
     </div>
 
+    <!-- 布局切换 -->
+    <LayoutSwitcher />
+
     <!-- 主题切换 -->
     <div class="dropdown dropdown-end">
       <div
@@ -246,6 +249,7 @@ import type { Component } from "vue";
 import { useUserStore } from "@/stores/user";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import LayoutSwitcher from "./LayoutSwitcher.vue";
 import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/vue/24/solid";
 import {
   SwatchIcon,

@@ -1,7 +1,7 @@
 <template>
   <header
-    class="h-14 border-b flex items-center justify-between px-5 z-10 w-full"
-    style="background: var(--semi-color-bg-0); border-color: var(--semi-color-border)"
+    class="h-14 flex items-center justify-between px-5 z-10 w-full"
+    style="background: var(--semi-color-bg-0); border-bottom: 1px solid var(--semi-color-border); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03)"
   >
     <!-- 左侧：面包屑 -->
     <div class="flex items-center gap-2 min-w-0">

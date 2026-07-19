@@ -114,19 +114,6 @@ MENU_TREE = [
                     {"code": "archive.storage.ledger",    "name": "保管台账",   "type": "MENU", "path": "/archive/storage/ledger",    "icon": "heroicons:book-open",            "sort_order": 5},
                 ],
             },
-            # ── 档案利用 ──────────────────────────────────────────────────────────
-            {
-                "code": "archive.utilization", "name": "档案利用", "type": "DIR",
-                "icon": "heroicons:magnifying-glass-circle", "sort_order": 4,
-                "children": [
-                    {"code": "archive.utilization.apply",       "name": "利用申请", "type": "MENU", "path": "/archive/utilization/apply",       "icon": "heroicons:document-plus",       "sort_order": 1},
-                    {"code": "archive.utilization.reading",     "name": "档案查询", "type": "MENU", "path": "/archive/utilization/reading",     "icon": "heroicons:magnifying-glass-circle", "sort_order": 2},
-                    {"code": "archive.utilization.borrow",      "name": "借阅管理", "type": "MENU", "path": "/archive/utilization/borrow",      "icon": "heroicons:arrow-uturn-right",   "sort_order": 3},
-                    {"code": "archive.utilization.copy",        "name": "复制申请", "type": "MENU", "path": "/archive/utilization/copy",        "icon": "heroicons:document-duplicate",  "sort_order": 4},
-                    {"code": "archive.utilization.certificate", "name": "证明开具", "type": "MENU", "path": "/archive/utilization/certificate", "icon": "heroicons:identification",      "sort_order": 5},
-                    {"code": "archive.utilization.ledger",      "name": "利用台账", "type": "MENU", "path": "/archive/utilization/ledger",      "icon": "heroicons:book-open",           "sort_order": 6},
-                ],
-            },
             # ── 档案鉴定 ──────────────────────────────────────────────────────────
             {
                 "code": "archive.appraisal", "name": "档案鉴定", "type": "DIR",
@@ -200,6 +187,23 @@ MENU_TREE = [
                     {"code": "archive.settings.norules",    "name": "档号规则",   "type": "MENU", "path": "/archive/settings/norules",    "icon": "heroicons:hashtag",          "sort_order": 3},
                 ],
             },
+        ],
+    },
+    {
+        "code": "service",
+        "name": "利用服务中心",
+        "type": "DIR",
+        "icon": "heroicons:user-group",
+        "sort_order": 35,
+        "children": [
+            {"code": "service:center",      "name": "服务工作台", "type": "MENU", "path": "/service",             "icon": "heroicons:building-storefront",     "sort_order": 1},
+            {"code": "service:apply",       "name": "利用申请",   "type": "MENU", "path": "/service/apply",       "icon": "heroicons:document-plus",           "sort_order": 2},
+            {"code": "service:kiosk-apps",  "name": "自助机申请", "type": "MENU", "path": "/service/kiosk-apps",  "icon": "heroicons:computer-desktop",        "sort_order": 3},
+            {"code": "service:reading",     "name": "档案查询",   "type": "MENU", "path": "/service/reading",     "icon": "heroicons:magnifying-glass-circle", "sort_order": 4},
+            {"code": "service:borrow",      "name": "借阅管理",   "type": "MENU", "path": "/service/borrow",      "icon": "heroicons:arrow-uturn-right",       "sort_order": 5},
+            {"code": "service:copy",        "name": "复制申请",   "type": "MENU", "path": "/service/copy",        "icon": "heroicons:document-duplicate",      "sort_order": 6},
+            {"code": "service:certificate", "name": "证明开具",   "type": "MENU", "path": "/service/certificate", "icon": "heroicons:identification",          "sort_order": 7},
+            {"code": "service:ledger",      "name": "利用台账",   "type": "MENU", "path": "/service/ledger",      "icon": "heroicons:book-open",               "sort_order": 8},
         ],
     },
     {
@@ -407,7 +411,7 @@ async def run_seed() -> None:
             # 5b. archivist 档案业务员：绑定全部档案业务菜单 + 收集写/审核按钮
             archivist_menus = [
                 m for m in all_menus
-                if m.code.startswith("archive") or m.code in (
+                if m.code.startswith("archive") or m.code.startswith("service") or m.code in (
                     "collection:create", "collection:review",
                     "appraisal:plan", "appraisal:evaluate",
                     "appraisal:review", "appraisal:standard",

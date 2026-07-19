@@ -86,7 +86,14 @@ import type { LedgerStats, UtilLedgerRow } from "@/api/utilization";
 import { CategoryAPI } from "@/api/repository";
 import type { ArchiveCategory } from "@/api/repository";
 
-definePageMeta({ layout: "archive", middleware: "auth" });
+definePageMeta({
+  layout: "service",
+  middleware: "auth",
+  breadcrumb: [
+    { name: "利用服务中心", path: "/service" },
+    { name: "利用台账", path: "/service/ledger" },
+  ],
+});
 
 const message = useMessage();
 const PALETTE = ["#2563eb", "#7c3aed", "#0891b2", "#059669", "#d97706", "#db2777", "#dc2626", "#4f46e5"];

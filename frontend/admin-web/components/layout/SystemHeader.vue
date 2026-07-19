@@ -49,15 +49,16 @@ const SUBSYSTEM_NAMES: Record<string, { name: string; path: string }> = {
   "/admin":   { name: "平台基础管理", path: "/admin" },
   "/archive": { name: "档案管理系统", path: "/archive" },
   "/ai":      { name: "AI 档案助手", path: "/ai" },
+  "/service": { name: "利用服务中心", path: "/service" },
 };
 
 const breadcrumbs = computed(() => {
   if (route.meta.breadcrumb) {
     return route.meta.breadcrumb as { name: string; path: string }[];
   }
-  // 根据当前路径前缀动态确定所属子系统
+  // 按路径前缀确定所属子系统；界面上绝不显示英文路径段，无中文名则不显示该级
   const prefix = "/" + route.path.split("/").filter(Boolean)[0];
-  const subsystem = SUBSYSTEM_NAMES[prefix] ?? { name: prefix, path: prefix };
-  return [subsystem];
+  const subsystem = SUBSYSTEM_NAMES[prefix];
+  return subsystem ? [subsystem] : [];
 });
 </script>

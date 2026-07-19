@@ -211,7 +211,14 @@ import type { UtilApplication, ItemIn, FullTextHit } from "@/api/utilization";
 import { AppraisalAPI } from "@/api/appraisal";
 import type { ArchiveConclusion } from "@/api/appraisal";
 
-definePageMeta({ layout: "archive", middleware: "auth" });
+definePageMeta({
+  layout: "service",
+  middleware: "auth",
+  breadcrumb: [
+    { name: "利用服务中心", path: "/service" },
+    { name: "档案查询", path: "/service/reading" },
+  ],
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -597,7 +604,7 @@ function completeApp() {
     onPositiveClick: async () => {
       await UtilizationAPI.complete(appId.value!);
       message.success("已办理完成");
-      router.push("/archive/utilization/apply");
+      router.push("/service/apply");
     },
   });
 }

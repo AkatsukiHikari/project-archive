@@ -436,7 +436,7 @@ function printPdf() {
 }
 function goBack() {
   if (window.history.length > 1) router.back();
-  else router.push("/archive/utilization/reading");
+  else router.push("/service/reading");
 }
 
 function onScroll() {

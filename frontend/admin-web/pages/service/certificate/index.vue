@@ -53,7 +53,14 @@ import { RegisterApplicantModal, ApplicationDetailPanel } from "@/components/arc
 import { UtilizationAPI } from "@/api/utilization";
 import type { UtilApplication } from "@/api/utilization";
 
-definePageMeta({ layout: "archive", middleware: "auth" });
+definePageMeta({
+  layout: "service",
+  middleware: "auth",
+  breadcrumb: [
+    { name: "利用服务中心", path: "/service" },
+    { name: "证明开具", path: "/service/certificate" },
+  ],
+});
 
 const router = useRouter();
 const message = useMessage();
@@ -103,8 +110,8 @@ const columns: DataTableColumns<UtilApplication> = [
 ];
 
 const showRegister = ref(false);
-function onRegistered(app: UtilApplication) { router.push(`/archive/utilization/reading?app=${app.id}`); }
-function goProcess(r: UtilApplication) { router.push(`/archive/utilization/reading?app=${r.id}`); }
+function onRegistered(app: UtilApplication) { router.push(`/service/reading?app=${app.id}`); }
+function goProcess(r: UtilApplication) { router.push(`/service/reading?app=${r.id}`); }
 
 // ── 开具 ──────────────────────────────────────────────────────────
 const showIssue = ref(false);

@@ -51,6 +51,17 @@
               {{ it.has_attachment ? "原文" : "无原文" }}
             </NButton>
             <NButton
+              size="tiny"
+              tertiary
+              type="primary"
+              :disabled="!it.has_attachment"
+              :loading="printingId === it.archive_id"
+              title="打印档案原文"
+              @click="printOriginal(it.archive_id)"
+            >
+              <Icon name="heroicons:printer" class="w-3.5 h-3.5" />
+            </NButton>
+            <NButton
               v-if="detail.status === 'processing'"
               size="tiny"
               tertiary
@@ -73,9 +84,15 @@
           <template #icon><Icon name="heroicons:check-circle" class="w-4 h-4" /></template>
           办理完成
         </NButton>
+        <NButton tertiary title="移交其他工作人员办理（审计留痕）" @click="transferShow = true">
+          <template #icon><Icon name="heroicons:arrow-right-circle" class="w-4 h-4" /></template>
+          转办
+        </NButton>
       </div>
     </template>
     <div v-else class="text-[12px] py-6 text-center" style="color:var(--semi-color-text-3)">未找到登记信息</div>
+
+    <TransferHandlerModal v-model:show="transferShow" :app-id="appId" @done="onTransferred" />
   </div>
 </template>
 
@@ -84,8 +101,11 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { NSpin, NTag, NButton, useMessage } from "naive-ui";
 import { PersonAvatar } from "@/components/archive";
+import TransferHandlerModal from "./TransferHandlerModal.vue";
 import { UtilizationAPI } from "@/api/utilization";
 import type { UtilApplicationDetail } from "@/api/utilization";
+import { ArchiveAPI } from "@/api/repository";
+import { printPdf } from "@/utils/printPdf";
 
 const props = withDefaults(defineProps<{ appId?: string | null; showActions?: boolean }>(), {
   appId: null,
@@ -152,10 +172,36 @@ async function complete() {
 }
 
 function goProcess() {
-  if (props.appId) router.push(`/archive/utilization/reading?app=${props.appId}`);
+  if (props.appId) router.push(`/service/reading?app=${props.appId}`);
 }
 function openReader(archiveId: string) {
   router.push(`/archive/reader?id=${archiveId}`);
+}
+
+// ── 打印档案原文（柜台流程：查档 → 打印 → 结束办理） ──────────────────────────
+const printingId = ref<string | null>(null);
+async function printOriginal(archiveId: string) {
+  printingId.value = archiveId;
+  try {
+    const atts = (await ArchiveAPI.attachments(archiveId)).data;
+    const target = atts.find((a) => a.url) ?? null;
+    if (!target?.url) {
+      message.warning("该档案原文暂无法获取");
+      return;
+    }
+    await printPdf(target.url);
+  } catch {
+    message.error("打印失败，请稍后重试");
+  } finally {
+    printingId.value = null;
+  }
+}
+
+// ── 转办 ──────────────────────────────────────────────────────────────────────
+const transferShow = ref(false);
+async function onTransferred() {
+  await reload();
+  emit("changed");
 }
 
 watch(() => props.appId, reload);

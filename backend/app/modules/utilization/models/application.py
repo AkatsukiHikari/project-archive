@@ -42,7 +42,7 @@ class UtilizationApplication(BaseEntity):
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="processing", index=True,
-        comment="状态: processing 办理中 | completed 办理完成 | cancelled 已取消",
+        comment="状态: pending 待审批(自助机) | processing 办理中 | completed 办理完成 | cancelled 已取消 | rejected 已拒绝",
     )
     handler_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
@@ -51,6 +51,27 @@ class UtilizationApplication(BaseEntity):
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="办结时间"
+    )
+
+    # ── 自助查询机（kiosk）通道 ──
+    source: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="counter",
+        comment="来源: counter 柜台 | kiosk 自助查询机",
+    )
+    access_code: Mapped[Optional[str]] = mapped_column(
+        String(8), nullable=True, index=True,
+        comment="自助机申请码（民众凭码取回/阅览，办结后失效）",
+    )
+    approved_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("iam_user.id", ondelete="SET NULL"),
+        nullable=True, comment="审批人（自助机申请）",
+    )
+    approved_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="审批时间"
+    )
+    reject_reason: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, comment="拒绝原因"
     )
 
     # ── 借阅(borrow)业务字段 ──

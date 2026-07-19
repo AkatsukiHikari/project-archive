@@ -58,6 +58,9 @@ v1_router.include_router(search_router, prefix="/utilization", tags=["utilizatio
 from app.modules.utilization.api.routes_application import router as util_application_router
 v1_router.include_router(util_application_router)
 
+from app.modules.utilization.api.routes_center import router as util_center_router
+v1_router.include_router(util_center_router)
+
 from app.modules.preservation.api.routes_detection import router as preservation_detection_router
 v1_router.include_router(preservation_detection_router)
 

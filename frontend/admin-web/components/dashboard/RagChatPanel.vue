@@ -620,14 +620,14 @@ const onCitationClick = (chip: CitationChip) => {
   if (chip.source_type === "meta") {
     const dh = (chip.extra?.DH as string) || "";
     router.push({
-      path: "/archive/utilization/reading",
+      path: "/service/reading",
       query: dh ? { DH: dh } : { q: chip.title },
     });
     return;
   }
   // dify 类（无具体 archive_id）→ 退回查阅页做关键字检索
   if (chip.source_type === "dify" && chip.title) {
-    router.push({ path: "/archive/utilization/reading", query: { q: chip.title } });
+    router.push({ path: "/service/reading", query: { q: chip.title } });
     return;
   }
   // rule / ocr 类不跳转（popover 已展示规则正文，无对应档案条目）

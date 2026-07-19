@@ -92,6 +92,7 @@ async def list_applications(
     status: Optional[str] = Query(default=None),
     use_type: Optional[str] = Query(default=None),
     keyword: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None, description="counter 柜台 | kiosk 自助机"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -101,6 +102,7 @@ async def list_applications(
         status=status or None,
         keyword=keyword,
         use_type=use_type or None,
+        source=source or None,
     )
     return success(
         [ApplicationOut.model_validate(r).model_dump(mode="json") for r in rows]

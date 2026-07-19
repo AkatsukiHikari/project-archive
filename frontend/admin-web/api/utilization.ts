@@ -10,7 +10,7 @@ interface ApiResponse<T> {
 }
 
 export type UseType = "read" | "borrow" | "copy" | "certificate";
-export type AppStatus = "processing" | "completed" | "cancelled";
+export type AppStatus = "pending" | "processing" | "completed" | "cancelled" | "rejected";
 
 export interface UtilApplication {
   id: string;
@@ -41,6 +41,37 @@ export interface UtilApplication {
   cert_content?: string | null;
   issued_at?: string | null;
   biz_status?: string | null;
+  // 自助查询机通道
+  source?: "counter" | "kiosk";
+  access_code?: string | null;
+  approved_at?: string | null;
+  reject_reason?: string | null;
+}
+
+export interface CenterSummary {
+  today_total: number;
+  processing: number;
+  pending: number;
+  today_completed: number;
+  kiosk_today: number;
+}
+
+export interface KioskStatusResult {
+  ok: boolean;
+  reason?: string;
+  reg_no?: string;
+  applicant_name?: string;
+  status?: AppStatus;
+  reject_reason?: string | null;
+  viewable?: boolean;
+  items?: { archive_id: string; DH?: string | null; TM: string; RZZ?: string | null; ND?: number | null; QZH?: string | null }[];
+}
+
+export interface KioskAttachment {
+  id: string;
+  original_name: string;
+  file_format?: string | null;
+  url: string | null;
 }
 
 export interface UtilItem {
@@ -141,7 +172,7 @@ export const UtilizationAPI = {
     http.get<ApiResponse<UtilLedgerRow[]>, ApiResponse<UtilLedgerRow[]>>("/utilization/ledger", { params: params ?? {} }),
   ledgerStats: (params?: { granularity?: string; date_from?: string; date_to?: string }) =>
     http.get<ApiResponse<LedgerStats>, ApiResponse<LedgerStats>>("/utilization/ledger/stats", { params: params ?? {} }),
-  list: (params?: { status?: string; use_type?: string; keyword?: string }) =>
+  list: (params?: { status?: string; use_type?: string; keyword?: string; source?: string }) =>
     http.get<ApiResponse<UtilApplication[]>, ApiResponse<UtilApplication[]>>(BASE, { params: params ?? {} }),
   create: (body: ApplicationCreate) =>
     http.post<ApiResponse<UtilApplication>, ApiResponse<UtilApplication>>(BASE, body),
@@ -167,4 +198,24 @@ export const UtilizationAPI = {
     http.post<ApiResponse<{ added: number }>, ApiResponse<{ added: number }>>(`${BASE}/${id}/items`, { items }),
   removeItem: (id: string, itemId: string) =>
     http.delete<ApiResponse<null>, ApiResponse<null>>(`${BASE}/${id}/items/${itemId}`),
+
+  // ── 利用服务中心 ──
+  centerSummary: () =>
+    http.get<ApiResponse<CenterSummary>, ApiResponse<CenterSummary>>("/utilization/center/summary"),
+  approve: (id: string) =>
+    http.post<ApiResponse<UtilApplication>, ApiResponse<UtilApplication>>(`${BASE}/${id}/approve`, {}),
+  reject: (id: string, reason: string) =>
+    http.post<ApiResponse<UtilApplication>, ApiResponse<UtilApplication>>(`${BASE}/${id}/reject`, { reason }),
+  /** 转办：改经办人（后端审计留痕） */
+  transfer: (id: string, handlerId: string) =>
+    http.post<ApiResponse<UtilApplication>, ApiResponse<UtilApplication>>(`${BASE}/${id}/transfer`, { handler_id: handlerId }),
+
+  // ── 自助查询机 ──
+  kioskApply: (body: { applicant_name: string; phone: string; id_card_no?: string; purpose?: string; items: ItemIn[] }) =>
+    http.post<ApiResponse<{ reg_no: string; access_code: string; id: string }>, ApiResponse<{ reg_no: string; access_code: string; id: string }>>(
+      "/utilization/kiosk/apply", body),
+  kioskStatus: (code: string) =>
+    http.get<ApiResponse<KioskStatusResult>, ApiResponse<KioskStatusResult>>("/utilization/kiosk/status", { params: { code } }),
+  kioskAttachments: (code: string, archiveId: string) =>
+    http.get<ApiResponse<KioskAttachment[]>, ApiResponse<KioskAttachment[]>>("/utilization/kiosk/attachments", { params: { code, archive_id: archiveId } }),
 };

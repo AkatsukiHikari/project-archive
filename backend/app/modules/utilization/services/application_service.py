@@ -100,7 +100,7 @@ class ApplicationService:
 
     async def list(
         self, tenant_id: Optional[uuid.UUID], status: Optional[str], keyword: Optional[str],
-        use_type: Optional[str] = None,
+        use_type: Optional[str] = None, source: Optional[str] = None,
     ) -> list[dict]:
         conds = [UtilizationApplication.is_deleted == False]  # noqa: E712
         if tenant_id is not None:
@@ -109,6 +109,8 @@ class ApplicationService:
             conds.append(UtilizationApplication.status == status)
         if use_type:
             conds.append(UtilizationApplication.use_type == use_type)
+        if source:
+            conds.append(UtilizationApplication.source == source)
         if keyword:
             kw = f"%{keyword}%"
             conds.append(or_(
@@ -116,6 +118,7 @@ class ApplicationService:
                 UtilizationApplication.reg_no.ilike(kw),
                 UtilizationApplication.id_card_no.ilike(kw),
                 UtilizationApplication.organization.ilike(kw),
+                UtilizationApplication.access_code.ilike(kw),
             ))
         rows = (await self._db.execute(
             select(UtilizationApplication).where(and_(*conds))
@@ -134,6 +137,7 @@ class ApplicationService:
                 "handler_id", "completed_at", "create_time",
                 "borrowed_at", "due_date", "returned_at", "copy_method", "copies",
                 "fee", "delivered_at", "cert_no", "cert_content", "issued_at",
+                "source", "access_code", "approved_at", "reject_reason",
             )}
             d["item_count"] = counts.get(a.id, 0)
             d["handler_name"] = names.get(a.handler_id)

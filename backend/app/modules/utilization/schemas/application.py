@@ -61,6 +61,12 @@ class ApplicationOut(BaseModel):
     issued_at: Optional[datetime] = None
     biz_status: Optional[str] = None   # 子状态：待借出/借出中/逾期/已归还/待复制/已交付/待开具/已出具
 
+    # 自助查询机通道
+    source: str = "counter"            # counter 柜台 | kiosk 自助机
+    access_code: Optional[str] = None  # 申请码（工作人员可告知遗忘码的民众）
+    approved_at: Optional[datetime] = None
+    reject_reason: Optional[str] = None
+
 
 # ── 办理动作 ──────────────────────────────────────────────────────────────────
 

@@ -73,7 +73,14 @@ import { UtilizationAPI } from "@/api/utilization";
 import type { UtilApplication } from "@/api/utilization";
 import { DictAPI, dictToOptions } from "@/api/dict";
 
-definePageMeta({ layout: "archive", middleware: "auth" });
+definePageMeta({
+  layout: "service",
+  middleware: "auth",
+  breadcrumb: [
+    { name: "利用服务中心", path: "/service" },
+    { name: "利用申请", path: "/service/apply" },
+  ],
+});
 
 const router = useRouter();
 const message = useMessage();
@@ -160,7 +167,7 @@ async function submitRegister() {
     });
     message.success("登记成功，进入查档办理");
     showRegister.value = false;
-    router.push(`/archive/utilization/reading?app=${res.data.id}`);
+    router.push(`/service/reading?app=${res.data.id}`);
   } finally {
     saving.value = false;
   }
@@ -175,7 +182,7 @@ function openDetail(r: UtilApplication) {
   detailId.value = r.id; detailReg.value = r.reg_no; showDetail.value = true;
 }
 function goProcess(r: UtilApplication) {
-  router.push(`/archive/utilization/reading?app=${r.id}`);
+  router.push(`/service/reading?app=${r.id}`);
 }
 async function complete(r: UtilApplication) {
   await UtilizationAPI.complete(r.id);
